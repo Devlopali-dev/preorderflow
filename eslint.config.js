@@ -5,6 +5,20 @@ module.exports = tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ["**/*.config.js", "**/*.config.cjs"],
+    languageOptions: {
+      globals: {
+        module: "writable",
+        require: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     ignores: [
       "**/dist/**",
       "**/.next/**",
@@ -15,7 +29,10 @@ module.exports = tseslint.config(
   },
   {
     rules: {
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },
