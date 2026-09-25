@@ -14,4 +14,27 @@ if (process.env.NODE_ENV !== "production") {
   globalThis.__prisma = prisma;
 }
 
-export * from "@prisma/client";
+// `export * from "@prisma/client"` casse la détection des exports nommés
+// locaux (ex: `prisma` ci-dessus disparaît) sous le require()-of-ESM natif
+// de Node quand ce fichier est chargé tel quel (sans étape de build) par
+// NestJS. On ré-exporte donc explicitement les valeurs et types utiles.
+export { PrismaClient, Prisma } from "@prisma/client";
+export type * from "@prisma/client";
+export {
+  AdminRole,
+  CampaignStatus,
+  AddressType,
+  OrderStatus,
+  OrderPaymentStatus,
+  OrderFulfillmentStatus,
+  PaymentProvider,
+  PaymentStatus,
+  ProductionBatchStatus,
+  InventoryMovementType,
+  InventoryReferenceType,
+  ShipmentStatus,
+  NotificationChannel,
+  NotificationTemplate,
+  NotificationStatus,
+  AuditAction,
+} from "@prisma/client";
