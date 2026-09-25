@@ -1,0 +1,482 @@
+// PreOrderFlow — Prisma schema (Phase 1)
+// PostgreSQL, UUID, UTC. Aucun champ de stock stocké : le stock est dérivé de InventoryMovement.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth (admin)
+// ---------------------------------------------------------------------------
+
+enum AdminRole {
+  ADMIN
+  OPERATOR
+}
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         AdminRole @default(OPERATOR)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@map("admin_users")
+}
+
+// ---------------------------------------------------------------------------
+// Campaign
+// ---------------------------------------------------------------------------
+
+enum CampaignStatus {
+  DRAFT
+  RECENSEMENT
+  COMMANDES_OUVERTES
+  COMMANDES_FERMEES
+  PRODUCTION
+  EXPEDITION
+  TERMINEE
+  ANNULEE
+}
+
+model Campaign {
+  id                String         @id @default(uuid())
+  name              String
+  slug              String         @unique
+  description       String?
+  status            CampaignStatus @default(DRAFT)
+  startDate         DateTime?
+  endDate           DateTime?
+  productId         String
+  product           Product        @relation(fields: [productId], references: [id])
+  indicativePrice   Decimal        @db.Decimal(10, 2)
+  currency          String         @default("EUR")
+  imageUrl          String?
+  interestSettings  Json?          // ex: quantités max, message légal, seuils d'affichage
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  interests CampaignInterest[]
+
+  @@map("campaigns")
+}
+
+// ---------------------------------------------------------------------------
+// Interest (recensement)
+// ---------------------------------------------------------------------------
+
+model CampaignInterest {
+  id               String   @id @default(uuid())
+  campaignId       String
+  campaign         Campaign @relation(fields: [campaignId], references: [id])
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  email            String
+  firstName        String
+  lastName         String
+  phone            String?
+  quantity         Int
+  comment          String?
+  consentToContact Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([email])
+  @@map("campaign_interests")
+}
+
+// ---------------------------------------------------------------------------
+// Product
+// ---------------------------------------------------------------------------
+
+model Product {
+  id             String   @id @default(uuid())
+  sku            String   @unique
+  name           String
+  slug           String   @unique
+  description    String?
+  price          Decimal  @db.Decimal(10, 2)
+  currency       String   @default("EUR")
+  taxRate        Decimal  @db.Decimal(5, 2) @default(0)
+  weight         Decimal? @db.Decimal(10, 3) // kg
+  active         Boolean  @default(true)
+  manufacturable Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campaigns        Campaign[]
+  orderItems       OrderItem[]
+  productionItems  ProductionItem[]
+  inventoryMoves   InventoryMovement[]
+
+  @@map("products")
+}
+
+// ---------------------------------------------------------------------------
+// Customer / Address
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  firstName String
+  lastName  String
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses Address[]
+  orders    Order[]
+  interests CampaignInterest[]
+
+  @@map("customers")
+}
+
+enum AddressType {
+  BILLING
+  SHIPPING
+}
+
+model Address {
+  id         String      @id @default(uuid())
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  type       AddressType
+  firstName  String
+  lastName   String
+  company    String?
+  address1   String
+  address2   String?
+  postalCode String
+  city       String
+  country    String
+  phone      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([customerId])
+  @@map("addresses")
+}
+
+// ---------------------------------------------------------------------------
+// Order / OrderItem
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderPaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  REFUNDED
+}
+
+enum OrderFulfillmentStatus {
+  UNFULFILLED
+  PROCESSING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+}
+
+model Order {
+  id                 String                  @id @default(uuid())
+  number             String                  @unique // ex: 2026-0042
+  customerId         String
+  customer           Customer                @relation(fields: [customerId], references: [id])
+  status             OrderStatus             @default(DRAFT)
+  paymentStatus      OrderPaymentStatus      @default(UNPAID)
+  fulfillmentStatus  OrderFulfillmentStatus  @default(UNFULFILLED)
+  currency           String                  @default("EUR")
+  subtotal           Decimal                 @db.Decimal(10, 2)
+  shippingAmount     Decimal                 @db.Decimal(10, 2) @default(0)
+  taxAmount          Decimal                 @db.Decimal(10, 2) @default(0)
+  total              Decimal                 @db.Decimal(10, 2)
+  billingAddress     Json                    // snapshot figé au moment de la commande
+  shippingAddress    Json                    // snapshot figé au moment de la commande
+  notes              String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  items     OrderItem[]
+  payments  Payment[]
+  shipments Shipment[]
+
+  @@index([customerId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2)
+  taxRate   Decimal  @db.Decimal(5, 2) @default(0)
+  total     Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ---------------------------------------------------------------------------
+// Payment
+// ---------------------------------------------------------------------------
+
+enum PaymentProvider {
+  MANUAL
+  BANK_TRANSFER
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id                 String          @id @default(uuid())
+  orderId            String
+  order              Order           @relation(fields: [orderId], references: [id])
+  provider           PaymentProvider
+  providerReference  String?
+  amount             Decimal         @db.Decimal(10, 2)
+  currency           String          @default("EUR")
+  status             PaymentStatus   @default(PENDING)
+  paidAt             DateTime?
+  metadata           Json?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Production
+// ---------------------------------------------------------------------------
+
+enum ProductionBatchStatus {
+  PLANNED
+  IN_PROGRESS
+  PARTIALLY_COMPLETED
+  COMPLETED
+  CANCELLED
+}
+
+model ProductionBatch {
+  id        String                 @id @default(uuid())
+  reference String                 @unique // ex: 2026-001
+  status    ProductionBatchStatus  @default(PLANNED)
+  startedAt DateTime?
+  completedAt DateTime?
+  notes     String?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  items ProductionItem[]
+
+  @@map("production_batches")
+}
+
+model ProductionItem {
+  id                String           @id @default(uuid())
+  productionBatchId String
+  productionBatch   ProductionBatch  @relation(fields: [productionBatchId], references: [id])
+  productId         String
+  product           Product          @relation(fields: [productId], references: [id])
+  quantityPlanned   Int
+  quantityProduced  Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([productionBatchId])
+  @@index([productId])
+  @@map("production_items")
+}
+
+// ---------------------------------------------------------------------------
+// Inventory (stock calculé à partir des mouvements)
+// ---------------------------------------------------------------------------
+
+enum InventoryMovementType {
+  PRODUCTION
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+  SALE
+  RETURN
+  DAMAGE
+  TRANSFER
+}
+
+enum InventoryReferenceType {
+  ORDER
+  PRODUCTION_BATCH
+  MANUAL
+}
+
+model InventoryMovement {
+  id            String                  @id @default(uuid())
+  productId     String
+  product       Product                 @relation(fields: [productId], references: [id])
+  quantity      Int                     // signé : positif = entrée, négatif = sortie
+  type          InventoryMovementType
+  referenceType InventoryReferenceType
+  referenceId   String?                 // id polymorphe (Order.id ou ProductionBatch.id), pas de FK
+  reason        String?
+  createdAt     DateTime                @default(now())
+
+  @@index([productId])
+  @@index([referenceType, referenceId])
+  @@map("inventory_movements")
+}
+
+// ---------------------------------------------------------------------------
+// Shipment
+// ---------------------------------------------------------------------------
+
+enum ShipmentStatus {
+  PENDING
+  LABEL_CREATED
+  SHIPPED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION
+  RETURNED
+}
+
+model Shipment {
+  id              String         @id @default(uuid())
+  orderId         String
+  order           Order          @relation(fields: [orderId], references: [id])
+  carrier         String?
+  trackingNumber  String?
+  trackingUrl     String?
+  status          ShipmentStatus @default(PENDING)
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  weight          Decimal?       @db.Decimal(10, 3)
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  events ShipmentEvent[]
+
+  @@index([orderId])
+  @@map("shipments")
+}
+
+model ShipmentEvent {
+  id         String         @id @default(uuid())
+  shipmentId String
+  shipment   Shipment       @relation(fields: [shipmentId], references: [id])
+  status     ShipmentStatus
+  message    String?
+  occurredAt DateTime       @default(now())
+  metadata   Json?
+
+  @@index([shipmentId])
+  @@map("shipment_events")
+}
+
+// ---------------------------------------------------------------------------
+// Notification
+// ---------------------------------------------------------------------------
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WEBHOOK
+}
+
+enum NotificationTemplate {
+  INTEREST_REGISTERED
+  ORDERS_OPENED
+  ORDER_CREATED
+  PAYMENT_RECEIVED
+  ORDER_READY
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Notification {
+  id          String                @id @default(uuid())
+  channel     NotificationChannel
+  template    NotificationTemplate
+  recipient   String                // email/phone/url selon le canal
+  payload     Json?
+  status      NotificationStatus    @default(PENDING)
+  sentAt      DateTime?
+  error       String?
+  createdAt   DateTime              @default(now())
+
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+enum AuditAction {
+  ORDER_CREATED
+  ORDER_CANCELLED
+  PAYMENT_CONFIRMED
+  PRODUCTION_STARTED
+  PRODUCTION_COMPLETED
+  INVENTORY_ADJUSTED
+  SHIPMENT_CREATED
+  SHIPMENT_UPDATED
+  CUSTOMER_UPDATED
+}
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  userId     String
+  user       AdminUser   @relation(fields: [userId], references: [id])
+  action     AuditAction
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
