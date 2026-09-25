@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "@preorderflow/ui/src/tokens.css";
+@import "@preorderflow/ui/src/components.css";
