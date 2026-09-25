@@ -80,8 +80,8 @@ model CampaignInterest {
   id               String   @id @default(uuid())
   campaignId       String
   campaign         Campaign @relation(fields: [campaignId], references: [id])
-  customerId       String?
-  customer         Customer? @relation(fields: [customerId], references: [id])
+  customerId       String   // rattachement obligatoire : find-or-create Customer par email
+  customer         Customer @relation(fields: [customerId], references: [id])
   email            String
   firstName        String
   lastName         String
@@ -222,7 +222,7 @@ model Order {
 
   items     OrderItem[]
   payments  Payment[]
-  shipments Shipment[]
+  shipment  Shipment?
 
   @@index([customerId])
   @@map("orders")
@@ -379,7 +379,7 @@ enum ShipmentStatus {
 
 model Shipment {
   id              String         @id @default(uuid())
-  orderId         String
+  orderId         String         @unique // relation 1-1 : une commande = un colis
   order           Order          @relation(fields: [orderId], references: [id])
   carrier         String?
   trackingNumber  String?
@@ -394,7 +394,6 @@ model Shipment {
 
   events ShipmentEvent[]
 
-  @@index([orderId])
   @@map("shipments")
 }
 

@@ -103,6 +103,7 @@ Order 1---N OrderItem
 Order 1---N Payment
 Order 1---1 Shipment (0..1 — une commande peut ne pas encore être expédiée)
 Order N---1 Customer
+Order 1---1 Shipment (une commande = un colis, décision validée)
 Order references Address (billing + shipping) — copie figée au moment de la commande
 
 OrderItem N---1 Product
@@ -130,8 +131,9 @@ Conformément au §13/§36 du cahier des charges : pas de colonne `Product.stock
 
 ```text
 physicalStock  = SUM(quantity) des mouvements du produit (signe selon type)
-reservedStock  = SUM(quantity) des OrderItem des commandes non terminales
-                 (PENDING_PAYMENT, PAID, PROCESSING, READY_TO_SHIP) et non annulées
+reservedStock  = SUM(quantity) des OrderItem des commandes ayant reçu au moins
+                 un paiement (paymentStatus IN (PARTIALLY_PAID, PAID)) et non
+                 terminales/annulées (PAID, PROCESSING, READY_TO_SHIP)
 availableStock = physicalStock - reservedStock
 ```
 
@@ -210,16 +212,16 @@ SHIPPED/IN_TRANSIT/OUT_FOR_DELIVERY → RETURNED
 
 Chaque changement de statut crée un `ShipmentEvent` (append-only).
 
-## 5. Ambiguïtés identifiées à valider
+## 5. Ambiguïtés — décisions
 
-1. **Une commande peut-elle avoir plusieurs expéditions ?** Le cahier des charges (§16) implique une relation implicite 1-1 (`Order ↔ Shipment`), mais une commande multi-colis est fréquente. **Proposition** : `Order 1---N Shipment` dès le schéma (plus sûr), même si le MVP n'expédie qu'un colis par commande.
-2. **CampaignInterest → Customer** : le lien est nullable. Faut-il dédupliquer automatiquement par email au moment du recensement (créer/rattacher un `Customer`) ou garder l'anonymat total tant qu'aucune commande n'est passée ? **Proposition** : ne pas créer de `Customer` à l'enregistrement d'un intérêt ; le lien ne se fait que si la personne passe commande avec le même email (rattachement a posteriori, jamais automatique rétroactif pour respecter le §24 RGPD).
-3. **Réservation de stock** : à quel moment un `OrderItem` réserve-t-il du stock — à la création de la commande (`DRAFT`) ou seulement au passage `PENDING_PAYMENT`/`PAID` ? **Proposition** : réservation dès `PENDING_PAYMENT` (une commande `DRAFT` ne bloque rien), libérée si `CANCELLED`.
-4. **Multi-devises** : `currency` est répété sur `Campaign`, `Product`, `Order`, `Payment`. Le MVP suppose une devise unique globale (EUR) mais le champ est conservé pour l'extensibilité. À confirmer que le MVP n'a pas besoin de conversion.
-5. **RBAC** : seuls `ADMIN`/`OPERATOR` sont listés au §23. Faut-il que `OPERATOR` ait un accès restreint (ex. pas d'accès à `/settings` ni suppression) ? À définir précisément avant la Phase 4.
-6. **Anti-spam du formulaire de recensement** (§6) : proposition technique = rate limiting IP + honeypot + option captcha (Turnstile) activable par variable d'env, sans dépendance obligatoire (cf. §32 pas de dépendance propriétaire obligatoire).
-7. **Numéro de commande humain lisible** : format proposé `CMD-{année}-{séquence}` (ex. `2026-0042`), généré par séquence Postgres dédiée par année. À valider.
-8. **Notifications** : le §17 ne précise pas de moteur d'envoi. Proposition : interface `NotificationProvider` avec implémentation `SMTP` par défaut (aucune dépendance propriétaire obligatoire), Resend/Brevo en implémentations optionnelles.
+1. **Shipment par commande** : **1-1** (`Order.shipment`, `Shipment.orderId` unique). Pas de multi-colis en MVP.
+2. **CampaignInterest → Customer** : **rattachement obligatoire**. À la soumission d'un intérêt, find-or-create `Customer` par email ; `CampaignInterest.customerId` est non-nullable. La suppression/anonymisation RGPD (§24) agit sur le `Customer` indépendamment de ses commandes.
+3. **Réservation de stock** : réservation **dès qu'un paiement existe** (`paymentStatus` = `PARTIALLY_PAID` ou `PAID`), pas dès `DRAFT`/`PENDING_PAYMENT` sans paiement. Libérée si la commande passe `CANCELLED`/`REFUNDED`.
+4. **Devise** : **EUR uniquement** pour le MVP. Les colonnes `currency` restent dans le schéma (extensibilité future) mais aucune logique multi-devise n'est développée ; validations Zod/DTO peuvent forcer `"EUR"`.
+5. **RBAC OPERATOR** : non tranché — proposition maintenue (pas d'accès `/settings` ni suppression) à confirmer avant Phase 4.
+6. **Numéro de commande** : non tranché — proposition maintenue `{année}-{séquence}` (ex. `2026-0042`) via séquence Postgres annuelle, à confirmer avant Phase 4.
+7. **Enums campagne** : **sans accents** en base (`COMMANDES_FERMEES`, `EXPEDITION`, `TERMINEE`), déjà appliqué dans le schéma Prisma. L'affichage accentué se fait côté i18n front.
+8. **Email transactionnel** : **Resend** comme provider par défaut du MVP, derrière l'interface `NotificationProvider` (pas de dépendance obligatoire au cœur, cf. §32).
 
 ## 6. Endpoints REST (Phase 1 — proposition, versionnés `/api/v1`)
 
@@ -297,8 +299,7 @@ docs: database/api/deployment/security/coolify
 chore: seed dev
 ```
 
-## 8. Points à valider avant Phase 2
+## 8. Points restants avant Phase 2
 
-- Confirmer les 8 ambiguïtés du §5.
-- Confirmer le nommage exact des statuts `Campaign` avec accents (`COMMANDES_FERMÉES`) — Postgres/Prisma enum : proposition de les stocker sans accents (`COMMANDES_FERMEES`) en base et de gérer l'accent uniquement à l'affichage (i18n), à valider.
-- Confirmer stack email par défaut (SMTP simple vs Resend dès le MVP).
+- RBAC `OPERATOR` : périmètre exact des restrictions (proposition §5.5 à confirmer).
+- Format définitif du numéro de commande (proposition §5.6 à confirmer).
