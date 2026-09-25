@@ -70,7 +70,7 @@ async function main() {
     },
   });
 
-  const tote = await prisma.product.upsert({
+  const _tote = await prisma.product.upsert({
     where: { sku: "TOTE-001" },
     update: {},
     create: {
@@ -150,7 +150,7 @@ async function main() {
 
   // --- Intérêts (recensement) — rattachés à un customer (find-or-create) ---
   for (let i = 0; i < 20; i++) {
-    const customer = customers[i % customers.length];
+    const customer = customers[i % customers.length]!;
     await prisma.campaignInterest.create({
       data: {
         campaignId: i % 2 === 0 ? campaign1.id : campaign2.id,
@@ -167,7 +167,7 @@ async function main() {
   // --- Commandes ---
   const orders = [];
   for (let i = 1; i <= 10; i++) {
-    const customer = customers[i % customers.length];
+    const customer = customers[i % customers.length]!;
     const quantity = (i % 3) + 1;
     const unitPrice = sifflet.price;
     const subtotal = unitPrice.toNumber() * quantity;
@@ -277,7 +277,7 @@ async function main() {
 
   // --- Expéditions (5) ---
   for (let i = 0; i < 5; i++) {
-    const order = orders[i];
+    const order = orders[i]!;
     const existingShipment = await prisma.shipment.findUnique({ where: { orderId: order.id } });
     if (!existingShipment) {
       await prisma.shipment.create({

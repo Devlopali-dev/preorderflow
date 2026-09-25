@@ -35,7 +35,6 @@ async function bootstrap() {
 
   const port = process.env.API_PORT ?? 3001;
   await app.listen(port);
-  // eslint-disable-next-line no-console
   console.log(`API démarrée sur http://localhost:${port}/api/v1 (docs: /api/docs)`);
 }
 

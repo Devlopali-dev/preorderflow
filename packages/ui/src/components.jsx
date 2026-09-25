@@ -1,3 +1,4 @@
+'use client'
 // ============================================================
 //  JEFF'S DESIGN SYSTEM — components.jsx
 //  Composants React prêts à l'emploi
