@@ -1,0 +1,30 @@
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      target: dev
+    command: pnpm --filter api dev
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
+
+  web:
+    build:
+      target: dev
+    command: pnpm --filter web dev
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      - /app/node_modules
+    environment:
+      NODE_ENV: development
