@@ -11,6 +11,7 @@ export type TemplatePayloads = {
   ORDER_READY: { firstName: string; orderNumber: string };
   ORDER_SHIPPED: { firstName: string; orderNumber: string; trackingUrl?: string };
   ORDER_DELIVERED: { firstName: string; orderNumber: string };
+  CUSTOMER_MAGIC_LINK: { firstName: string; magicLinkUrl: string; expiresInMinutes: number };
 };
 
 // Templates HTML minimaux, sans dépendance externe (§32 : pas de
@@ -72,6 +73,13 @@ export function renderTemplate<T extends keyof TemplatePayloads>(
       return {
         subject: `Commande ${p.orderNumber} livrée`,
         html: `<p>Bonjour ${p.firstName},</p><p>Votre commande ${p.orderNumber} a été livrée. Merci pour votre confiance !</p>`,
+      };
+    }
+    case "CUSTOMER_MAGIC_LINK": {
+      const p = payload as TemplatePayloads["CUSTOMER_MAGIC_LINK"];
+      return {
+        subject: "Votre lien de connexion PreOrderFlow",
+        html: `<p>Bonjour ${p.firstName},</p><p>Cliquez sur ce lien pour accéder à votre espace client (valable ${p.expiresInMinutes} minutes) : <a href="${p.magicLinkUrl}">${p.magicLinkUrl}</a></p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`,
       };
     }
     default: {

@@ -429,6 +429,7 @@ enum NotificationTemplate {
   ORDER_SHIPPED
   ORDER_DELIVERED
   ADMIN_ALERT
+  CUSTOMER_MAGIC_LINK
 }
 
 enum NotificationStatus {

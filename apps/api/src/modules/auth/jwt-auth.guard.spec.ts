@@ -52,6 +52,22 @@ describe("JwtAuthGuard", () => {
     expect(() => guard.canActivate(makeContext("Bearer bad.token.here"))).toThrow(UnauthorizedException);
   });
 
+  it("refuse un token valide mais sans rôle admin (ex: session client) — régression réelle", () => {
+    // Un token client (customer-auth) est signé avec le même secret
+    // applicatif que les tokens admin ; sans cette vérification du rôle,
+    // il passait ce guard et donnait accès à toute route admin dépourvue
+    // de @Roles() explicite. Trouvé en testant l'espace client en réel.
+    const reflector = { getAllAndOverride: vi.fn().mockReturnValue(false) } as unknown as Reflector;
+    const jwtService = {
+      verify: vi.fn().mockReturnValue({ sub: "customer-1", type: "customer" }),
+    } as unknown as JwtService;
+    const guard = new JwtAuthGuard(jwtService, reflector);
+
+    expect(() => guard.canActivate(makeContext("Bearer customer.session.token"))).toThrow(
+      UnauthorizedException,
+    );
+  });
+
   it("accepte un token valide et attache le payload à la requête", () => {
     const reflector = { getAllAndOverride: vi.fn().mockReturnValue(false) } as unknown as Reflector;
     const payload = { sub: "1", email: "a@b.com", role: "ADMIN" };
