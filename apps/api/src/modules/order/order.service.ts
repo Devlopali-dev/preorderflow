@@ -114,6 +114,30 @@ export class OrderService {
     });
   }
 
+  /**
+   * Marque une commande comme payée après confirmation d'un paiement.
+   * Ne fait rien si la commande est déjà payée ou plus loin dans le
+   * cycle (idempotent), refuse si la commande est annulée/remboursée.
+   */
+  async markPaid(orderId: string) {
+    const order = await this.getById(orderId);
+    if (order.status === "PAID" || ["PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(order.status)) {
+      return order;
+    }
+    try {
+      assertValidOrderTransition(order.status, "PAID");
+    } catch (error) {
+      if (error instanceof InvalidOrderTransitionError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+    return prisma.order.update({
+      where: { id: order.id },
+      data: { status: "PAID", paymentStatus: "PAID" },
+    });
+  }
+
   private async generateOrderNumber(): Promise<string> {
     const year = new Date().getUTCFullYear();
     const count = await prisma.order.count({

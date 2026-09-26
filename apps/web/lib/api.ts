@@ -68,3 +68,24 @@ export async function getCustomers(): Promise<CustomerSummary[]> {
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
+
+export interface OrderDetail extends OrderSummary {
+  subtotal: string;
+  shippingAmount: string;
+  taxAmount: string;
+  items: Array<{ id: string; quantity: number; unitPrice: string; product: { name: string } }>;
+  payments: Array<{
+    id: string;
+    status: string;
+    amount: string;
+    provider: string;
+    metadata: { revolutLink?: string } | null;
+  }>;
+}
+
+export async function getOrder(id: string): Promise<OrderDetail | null> {
+  const res = await fetch(`${API_URL}/api/v1/orders/${id}`, { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}

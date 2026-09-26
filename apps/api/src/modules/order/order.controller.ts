@@ -1,12 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, forwardRef, Get, Inject, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { OrderService } from "./order.service";
 import { CreateOrderDto, UpdateOrderStatusDto } from "./dto/create-order.dto";
+import { PaymentService } from "../payment/payment.service";
+import { CreatePaymentDto } from "../payment/dto/create-payment.dto";
 
 @ApiTags("orders")
 @Controller("orders")
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    @Inject(forwardRef(() => PaymentService))
+    private readonly paymentService: PaymentService,
+  ) {}
 
   @Get()
   list() {
@@ -26,5 +32,10 @@ export class OrderController {
   @Patch(":id/status")
   updateStatus(@Param("id") id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.orderService.updateStatus(id, dto.status as never);
+  }
+
+  @Post(":id/payments")
+  createPayment(@Param("id") id: string, @Body() dto: CreatePaymentDto) {
+    return this.paymentService.createForOrder(id, dto);
   }
 }

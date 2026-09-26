@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getOrders } from "@/lib/api";
 
 export default async function OrdersPage() {
@@ -19,7 +20,11 @@ export default async function OrdersPage() {
         <tbody>
           {orders.map((order) => (
             <tr key={order.id} className="border-b">
-              <td className="py-2">{order.number}</td>
+              <td className="py-2">
+                <Link href={`/orders/${order.id}`} className="underline">
+                  {order.number}
+                </Link>
+              </td>
               <td className="py-2">
                 {order.customer.firstName} {order.customer.lastName}
               </td>
