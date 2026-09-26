@@ -39,6 +39,16 @@ describe("renderTemplate", () => {
     expect(withoutTracking.html).not.toContain("undefined");
   });
 
+  it("CUSTOMER_MAGIC_LINK inclut le lien et la durée de validité", () => {
+    const email = renderTemplate("CUSTOMER_MAGIC_LINK", {
+      firstName: "Alice",
+      magicLinkUrl: "https://app.example.com/mon-compte/verifier?token=abc",
+      expiresInMinutes: 15,
+    });
+    expect(email.html).toContain("https://app.example.com/mon-compte/verifier?token=abc");
+    expect(email.html).toContain("15 minutes");
+  });
+
   it("chaque template produit un sujet et un corps non vides", () => {
     const samples = [
       renderTemplate("ORDERS_OPENED", { campaignName: "X", campaignUrl: "https://x" }),

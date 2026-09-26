@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { AUTH_COOKIE_NAME } from "./auth";
+import { CUSTOMER_AUTH_COOKIE_NAME } from "./customer-auth";
 
 // URL de l'API côté serveur (réseau interne) — côté client, utiliser
 // NEXT_PUBLIC_API_URL directement dans les composants "use client".
@@ -11,6 +12,14 @@ export const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ??
 // l'autorisation (CLAUDE.md §26), jamais le frontend.
 function authHeaders(): Record<string, string> {
   const token = cookies().get(AUTH_COOKIE_NAME)?.value;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Même principe pour l'espace client (Server Components sous /mon-compte),
+// avec le cookie de session client — jamais interchangeable avec le
+// cookie admin (cf. lib/customer-auth.ts).
+function customerAuthHeaders(): Record<string, string> {
+  const token = cookies().get(CUSTOMER_AUTH_COOKIE_NAME)?.value;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
@@ -145,6 +154,69 @@ export async function getShipments(): Promise<ShipmentSummary[]> {
 
 export async function getOrder(id: string): Promise<OrderDetail | null> {
   const res = await fetch(`${API_URL}/api/v1/orders/${id}`, { cache: "no-store", headers: authHeaders() });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+// --- Espace client (Server Components sous /mon-compte) ---
+
+export interface CustomerProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+}
+
+export async function getCustomerProfile(): Promise<CustomerProfile | null> {
+  const res = await fetch(`${API_URL}/api/v1/customer/me`, {
+    cache: "no-store",
+    headers: customerAuthHeaders(),
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface CustomerOrderSummary {
+  id: string;
+  number: string;
+  status: string;
+  total: string;
+  currency: string;
+  createdAt: string;
+  items: Array<{ quantity: number; product: { name: string } }>;
+  shipment: { status: string; trackingNumber: string | null } | null;
+}
+
+export async function getCustomerOrders(): Promise<CustomerOrderSummary[]> {
+  const res = await fetch(`${API_URL}/api/v1/customer/me/orders`, {
+    cache: "no-store",
+    headers: customerAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface CustomerOrderDetail extends CustomerOrderSummary {
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  payments: Array<{ status: string; amount: string }>;
+  shipment:
+    | (CustomerOrderSummary["shipment"] & {
+        trackingUrl: string | null;
+        carrier: string | null;
+        events: Array<{ status: string; occurredAt: string }>;
+      })
+    | null;
+}
+
+export async function getCustomerOrder(id: string): Promise<CustomerOrderDetail | null> {
+  const res = await fetch(`${API_URL}/api/v1/customer/me/orders/${id}`, {
+    cache: "no-store",
+    headers: customerAuthHeaders(),
+  });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
