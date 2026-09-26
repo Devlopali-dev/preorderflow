@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getOrder } from "@/lib/api";
 import { PaymentPanel } from "./payment-panel";
+import { FulfillmentPanel } from "./fulfillment-panel";
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const order = await getOrder(params.id);
@@ -32,6 +33,14 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       <div>
         <h2 className="mb-2 font-medium">Paiement</h2>
         <PaymentPanel order={order} apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} />
+      </div>
+
+      <div>
+        <h2 className="mb-2 font-medium">Préparation & expédition</h2>
+        <FulfillmentPanel
+          order={order}
+          apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+        />
       </div>
     </main>
   );
