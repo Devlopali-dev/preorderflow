@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
@@ -7,10 +8,16 @@ import { CustomerModule } from "./modules/customer/customer.module";
 import { OrderModule } from "./modules/order/order.module";
 import { ProductModule } from "./modules/product/product.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
+import { PaymentModule } from "./modules/payment/payment.module";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // Le .env vit à la racine du monorepo, pas dans apps/api — cwd du
+      // process NestJS = apps/api, donc le défaut de ConfigModule le rate.
+      envFilePath: join(__dirname, "../../../.env"),
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,
@@ -23,6 +30,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
     OrderModule,
     ProductModule,
     DashboardModule,
+    PaymentModule,
   ],
 })
 export class AppModule {}
