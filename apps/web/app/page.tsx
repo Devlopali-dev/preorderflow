@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@preorderflow/ui";
 
 export default function HomePage() {
