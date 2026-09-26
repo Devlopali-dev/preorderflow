@@ -3,6 +3,7 @@ import { prisma, ShipmentStatus } from "@preorderflow/database";
 import { CreateShipmentDto } from "./dto/create-shipment.dto";
 import { assertValidShipmentTransition, InvalidShipmentTransitionError } from "./shipment-status";
 import { OrderService } from "../order/order.service";
+import { NotificationService } from "../notification/notification.service";
 
 // Statuts d'expédition qui font avancer le fulfillment de la commande.
 const ORDER_STATUS_BY_SHIPMENT_STATUS: Partial<Record<ShipmentStatus, "SHIPPED" | "DELIVERED">> = {
@@ -12,7 +13,10 @@ const ORDER_STATUS_BY_SHIPMENT_STATUS: Partial<Record<ShipmentStatus, "SHIPPED" 
 
 @Injectable()
 export class ShipmentService {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(
+    private readonly orderService: OrderService,
+    private readonly notificationService: NotificationService,
+  ) {}
 
   async list() {
     return prisma.shipment.findMany({ orderBy: { createdAt: "desc" }, include: { order: true } });
@@ -85,7 +89,20 @@ export class ShipmentService {
 
     const orderStatus = ORDER_STATUS_BY_SHIPMENT_STATUS[status];
     if (orderStatus) {
-      await this.orderService.updateStatus(shipment.orderId, orderStatus);
+      const order = await this.orderService.updateStatus(shipment.orderId, orderStatus);
+      const customer = await prisma.customer.findUniqueOrThrow({ where: { id: order.customerId } });
+      if (orderStatus === "SHIPPED") {
+        await this.notificationService.sendEmail(customer.email, "ORDER_SHIPPED", {
+          firstName: customer.firstName,
+          orderNumber: order.number,
+          trackingUrl: shipment.trackingUrl ?? undefined,
+        });
+      } else {
+        await this.notificationService.sendEmail(customer.email, "ORDER_DELIVERED", {
+          firstName: customer.firstName,
+          orderNumber: order.number,
+        });
+      }
     }
 
     return updated;
