@@ -10,9 +10,7 @@ export default function HomePage() {
         Infrastructure prête. Les pages de campagne, recensement et administration arrivent en phase
         3.
       </p>
-      <Button variant="primary" onClick={() => {}}>
-        Voir les campagnes
-      </Button>
+      <Button variant="primary">Voir les campagnes</Button>
     </main>
   );
 }
