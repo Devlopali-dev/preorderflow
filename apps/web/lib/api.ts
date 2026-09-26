@@ -83,6 +83,30 @@ export interface OrderDetail extends OrderSummary {
   }>;
 }
 
+export interface InventoryRow {
+  product: { id: string; name: string; sku: string };
+  stock: { physicalStock: number; reservedStock: number; availableStock: number };
+}
+
+export async function getInventory(): Promise<InventoryRow[]> {
+  const res = await fetch(`${API_URL}/api/v1/inventory`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface ProductionBatchSummary {
+  id: string;
+  reference: string;
+  status: string;
+  items: Array<{ quantityPlanned: number; quantityProduced: number; product: { name: string } }>;
+}
+
+export async function getProductionBatches(): Promise<ProductionBatchSummary[]> {
+  const res = await fetch(`${API_URL}/api/v1/production/batches`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
 export async function getOrder(id: string): Promise<OrderDetail | null> {
   const res = await fetch(`${API_URL}/api/v1/orders/${id}`, { cache: "no-store" });
   if (res.status === 404) return null;
