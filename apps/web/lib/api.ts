@@ -1,6 +1,18 @@
+import { cookies } from "next/headers";
+import { AUTH_COOKIE_NAME } from "./auth";
+
 // URL de l'API côté serveur (réseau interne) — côté client, utiliser
 // NEXT_PUBLIC_API_URL directement dans les composants "use client".
 export const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+// Pour les pages admin (Server Components) : lit le cookie de session posé
+// par /api/auth/login et l'attache en Authorization. Sans token, l'appel
+// échoue en 401 côté API — c'est elle la seule source de vérité sur
+// l'autorisation (CLAUDE.md §26), jamais le frontend.
+function authHeaders(): Record<string, string> {
+  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export interface Campaign {
   id: string;
@@ -32,7 +44,7 @@ export interface DashboardOverview {
 }
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
-  const res = await fetch(`${API_URL}/api/v1/dashboard`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/dashboard`, { cache: "no-store", headers: authHeaders() });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -50,7 +62,7 @@ export interface OrderSummary {
 }
 
 export async function getOrders(): Promise<OrderSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/orders`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/orders`, { cache: "no-store", headers: authHeaders() });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -64,7 +76,7 @@ export interface CustomerSummary {
 }
 
 export async function getCustomers(): Promise<CustomerSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/customers`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/customers`, { cache: "no-store", headers: authHeaders() });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -96,7 +108,7 @@ export interface InventoryRow {
 }
 
 export async function getInventory(): Promise<InventoryRow[]> {
-  const res = await fetch(`${API_URL}/api/v1/inventory`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/inventory`, { cache: "no-store", headers: authHeaders() });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -109,7 +121,10 @@ export interface ProductionBatchSummary {
 }
 
 export async function getProductionBatches(): Promise<ProductionBatchSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/production/batches`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/production/batches`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -123,13 +138,13 @@ export interface ShipmentSummary {
 }
 
 export async function getShipments(): Promise<ShipmentSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/shipments`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/shipments`, { cache: "no-store", headers: authHeaders() });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
 
 export async function getOrder(id: string): Promise<OrderDetail | null> {
-  const res = await fetch(`${API_URL}/api/v1/orders/${id}`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/orders/${id}`, { cache: "no-store", headers: authHeaders() });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();

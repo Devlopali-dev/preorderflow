@@ -1,15 +1,20 @@
 import { test, expect } from "@playwright/test";
+import { authHeader, loginAsAdmin } from "./helpers";
 
 test("le détail d'une commande permet de générer un paiement Revolut (QR + lien)", async ({
   page,
   request,
 }) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  const token = await loginAsAdmin(page, request);
 
-  const products = await (await request.get(`${apiUrl}/api/v1/products`)).json();
+  const products = await (
+    await request.get(`${apiUrl}/api/v1/products`, { headers: authHeader(token) })
+  ).json();
   const product = products.find((p: { sku: string }) => p.sku === "SIFFLET-001");
 
   const orderRes = await request.post(`${apiUrl}/api/v1/orders`, {
+    headers: authHeader(token),
     data: {
       customerEmail: "playwright-payment@example.com",
       customerFirstName: "Playwright",
@@ -36,7 +41,4 @@ test("le détail d'une commande permet de générer un paiement Revolut (QR + li
 
   await page.getByRole("button", { name: "Marquer comme payée" }).click();
   await expect(page.getByText(/Paiement reçu/)).toBeVisible();
-
-  // nettoyage
-  await request.delete(`${apiUrl}/api/v1/orders/${order.id}`).catch(() => undefined);
 });

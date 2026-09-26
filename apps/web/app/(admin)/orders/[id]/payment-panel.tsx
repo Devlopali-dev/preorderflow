@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@preorderflow/ui";
 import { PaymentQrCode } from "./qr-code";
 import type { OrderDetail } from "@/lib/api";
+import { getClientAuthHeaders } from "@/lib/auth";
 
 export function PaymentPanel({
   order,
@@ -25,7 +26,7 @@ export function PaymentPanel({
     try {
       const res = await fetch(`${apiUrl}/api/v1/orders/${order.id}/payments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: "{}",
       });
       if (!res.ok) throw new Error(`Erreur (${res.status})`);
@@ -38,7 +39,10 @@ export function PaymentPanel({
   async function confirmPayment(paymentId: string) {
     setError(null);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/payments/${paymentId}/confirm`, { method: "POST" });
+      const res = await fetch(`${apiUrl}/api/v1/payments/${paymentId}/confirm`, {
+        method: "POST",
+        headers: getClientAuthHeaders(),
+      });
       if (!res.ok) throw new Error(`Erreur (${res.status})`);
       startTransition(() => router.refresh());
     } catch (err) {

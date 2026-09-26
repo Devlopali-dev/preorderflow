@@ -4,6 +4,7 @@ import { useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input } from "@preorderflow/ui";
 import type { OrderDetail } from "@/lib/api";
+import { getClientAuthHeaders } from "@/lib/auth";
 
 const NEXT_ORDER_STATUS: Record<string, { label: string; status: string } | undefined> = {
   PAID: { label: "Marquer en préparation", status: "PROCESSING" },
@@ -31,7 +32,7 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
     try {
       const res = await fetch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
@@ -46,7 +47,7 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
     try {
       const res = await fetch(`${apiUrl}/api/v1/shipments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({ orderId: order.id, carrier, trackingNumber, trackingUrl }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
@@ -61,7 +62,7 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
     try {
       const res = await fetch(`${apiUrl}/api/v1/shipments/${order.shipment!.id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
