@@ -117,27 +117,29 @@ export function FormGroup({ label, hint, error, htmlFor, children, required = fa
   )
 }
 
-export function Input({ id, error, className = '', ...props }) {
+export const Input = React.forwardRef(function Input({ id, error, className = '', ...props }, ref) {
   return (
     <input
+      ref={ref}
       id={id}
       className={`input ${error ? 'error' : ''} ${className}`}
       aria-invalid={!!error}
       {...props}
     />
   )
-}
+})
 
-export function Textarea({ id, error, className = '', ...props }) {
+export const Textarea = React.forwardRef(function Textarea({ id, error, className = '', ...props }, ref) {
   return (
     <textarea
+      ref={ref}
       id={id}
       className={`textarea ${error ? 'error' : ''} ${className}`}
       aria-invalid={!!error}
       {...props}
     />
   )
-}
+})
 
 export function Select({ id, options = [], placeholder, error, className = '', value, onChange, ...props }) {
   return (
