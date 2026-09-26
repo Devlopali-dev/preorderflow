@@ -3,12 +3,15 @@ import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { CampaignService } from "./campaign.service";
 import { CreateCampaignDto, CreateInterestDto, UpdateCampaignStatusDto } from "./dto/create-campaign.dto";
+import { Public } from "../auth/public.decorator";
 
 @ApiTags("campaigns")
 @Controller("campaigns")
 export class CampaignController {
   constructor(private readonly campaignService: CampaignService) {}
 
+  // Lecture publique : page vitrine de campagne (§19) + dashboard admin.
+  @Public()
   @Get()
   list() {
     return this.campaignService.list();
@@ -19,6 +22,7 @@ export class CampaignController {
     return this.campaignService.create(dto);
   }
 
+  @Public()
   @Get(":id")
   getOne(@Param("id") id: string) {
     return this.campaignService.getBySlugOrId(id);
@@ -29,6 +33,7 @@ export class CampaignController {
     return this.campaignService.updateStatus(id, dto.status as never);
   }
 
+  @Public()
   @Get(":id/statistics")
   getStatistics(@Param("id") id: string) {
     return this.campaignService.getStatistics(id);
@@ -36,6 +41,7 @@ export class CampaignController {
 
   // Formulaire public de recensement — rate-limité en plus du throttler
   // global (cf. docs/security.md), au-delà de l'anti-spam honeypot.
+  @Public()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(":id/interests")
   registerInterest(@Param("id") id: string, @Body() dto: CreateInterestDto) {

@@ -1,16 +1,20 @@
 import { test, expect } from "@playwright/test";
+import { authHeader, loginAsAdmin } from "./helpers";
 
 // Scénario 3 du cahier des charges (§29) :
 // Commande payée -> Préparation -> Expédition -> Tracking -> Livraison
 
 test("scénario 3 : préparation, expédition, tracking, livraison", async ({ page, request }) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  const token = await loginAsAdmin(page, request);
+  const auth = authHeader(token);
 
-  const products = await (await request.get(`${apiUrl}/api/v1/products`)).json();
+  const products = await (await request.get(`${apiUrl}/api/v1/products`, { headers: auth })).json();
   const product = products.find((p: { sku: string }) => p.sku === "SIFFLET-001");
 
   // Commande payée (setup direct par API — pas l'objet du scénario)
   const orderRes = await request.post(`${apiUrl}/api/v1/orders`, {
+    headers: auth,
     data: {
       customerEmail: "scenario3@example.com",
       customerFirstName: "Scenario",
@@ -27,8 +31,14 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
     },
   });
   const order = await orderRes.json();
-  await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, { data: { status: "PENDING_PAYMENT" } });
-  await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, { data: { status: "PAID" } });
+  await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
+    headers: auth,
+    data: { status: "PENDING_PAYMENT" },
+  });
+  await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
+    headers: auth,
+    data: { status: "PAID" },
+  });
 
   await page.goto(`/orders/${order.id}`);
 
@@ -51,7 +61,7 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
 
   await page.getByRole("button", { name: "Marquer comme expédiée" }).click();
   await expect(page.getByRole("button", { name: "Marquer en transit" })).toBeVisible();
-  const shippedOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`);
+  const shippedOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, { headers: auth });
   expect((await shippedOrderRes.json()).status).toBe("SHIPPED");
 
   await page.getByRole("button", { name: "Marquer en transit" }).click();
@@ -61,7 +71,7 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
   await page.getByRole("button", { name: "Marquer livrée" }).click();
   await expect(page.getByText("Statut expédition : DELIVERED")).toBeVisible();
 
-  const deliveredOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`);
+  const deliveredOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, { headers: auth });
   const deliveredOrder = await deliveredOrderRes.json();
   expect(deliveredOrder.status).toBe("DELIVERED");
   expect(deliveredOrder.fulfillmentStatus).toBe("DELIVERED");
