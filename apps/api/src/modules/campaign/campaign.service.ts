@@ -3,9 +3,12 @@ import { prisma, CampaignStatus } from "@preorderflow/database";
 import { CreateCampaignDto, CreateInterestDto } from "./dto/create-campaign.dto";
 import { assertValidCampaignTransition, InvalidCampaignTransitionError } from "./campaign-status";
 import { computeCampaignStatistics } from "./campaign-statistics";
+import { NotificationService } from "../notification/notification.service";
 
 @Injectable()
 export class CampaignService {
+  constructor(private readonly notificationService: NotificationService) {}
+
   async list() {
     return prisma.campaign.findMany({ orderBy: { createdAt: "desc" } });
   }
@@ -61,7 +64,7 @@ export class CampaignService {
 
     const campaign = await this.getBySlugOrId(campaignSlugOrId);
 
-    return prisma.$transaction(async (tx) => {
+    const interest = await prisma.$transaction(async (tx) => {
       const customer = await tx.customer.upsert({
         where: { email: dto.email },
         update: {
@@ -91,6 +94,14 @@ export class CampaignService {
         },
       });
     });
+
+    await this.notificationService.sendEmail(dto.email, "INTEREST_REGISTERED", {
+      firstName: dto.firstName,
+      campaignName: campaign.name,
+      quantity: dto.quantity,
+    });
+
+    return interest;
   }
 
   async getStatistics(campaignSlugOrId: string) {

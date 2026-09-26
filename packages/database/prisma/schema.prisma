@@ -428,6 +428,7 @@ enum NotificationTemplate {
   ORDER_READY
   ORDER_SHIPPED
   ORDER_DELIVERED
+  ADMIN_ALERT
 }
 
 enum NotificationStatus {

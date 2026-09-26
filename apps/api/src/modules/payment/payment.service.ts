@@ -3,12 +3,14 @@ import { prisma } from "@preorderflow/database";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { buildRevolutPaymentLink } from "./revolut-link";
 import { OrderService } from "../order/order.service";
+import { NotificationService } from "../notification/notification.service";
 
 @Injectable()
 export class PaymentService {
   constructor(
     @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async list() {
@@ -62,7 +64,19 @@ export class PaymentService {
         data: { status: "PAID", paidAt: new Date() },
       }),
     ]);
-    await this.orderService.markPaid(payment.orderId);
+    const order = await this.orderService.markPaid(payment.orderId);
+    const customer = await prisma.customer.findUniqueOrThrow({ where: { id: order.customerId } });
+
+    await this.notificationService.sendEmail(customer.email, "PAYMENT_RECEIVED", {
+      firstName: customer.firstName,
+      orderNumber: order.number,
+      amount: updatedPayment.amount.toFixed(2),
+    });
+    await this.notificationService.notifyAdmin(
+      "Paiement reçu",
+      `${order.number} — ${updatedPayment.amount.toFixed(2)} €`,
+      ["moneybag"],
+    );
 
     return updatedPayment;
   }

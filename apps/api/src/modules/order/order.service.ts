@@ -3,6 +3,7 @@ import { prisma, OrderStatus, OrderPaymentStatus, OrderFulfillmentStatus } from 
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
+import { NotificationService } from "../notification/notification.service";
 
 // Statuts pour lesquels une commande "consomme" du stock réservé
 // (cf. docs/architecture.md §5.3 : réservation dès qu'un paiement existe).
@@ -10,6 +11,8 @@ const PAYMENT_STATUSES_RESERVING_STOCK: OrderPaymentStatus[] = ["PARTIALLY_PAID"
 
 @Injectable()
 export class OrderService {
+  constructor(private readonly notificationService: NotificationService) {}
+
   async list() {
     return prisma.order.findMany({
       orderBy: { createdAt: "desc" },
@@ -50,7 +53,7 @@ export class OrderService {
     const billingAddress = dto.billingAddress ?? dto.shippingAddress;
     const orderNumber = await this.generateOrderNumber();
 
-    return prisma.$transaction(async (tx) => {
+    const order = await prisma.$transaction(async (tx) => {
       const customer = await tx.customer.upsert({
         where: { email: dto.customerEmail },
         update: {
@@ -93,6 +96,19 @@ export class OrderService {
         include: { items: true },
       });
     });
+
+    await this.notificationService.sendEmail(dto.customerEmail, "ORDER_CREATED", {
+      firstName: dto.customerFirstName,
+      orderNumber: order.number,
+      total: order.total.toFixed(2),
+    });
+    await this.notificationService.notifyAdmin(
+      "Nouvelle commande",
+      `${order.number} — ${dto.customerFirstName} ${dto.customerLastName} — ${order.total.toFixed(2)} €`,
+      ["package"],
+    );
+
+    return order;
   }
 
   async updateStatus(id: string, status: OrderStatus) {
@@ -108,10 +124,19 @@ export class OrderService {
 
     const fulfillmentStatus = mapOrderStatusToFulfillment(status) ?? order.fulfillmentStatus;
 
-    return prisma.order.update({
+    const updated = await prisma.order.update({
       where: { id: order.id },
       data: { status, fulfillmentStatus },
     });
+
+    if (status === "READY_TO_SHIP") {
+      await this.notificationService.sendEmail(order.customer.email, "ORDER_READY", {
+        firstName: order.customer.firstName,
+        orderNumber: order.number,
+      });
+    }
+
+    return updated;
   }
 
   /**
@@ -138,12 +163,19 @@ export class OrderService {
     });
   }
 
+  // Basé sur le MAX de la séquence existante, pas un COUNT() : après une
+  // suppression (tests, annulation nettoyée manuellement), un COUNT()
+  // aurait régénéré un numéro déjà pris par une commande restante.
   private async generateOrderNumber(): Promise<string> {
     const year = new Date().getUTCFullYear();
-    const count = await prisma.order.count({
-      where: { number: { startsWith: `${year}-` } },
+    const prefix = `${year}-`;
+    const last = await prisma.order.findFirst({
+      where: { number: { startsWith: prefix } },
+      orderBy: { number: "desc" },
+      select: { number: true },
     });
-    return `${year}-${String(count + 1).padStart(4, "0")}`;
+    const lastSeq = last ? Number(last.number.slice(prefix.length)) : 0;
+    return `${prefix}${String(lastSeq + 1).padStart(4, "0")}`;
   }
 }
 
