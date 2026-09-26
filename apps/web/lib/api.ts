@@ -19,3 +19,52 @@ export async function getCampaign(slug: string): Promise<Campaign | null> {
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
+
+export interface DashboardOverview {
+  activeCampaigns: number;
+  totalInterests: number;
+  totalOrders: number;
+  ordersToPay: number;
+  ordersToPrepare: number;
+  ordersToShip: number;
+  productionInProgress: number;
+  shipmentsInTransit: number;
+}
+
+export async function getDashboardOverview(): Promise<DashboardOverview> {
+  const res = await fetch(`${API_URL}/api/v1/dashboard`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface OrderSummary {
+  id: string;
+  number: string;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  total: string;
+  currency: string;
+  createdAt: string;
+  customer: { firstName: string; lastName: string; email: string };
+}
+
+export async function getOrders(): Promise<OrderSummary[]> {
+  const res = await fetch(`${API_URL}/api/v1/orders`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface CustomerSummary {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  createdAt: string;
+}
+
+export async function getCustomers(): Promise<CustomerSummary[]> {
+  const res = await fetch(`${API_URL}/api/v1/customers`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
