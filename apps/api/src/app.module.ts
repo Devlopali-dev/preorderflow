@@ -16,6 +16,7 @@ import { NotificationModule } from "./modules/notification/notification.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { CustomerAuthModule } from "./modules/customer-auth/customer-auth.module";
 import { AuditModule } from "./modules/audit/audit.module";
+import { SettingsModule } from "./modules/settings/settings.module";
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AuditModule } from "./modules/audit/audit.module";
     AuthModule,
     CustomerAuthModule,
     AuditModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

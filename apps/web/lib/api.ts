@@ -125,6 +125,24 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   return res.json();
 }
 
+export interface Settings {
+  email: {
+    provider: string | null;
+    resendConfigured: boolean;
+    smtpConfigured: boolean;
+    from: string | null;
+    active: boolean;
+  };
+  ntfy: { configured: boolean };
+  templates: string[];
+}
+
+export async function getSettings(): Promise<Settings> {
+  const res = await fetch(`${API_URL}/api/v1/settings`, { cache: "no-store", headers: authHeaders() });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
 export interface OrderDetail extends OrderSummary {
   subtotal: string;
   shippingAmount: string;
