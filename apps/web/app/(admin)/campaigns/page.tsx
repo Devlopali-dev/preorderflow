@@ -1,8 +1,24 @@
 import Link from "next/link";
 import { getCampaigns } from "@/lib/api";
 
+// Ordre du workflow métier (§5 du cahier des charges), pas alphabétique —
+// une campagne DRAFT ou en cours de recensement doit remonter avant une
+// campagne terminée ou annulée.
+const STATUS_ORDER = [
+  "DRAFT",
+  "RECENSEMENT",
+  "COMMANDES_OUVERTES",
+  "COMMANDES_FERMEES",
+  "PRODUCTION",
+  "EXPEDITION",
+  "TERMINEE",
+  "ANNULEE",
+];
+
 export default async function AdminCampaignsPage() {
-  const campaigns = await getCampaigns();
+  const campaigns = [...(await getCampaigns())].sort(
+    (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
+  );
 
   return (
     <main className="p-8">
