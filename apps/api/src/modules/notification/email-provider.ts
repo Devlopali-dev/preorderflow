@@ -1,3 +1,5 @@
+import { createTransport } from "nodemailer";
+
 export interface EmailProvider {
   send(to: string, subject: string, html: string): Promise<{ providerReference?: string }>;
 }
@@ -36,11 +38,61 @@ export class ResendEmailProvider implements EmailProvider {
   }
 }
 
-export function createEmailProvider(): EmailProvider {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM ?? "PreOrderFlow <no-reply@example.com>";
-  if (!apiKey) {
-    return new ConsoleEmailProvider();
+export class SmtpEmailProvider implements EmailProvider {
+  private readonly transport: ReturnType<typeof createTransport>;
+
+  constructor(
+    host: string,
+    port: number,
+    secure: boolean,
+    user: string | undefined,
+    password: string | undefined,
+    private readonly from: string,
+  ) {
+    this.transport = createTransport({
+      host,
+      port,
+      secure,
+      auth: user && password ? { user, pass: password } : undefined,
+    });
   }
-  return new ResendEmailProvider(apiKey, from);
+
+  async send(to: string, subject: string, html: string) {
+    const info = await this.transport.sendMail({ from: this.from, to, subject, html });
+    return { providerReference: info.messageId };
+  }
+}
+
+// Sélection explicite via NOTIFICATION_EMAIL_PROVIDER (resend|smtp) plutôt
+// qu'une détection implicite : évite qu'une clé Resend oubliée en config
+// bascule silencieusement le provider (§32, aucune dépendance obligatoire).
+export function createEmailProvider(): EmailProvider {
+  const from = process.env.EMAIL_FROM ?? "PreOrderFlow <no-reply@example.com>";
+  const provider = process.env.NOTIFICATION_EMAIL_PROVIDER;
+
+  if (provider === "smtp") {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT ?? "587");
+    if (!host) {
+      return new ConsoleEmailProvider();
+    }
+    return new SmtpEmailProvider(
+      host,
+      port,
+      process.env.SMTP_SECURE === "true",
+      process.env.SMTP_USER,
+      process.env.SMTP_PASSWORD,
+      from,
+    );
+  }
+
+  if (provider === "resend") {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      return new ConsoleEmailProvider();
+    }
+    return new ResendEmailProvider(apiKey, from);
+  }
+
+  return new ConsoleEmailProvider();
 }

@@ -221,7 +221,7 @@ Chaque changement de statut crée un `ShipmentEvent` (append-only).
 5. **RBAC OPERATOR** : non tranché — proposition maintenue (pas d'accès `/settings` ni suppression) à confirmer avant Phase 4.
 6. **Numéro de commande** : non tranché — proposition maintenue `{année}-{séquence}` (ex. `2026-0042`) via séquence Postgres annuelle, à confirmer avant Phase 4.
 7. **Enums campagne** : **sans accents** en base (`COMMANDES_FERMEES`, `EXPEDITION`, `TERMINEE`), déjà appliqué dans le schéma Prisma. L'affichage accentué se fait côté i18n front.
-8. **Email transactionnel** : **Resend** comme provider par défaut du MVP, derrière l'interface `NotificationProvider` (pas de dépendance obligatoire au cœur, cf. §32).
+8. **Email transactionnel** : **Resend** ou **SMTP** au choix (`NOTIFICATION_EMAIL_PROVIDER`), derrière l'interface `NotificationProvider` (pas de dépendance obligatoire au cœur, cf. §32) ; fallback console si aucun n'est configuré.
 
 ## 6. Endpoints REST (Phase 1 — proposition, versionnés `/api/v1`)
 
