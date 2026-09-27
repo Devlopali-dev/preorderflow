@@ -11,3 +11,13 @@
 h1, h2, h3 {
   color: var(--color-primary-text);
 }
+
+/* StatCard n'accepte pas de className propre (packages/ui) — le hover
+   du lien passe donc par la carte descendante plutôt que .card-hover. */
+.dashboard-card-link {
+  display: block;
+}
+.dashboard-card-link:hover .card {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
+}

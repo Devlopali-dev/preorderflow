@@ -34,6 +34,9 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    // Exact ("/campaigns" seul, sans :path*) : /campaigns/:slug reste la
+    // page publique de recensement (§19), jamais derrière l'auth admin.
+    "/campaigns",
     "/orders/:path*",
     "/customers/:path*",
     "/inventory/:path*",
