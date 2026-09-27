@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { authHeader, loginAsAdmin } from "./helpers";
 
-test("le détail d'une commande permet de générer un paiement Revolut (QR + lien)", async ({
+test("l'admin peut choisir Stripe comme mode de paiement (erreur propre si non configuré)", async ({
   page,
   request,
 }) => {
@@ -16,13 +16,13 @@ test("le détail d'une commande permet de générer un paiement Revolut (QR + li
   const orderRes = await request.post(`${apiUrl}/api/v1/orders`, {
     headers: authHeader(token),
     data: {
-      customerEmail: "playwright-payment@example.com",
+      customerEmail: "playwright-stripe@example.com",
       customerFirstName: "Playwright",
-      customerLastName: "Test",
+      customerLastName: "Stripe",
       items: [{ productId: product.id, quantity: 1 }],
       shippingAddress: {
         firstName: "Playwright",
-        lastName: "Test",
+        lastName: "Stripe",
         address1: "1 rue",
         postalCode: "75000",
         city: "Paris",
@@ -33,12 +33,11 @@ test("le détail d'une commande permet de générer un paiement Revolut (QR + li
   const order = await orderRes.json();
 
   await page.goto(`/orders/${order.id}`);
-  await expect(page.getByRole("heading", { name: `Commande #${order.number}` })).toBeVisible();
-
+  await page.getByRole("combobox").selectOption("STRIPE");
   await page.getByRole("button", { name: "Générer le paiement" }).click();
-  await expect(page.getByRole("button", { name: "Marquer comme payée" })).toBeVisible();
-  await expect(page.getByAltText("QR code de paiement Revolut")).toBeVisible();
 
-  await page.getByRole("button", { name: "Marquer comme payée" }).click();
-  await expect(page.getByText(/Paiement reçu/)).toBeVisible();
+  // Sans STRIPE_SECRET_KEY configurée dans cet environnement, l'API refuse
+  // proprement (400) plutôt que de planter — c'est le comportement réel
+  // attendu tant que l'admin n'a pas branché ses clés Stripe.
+  await expect(page.getByText(/Stripe n'est pas configuré/)).toBeVisible();
 });

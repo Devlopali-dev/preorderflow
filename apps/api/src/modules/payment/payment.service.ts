@@ -2,6 +2,7 @@ import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException 
 import { prisma } from "@preorderflow/database";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { buildRevolutPaymentLink } from "./revolut-link";
+import { getStripeClient, isStripeConfigured } from "./stripe-client";
 import { OrderService } from "../order/order.service";
 import { NotificationService } from "../notification/notification.service";
 
@@ -22,20 +23,34 @@ export class PaymentService {
     const amount = dto.amount ?? order.total.toNumber();
     const provider = dto.provider ?? "MANUAL";
 
-    const revolutBaseLink = process.env.REVOLUT_PAYMENT_LINK;
-    const revolutLink =
-      provider === "MANUAL" && revolutBaseLink
-        ? buildRevolutPaymentLink(revolutBaseLink, amount)
-        : undefined;
+    let providerReference: string | undefined;
+    let metadata: Record<string, unknown> | undefined;
+
+    if (provider === "STRIPE") {
+      if (!isStripeConfigured()) {
+        throw new BadRequestException(
+          "Stripe n'est pas configuré (STRIPE_SECRET_KEY manquante) — choisissez un autre mode de paiement.",
+        );
+      }
+      const session = await createStripeCheckoutSession(order.id, order.number, amount, order.currency);
+      providerReference = session.id;
+      metadata = { stripeCheckoutUrl: session.url };
+    } else if (provider === "MANUAL") {
+      const revolutBaseLink = process.env.REVOLUT_PAYMENT_LINK;
+      if (revolutBaseLink) {
+        metadata = { revolutLink: buildRevolutPaymentLink(revolutBaseLink, amount) };
+      }
+    }
 
     const payment = await prisma.payment.create({
       data: {
         orderId: order.id,
         provider,
+        providerReference,
         amount,
         currency: order.currency,
         status: "PENDING",
-        metadata: revolutLink ? { revolutLink } : undefined,
+        metadata: metadata as object,
       },
     });
 
@@ -51,6 +66,23 @@ export class PaymentService {
     if (!payment) {
       throw new NotFoundException(`Paiement "${paymentId}" introuvable`);
     }
+    return this.confirmPayment(payment);
+  }
+
+  /**
+   * Confirmation par un provider externe (webhook Stripe) : identifie le
+   * paiement par la référence stockée à la création (id de session Stripe),
+   * jamais par un id de commande fourni par la requête entrante.
+   */
+  async confirmByProviderReference(providerReference: string) {
+    const payment = await prisma.payment.findFirst({ where: { providerReference } });
+    if (!payment) {
+      throw new NotFoundException(`Paiement pour la référence "${providerReference}" introuvable`);
+    }
+    return this.confirmPayment(payment);
+  }
+
+  private async confirmPayment(payment: { id: string; status: string; orderId: string; amount: unknown }) {
     if (payment.status === "PAID") {
       return payment;
     }
@@ -79,5 +111,36 @@ export class PaymentService {
     );
 
     return updatedPayment;
+  }
+}
+
+async function createStripeCheckoutSession(
+  orderId: string,
+  orderNumber: string,
+  amount: number,
+  currency: string,
+) {
+  const stripe = getStripeClient();
+  const webUrl = process.env.WEB_URL ?? "http://localhost:3000";
+
+  try {
+    return await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: currency.toLowerCase(),
+            unit_amount: Math.round(amount * 100),
+            product_data: { name: `Commande ${orderNumber}` },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { orderId, orderNumber },
+      success_url: `${webUrl}/orders/${orderId}?stripe=success`,
+      cancel_url: `${webUrl}/orders/${orderId}?stripe=cancelled`,
+    });
+  } catch (error) {
+    throw new BadRequestException(`Erreur Stripe: ${(error as Error).message}`);
   }
 }

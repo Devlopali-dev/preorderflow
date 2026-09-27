@@ -100,7 +100,7 @@ export interface OrderDetail extends OrderSummary {
     status: string;
     amount: string;
     provider: string;
-    metadata: { revolutLink?: string } | null;
+    metadata: { revolutLink?: string; stripeCheckoutUrl?: string } | null;
   }>;
   shipment: {
     id: string;

@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@preorderflow/ui";
+import { Button, Select } from "@preorderflow/ui";
 import { PaymentQrCode } from "./qr-code";
 import type { OrderDetail } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+
+const PROVIDER_OPTIONS = [
+  { value: "MANUAL", label: "Manuel (Revolut)" },
+  { value: "BANK_TRANSFER", label: "Virement bancaire" },
+  { value: "STRIPE", label: "Carte bancaire (Stripe)" },
+];
 
 export function PaymentPanel({
   order,
@@ -17,6 +23,7 @@ export function PaymentPanel({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [provider, setProvider] = useState("MANUAL");
 
   const pendingPayment = order.payments.find((p) => p.status === "PENDING" || p.status === "AUTHORIZED");
   const paidPayment = order.payments.find((p) => p.status === "PAID");
@@ -27,9 +34,12 @@ export function PaymentPanel({
       const res = await fetch(`${apiUrl}/api/v1/orders/${order.id}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-        body: "{}",
+        body: JSON.stringify({ provider }),
       });
-      if (!res.ok) throw new Error(`Erreur (${res.status})`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? `Erreur (${res.status})`);
+      }
       startTransition(() => router.refresh());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -56,9 +66,14 @@ export function PaymentPanel({
 
   if (!pendingPayment) {
     return (
-      <div>
+      <div className="flex flex-col gap-2">
+        <Select
+          options={PROVIDER_OPTIONS}
+          value={provider}
+          onChange={(e: ChangeEvent<HTMLSelectElement>) => setProvider(e.target.value)}
+        />
         <Button variant="primary" onClick={generatePayment} loading={isPending}>
-          Générer le paiement (Revolut)
+          Générer le paiement
         </Button>
         {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
@@ -66,14 +81,16 @@ export function PaymentPanel({
   }
 
   const revolutLink = pendingPayment.metadata?.revolutLink;
+  const stripeCheckoutUrl = pendingPayment.metadata?.stripeCheckoutUrl;
+  const paymentLink = revolutLink ?? stripeCheckoutUrl;
 
   return (
     <div className="flex flex-col gap-4">
-      {revolutLink && (
+      {paymentLink && (
         <>
-          <PaymentQrCode link={revolutLink} />
-          <a href={revolutLink} target="_blank" rel="noreferrer" className="text-sm underline">
-            {revolutLink}
+          <PaymentQrCode link={paymentLink} />
+          <a href={paymentLink} target="_blank" rel="noreferrer" className="text-sm underline">
+            {stripeCheckoutUrl ? "Payer par carte (Stripe)" : paymentLink}
           </a>
         </>
       )}

@@ -1,4 +1,10 @@
-import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type {
+  ReactNode,
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  TextareaHTMLAttributes,
+  ChangeEventHandler,
+} from "react";
 
 // Types manuels pour components.jsx (JS pur, sans PropTypes) — sans ce
 // fichier, TS infère des props "required" à partir des destructurations
@@ -69,7 +75,10 @@ export function Select(props: {
   error?: ReactNode;
   className?: string;
   value?: string;
-  onChange?: (value: string) => void;
+  // Le composant forwarde l'événement DOM tel quel (`<select onChange=.../>`),
+  // il n'extrait pas la valeur — corrigé après un bug réel où le type
+  // déclaré ici (onChange(value: string)) ne correspondait pas au runtime.
+  onChange?: ChangeEventHandler<HTMLSelectElement>;
   [key: string]: unknown;
 }): JSX.Element;
 

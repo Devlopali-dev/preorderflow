@@ -46,7 +46,7 @@ test("scénario 2 : commande, paiement, production, stock", async ({ page, reque
 
   // 2. Payer — via l'interface admin réelle (génération + confirmation)
   await page.goto(`/orders/${order.id}`);
-  await page.getByRole("button", { name: "Générer le paiement (Revolut)" }).click();
+  await page.getByRole("button", { name: "Générer le paiement" }).click();
   await expect(page.getByRole("button", { name: "Marquer comme payée" })).toBeVisible();
   await page.getByRole("button", { name: "Marquer comme payée" }).click();
   await expect(page.getByText(/Paiement reçu/)).toBeVisible();

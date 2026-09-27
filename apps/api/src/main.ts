@@ -6,7 +6,10 @@ import helmet from "helmet";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: true — le webhook Stripe doit vérifier la signature sur le
+  // corps brut de la requête ; le JSON déjà parsé par Nest ne correspond
+  // plus octet pour octet, la vérification échouerait systématiquement.
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.use(helmet());
   app.enableCors({
