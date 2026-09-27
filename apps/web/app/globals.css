@@ -4,3 +4,10 @@
 
 @import "@preorderflow/ui/src/tokens.css";
 @import "@preorderflow/ui/src/components.css";
+
+/* Titres en bleu (--color-primary-text) plutôt qu'en noir (--color-text
+   hérité du body) — s'adapte automatiquement au dark mode comme le reste
+   des tokens. */
+h1, h2, h3 {
+  color: var(--color-primary-text);
+}
