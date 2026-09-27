@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
 
 jobs:
   build-and-test:
@@ -36,13 +36,34 @@ jobs:
       DATABASE_URL: postgresql://preorderflow:preorderflow@localhost:5432/preorderflow?schema=public
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
+      TZ: UTC
+      # Secrets applicatifs : valeurs de test uniquement, jamais celles de
+      # production (cf. .env.example). Nécessaires pour que login admin,
+      # magic link client, et les sessions signées fonctionnent réellement
+      # pendant les tests e2e — sans eux JwtService signe/vérifie avec un
+      # secret undefined et tout le flux auth échoue silencieusement.
+      JWT_SECRET: ci-test-jwt-secret
+      JWT_EXPIRES_IN: 1d
+      MAGIC_LINK_SECRET: ci-test-magic-link-secret
+      MAGIC_LINK_EXPIRES_IN: 15m
+      SESSION_COOKIE_SECRET: ci-test-session-cookie-secret
+      API_PORT: 3001
+      API_URL: http://localhost:3001
+      CORS_ORIGIN: http://localhost:3000
+      WEB_PORT: 3000
+      WEB_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      # Requis par order-payment.spec.ts (le QR code Revolut ne s'affiche
+      # que si ce lien est configuré).
+      REVOLUT_PAYMENT_LINK: https://revolut.me/ci-test
+      EMAIL_FROM: "PreOrderFlow <no-reply@example.com>"
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 11
 
       - uses: actions/setup-node@v4
         with:
@@ -64,6 +85,9 @@ jobs:
       - name: Run migrations
         run: pnpm --filter @preorderflow/database migrate
 
+      - name: Seed database
+        run: pnpm db:seed
+
       - name: Unit tests
         run: pnpm test
 
@@ -73,5 +97,26 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Start API server
+        run: |
+          nohup node apps/api/dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/health > /dev/null; then
+              echo "API prête"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API n'a pas démarré à temps"
+          cat api.log
+          exit 1
+
       - name: E2E tests
         run: pnpm test:e2e
+
+      - name: Upload API logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-logs
+          path: api.log
