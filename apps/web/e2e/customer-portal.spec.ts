@@ -3,11 +3,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 // En dev, sans RESEND_API_KEY, les emails sont journalisés en console par
-// ConsoleEmailProvider (cf. apps/api/src/modules/notification/email-provider.ts)
-// dans api-debug.log (process de dev lancé manuellement pour cette session).
+// ConsoleEmailProvider (cf. apps/api/src/modules/notification/email-provider.ts).
 // Sert de "boîte mail" de test pour extraire le lien magique sans mock.
+// Chemin configurable (PREORDERFLOW_API_LOG_PATH) : en local le fichier
+// s'appelle souvent api-debug.log, en CI le step qui démarre l'API redirige
+// vers api.log — un chemin en dur cassait la CI (ENOENT) alors que le test
+// passait toujours en local.
 function extractLatestMagicLinkToken(): string {
-  const logPath = path.resolve(__dirname, "../../../api-debug.log");
+  const logPath =
+    process.env.PREORDERFLOW_API_LOG_PATH ?? path.resolve(__dirname, "../../../api-debug.log");
   const log = readFileSync(logPath, "utf-8");
   const matches = [...log.matchAll(/token=([A-Za-z0-9._-]+)/g)];
   const last = matches.at(-1);

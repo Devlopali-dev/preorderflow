@@ -109,6 +109,8 @@ jobs:
       # /health juste après son lancement, puis devenait injoignable dès le
       # step "E2E tests" (ECONNREFUSED). Un seul step évite la coupure.
       - name: Start API server and run E2E tests
+        env:
+          PREORDERFLOW_API_LOG_PATH: ${{ github.workspace }}/api.log
         run: |
           node apps/api/dist/main.js > api.log 2>&1 &
           API_PID=$!
