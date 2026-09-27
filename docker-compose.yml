@@ -49,7 +49,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # Le navigateur (NEXT_PUBLIC_API_URL) et le serveur Next.js dans le
+      # conteneur (API_URL) ne visent pas la même API : le navigateur passe
+      # par le host, le serveur reste sur le réseau Docker interne. .env
+      # définit API_URL=localhost pour le dev hors Docker (pnpm dev) — on
+      # l'écrase ici pour ne pas casser les Server Components dans ce conteneur.
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      API_URL: http://api:3001
     depends_on:
       - api
     ports:

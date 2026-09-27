@@ -41,6 +41,12 @@ export async function getCampaign(slug: string): Promise<Campaign | null> {
   return res.json();
 }
 
+export async function getCampaigns(): Promise<Campaign[]> {
+  const res = await fetch(`${API_URL}/api/v1/campaigns`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
 export interface DashboardOverview {
   activeCampaigns: number;
   totalInterests: number;
