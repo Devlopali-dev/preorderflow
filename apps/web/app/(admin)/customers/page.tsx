@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getCustomers } from "@/lib/api";
 
 export default async function CustomersPage() {
@@ -17,7 +18,9 @@ export default async function CustomersPage() {
           {customers.map((customer) => (
             <tr key={customer.id} className="border-b">
               <td className="py-2">
-                {customer.firstName} {customer.lastName}
+                <Link href={`/customers/${customer.id}`} className="underline">
+                  {customer.firstName} {customer.lastName}
+                </Link>
               </td>
               <td className="py-2">{customer.email}</td>
             </tr>

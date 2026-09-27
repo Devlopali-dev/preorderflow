@@ -4,6 +4,8 @@ import { OrderService } from "./order.service";
 import { CreateOrderDto, UpdateOrderStatusDto } from "./dto/create-order.dto";
 import { PaymentService } from "../payment/payment.service";
 import { CreatePaymentDto } from "../payment/dto/create-payment.dto";
+import { AuditService } from "../audit/audit.service";
+import { CurrentAdminId } from "../auth/current-admin.decorator";
 
 @ApiTags("orders")
 @Controller("orders")
@@ -12,6 +14,7 @@ export class OrderController {
     private readonly orderService: OrderService,
     @Inject(forwardRef(() => PaymentService))
     private readonly paymentService: PaymentService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Get()
@@ -20,8 +23,10 @@ export class OrderController {
   }
 
   @Post()
-  create(@Body() dto: CreateOrderDto) {
-    return this.orderService.create(dto);
+  async create(@Body() dto: CreateOrderDto, @CurrentAdminId() adminId: string) {
+    const order = await this.orderService.create(dto);
+    await this.auditService.log(adminId, "ORDER_CREATED", "Order", order.id, { number: order.number });
+    return order;
   }
 
   @Get(":id")
@@ -30,8 +35,18 @@ export class OrderController {
   }
 
   @Patch(":id/status")
-  updateStatus(@Param("id") id: string, @Body() dto: UpdateOrderStatusDto) {
-    return this.orderService.updateStatus(id, dto.status as never);
+  async updateStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateOrderStatusDto,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const order = await this.orderService.updateStatus(id, dto.status as never);
+    if (dto.status === "CANCELLED") {
+      await this.auditService.log(adminId, "ORDER_CANCELLED", "Order", order.id, {
+        number: order.number,
+      });
+    }
+    return order;
   }
 
   @Post(":id/payments")

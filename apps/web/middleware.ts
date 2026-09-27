@@ -39,6 +39,7 @@ export const config = {
     "/inventory/:path*",
     "/production/:path*",
     "/shipments/:path*",
+    "/audit-logs/:path*",
     "/mon-compte/:path*",
   ],
 };

@@ -90,6 +90,35 @@ export async function getCustomers(): Promise<CustomerSummary[]> {
   return res.json();
 }
 
+export interface CustomerDetail extends CustomerSummary {
+  phone: string | null;
+  addresses: Array<{ id: string; address1: string; city: string; postalCode: string; country: string }>;
+  orders: Array<{ id: string; number: string; status: string; total: string; currency: string }>;
+}
+
+export async function getCustomer(id: string): Promise<CustomerDetail | null> {
+  const res = await fetch(`${API_URL}/api/v1/customers/${id}`, { cache: "no-store", headers: authHeaders() });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  user: { firstName: string; lastName: string; email: string };
+}
+
+export async function getAuditLogs(): Promise<AuditLogEntry[]> {
+  const res = await fetch(`${API_URL}/api/v1/audit-logs`, { cache: "no-store", headers: authHeaders() });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
 export interface OrderDetail extends OrderSummary {
   subtotal: string;
   shippingAmount: string;

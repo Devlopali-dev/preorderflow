@@ -2,11 +2,16 @@ import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ShipmentService } from "./shipment.service";
 import { CreateShipmentDto, UpdateShipmentStatusDto } from "./dto/create-shipment.dto";
+import { AuditService } from "../audit/audit.service";
+import { CurrentAdminId } from "../auth/current-admin.decorator";
 
 @ApiTags("shipments")
 @Controller("shipments")
 export class ShipmentController {
-  constructor(private readonly shipmentService: ShipmentService) {}
+  constructor(
+    private readonly shipmentService: ShipmentService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Get()
   list() {
@@ -14,8 +19,12 @@ export class ShipmentController {
   }
 
   @Post()
-  create(@Body() dto: CreateShipmentDto) {
-    return this.shipmentService.create(dto);
+  async create(@Body() dto: CreateShipmentDto, @CurrentAdminId() adminId: string) {
+    const shipment = await this.shipmentService.create(dto);
+    await this.auditService.log(adminId, "SHIPMENT_CREATED", "Shipment", shipment.id, {
+      orderId: dto.orderId,
+    });
+    return shipment;
   }
 
   @Get(":id")
@@ -24,7 +33,15 @@ export class ShipmentController {
   }
 
   @Patch(":id/status")
-  updateStatus(@Param("id") id: string, @Body() dto: UpdateShipmentStatusDto) {
-    return this.shipmentService.updateStatus(id, dto.status as never, dto.message);
+  async updateStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateShipmentStatusDto,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const shipment = await this.shipmentService.updateStatus(id, dto.status as never, dto.message);
+    await this.auditService.log(adminId, "SHIPMENT_UPDATED", "Shipment", shipment.id, {
+      status: dto.status,
+    });
+    return shipment;
   }
 }
