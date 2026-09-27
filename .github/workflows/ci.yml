@@ -97,22 +97,32 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Start API server
+      # Démarrage de l'API + e2e dans le MÊME step : GitHub Actions termine
+      # le groupe de processus à la fin de chaque step, donc un serveur
+      # lancé en arrière-plan (même avec nohup) dans un step séparé est tué
+      # avant que le step suivant ne démarre — l'API répondait bien à
+      # /health juste après son lancement, puis devenait injoignable dès le
+      # step "E2E tests" (ECONNREFUSED). Un seul step évite la coupure.
+      - name: Start API server and run E2E tests
         run: |
-          nohup node apps/api/dist/main.js > api.log 2>&1 &
+          node apps/api/dist/main.js > api.log 2>&1 &
+          API_PID=$!
+          trap "kill $API_PID 2>/dev/null" EXIT
+
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3001/health > /dev/null; then
               echo "API prête"
-              exit 0
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "API n'a pas démarré à temps"
+              cat api.log
+              exit 1
             fi
             sleep 1
           done
-          echo "API n'a pas démarré à temps"
-          cat api.log
-          exit 1
 
-      - name: E2E tests
-        run: pnpm test:e2e
+          pnpm test:e2e
 
       - name: Upload API logs on failure
         if: failure()
