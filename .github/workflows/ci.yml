@@ -61,9 +61,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version exacte (pas juste "11") : pnpm 11.28 exige Node >= 22.13
+      # et casse sous Node 20 (ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite),
+      # confirmé en réel sur ce pipeline. Le reste du projet (Docker,
+      # engines) est sur Node 20 — on épingle plutôt pnpm à la version
+      # utilisée en dev local (11.3.0) que de faire remonter Node partout.
       - uses: pnpm/action-setup@v4
         with:
-          version: 11
+          version: 11.3.0
 
       - uses: actions/setup-node@v4
         with:
