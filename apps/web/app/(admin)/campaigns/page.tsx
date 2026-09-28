@@ -1,6 +1,7 @@
-import { getCampaigns } from "@/lib/api";
+import { getCampaigns, getProducts } from "@/lib/api";
 import { StatusSelect } from "@/components/status-select";
 import { CampaignNameButton } from "./campaign-name-button";
+import { CreateCampaignButton } from "./create-campaign-button";
 
 // Ordre du workflow métier (§5 du cahier des charges), pas alphabétique —
 // une campagne DRAFT ou en cours de recensement doit remonter avant une
@@ -17,14 +18,18 @@ const STATUS_ORDER = [
 ];
 
 export default async function AdminCampaignsPage() {
-  const campaigns = [...(await getCampaigns())].sort(
+  const [campaignsRaw, products] = await Promise.all([getCampaigns(), getProducts()]);
+  const campaigns = [...campaignsRaw].sort(
     (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
   );
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   return (
     <main className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Campagnes</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Campagnes</h1>
+        <CreateCampaignButton apiUrl={apiUrl} products={products} />
+      </div>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b">

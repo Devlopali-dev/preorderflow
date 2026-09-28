@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { CampaignService } from "./campaign.service";
@@ -36,6 +36,11 @@ export class CampaignController {
   @Patch(":id")
   update(@Param("id") id: string, @Body() dto: UpdateCampaignDto) {
     return this.campaignService.update(id, dto);
+  }
+
+  @Delete(":id")
+  remove(@Param("id") id: string) {
+    return this.campaignService.remove(id);
   }
 
   @Patch(":id/status")

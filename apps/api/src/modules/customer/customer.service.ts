@@ -1,11 +1,20 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
+import { CreateCustomerDto } from "./dto/create-customer.dto";
 
 @Injectable()
 export class CustomerService {
   async list() {
     return prisma.customer.findMany({ orderBy: { createdAt: "desc" } });
+  }
+
+  async create(dto: CreateCustomerDto) {
+    const existing = await prisma.customer.findUnique({ where: { email: dto.email } });
+    if (existing) {
+      throw new BadRequestException(`Un client existe déjà avec l'email "${dto.email}"`);
+    }
+    return prisma.customer.create({ data: dto });
   }
 
   async getById(id: string) {

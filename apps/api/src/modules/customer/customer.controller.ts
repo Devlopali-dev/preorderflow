@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CustomerService } from "./customer.service";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
+import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Roles } from "../auth/roles.decorator";
@@ -22,6 +23,11 @@ export class CustomerController {
   @Get(":id")
   getOne(@Param("id") id: string) {
     return this.customerService.getById(id);
+  }
+
+  @Post()
+  create(@Body() dto: CreateCustomerDto) {
+    return this.customerService.create(dto);
   }
 
   @Patch(":id")

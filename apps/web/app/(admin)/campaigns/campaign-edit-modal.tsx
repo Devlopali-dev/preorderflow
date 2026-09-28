@@ -52,6 +52,25 @@ export function CampaignEditModal({
     }
   }
 
+  async function handleDelete() {
+    if (!confirm(`Supprimer la campagne "${campaign.name}" ? Cette action est irréversible.`)) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}`, {
+        method: "DELETE",
+        headers: { ...getClientAuthHeaders() },
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      onClose();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Modal
       isOpen
@@ -59,6 +78,9 @@ export function CampaignEditModal({
       title="Paramétrer la campagne"
       footer={
         <>
+          <Button variant="danger" loading={saving} onClick={handleDelete}>
+            Supprimer
+          </Button>
           <Button variant="secondary" onClick={onClose}>
             Annuler
           </Button>

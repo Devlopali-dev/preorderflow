@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { getCustomers } from "@/lib/api";
+import { CreateCustomerButton } from "./create-customer-button";
 
 export default async function CustomersPage() {
   const customers = await getCustomers();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   return (
     <main className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Clients</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Clients</h1>
+        <CreateCustomerButton apiUrl={apiUrl} />
+      </div>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b">

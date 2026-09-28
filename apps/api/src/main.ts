@@ -1,5 +1,7 @@
 import "reflect-metadata";
+import { join } from "node:path";
 import { NestFactory } from "@nestjs/core";
+import { NestExpressApplication } from "@nestjs/platform-express";
 import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
@@ -9,7 +11,12 @@ async function bootstrap() {
   // rawBody: true — le webhook Stripe doit vérifier la signature sur le
   // corps brut de la requête ; le JSON déjà parsé par Nest ne correspond
   // plus octet pour octet, la vérification échouerait systématiquement.
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+
+  // Photos produit uploadées (product.controller.ts) — stockage disque local
+  // (§32 : aucune dépendance propriétaire obligatoire, pas de S3). En prod,
+  // ce dossier doit être un volume Docker persistant (sinon perdu au rebuild).
+  app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
 
   app.use(helmet());
   app.enableCors({

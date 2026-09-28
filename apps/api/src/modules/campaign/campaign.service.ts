@@ -52,6 +52,23 @@ export class CampaignService {
     });
   }
 
+  // Une campagne n'a qu'une relation entrante (CampaignInterest) — les
+  // commandes sont indépendantes des campagnes par conception (§10).
+  // Un vrai recensement ne doit jamais disparaître silencieusement : on
+  // bloque la suppression s'il existe des intérêts, l'admin doit passer par
+  // ANNULEE à la place.
+  async remove(id: string) {
+    const campaign = await this.getBySlugOrId(id);
+    const interestCount = await prisma.campaignInterest.count({ where: { campaignId: campaign.id } });
+    if (interestCount > 0) {
+      throw new BadRequestException(
+        `Impossible de supprimer : ${interestCount} personne(s) ont déjà manifesté un intérêt. Utilisez le statut ANNULEE à la place.`,
+      );
+    }
+    await prisma.campaign.delete({ where: { id: campaign.id } });
+    return { id: campaign.id };
+  }
+
   async updateStatus(id: string, status: CampaignStatus) {
     const campaign = await this.getBySlugOrId(id);
     try {

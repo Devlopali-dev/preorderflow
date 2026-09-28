@@ -19,8 +19,8 @@ export function ProductEditModal({
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description ?? "");
   const [price, setPrice] = useState(String(product.price));
-  const [imageUrl, setImageUrl] = useState(product.imageUrl ?? "");
   const [documentUrl, setDocumentUrl] = useState(product.documentUrl ?? "");
+  const [imageUrl, setImageUrl] = useState(product.imageUrl);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +35,30 @@ export function ProductEditModal({
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       onClose();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUploadPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${apiUrl}/api/v1/products/${product.id}/photo`, {
+        method: "POST",
+        headers: { ...getClientAuthHeaders() },
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      const updated = await res.json();
+      setImageUrl(updated.imageUrl);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -80,7 +104,7 @@ export function ProductEditModal({
             variant="primary"
             loading={saving}
             onClick={() =>
-              patch({ name, description, price: Number(price), imageUrl: imageUrl || undefined, documentUrl: documentUrl || undefined })
+              patch({ name, description, price: Number(price), documentUrl: documentUrl || undefined })
             }
           >
             Enregistrer
@@ -106,11 +130,13 @@ export function ProductEditModal({
           value={price}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
         />
-        <Input
-          placeholder="URL de la photo"
-          value={imageUrl}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setImageUrl(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Photo
+          {imageUrl && (
+            <img src={`${apiUrl}${imageUrl}`} alt="" className="h-24 w-24 rounded object-cover" />
+          )}
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleUploadPhoto} />
+        </label>
         <Input
           placeholder="URL du PDF de présentation"
           value={documentUrl}

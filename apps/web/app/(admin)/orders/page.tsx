@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { getOrders } from "@/lib/api";
+import { getOrders, getProducts } from "@/lib/api";
 import { StatusSelect } from "@/components/status-select";
+import { CreateOrderButton } from "./create-order-button";
 
 const ORDER_STATUSES = [
   "DRAFT",
@@ -15,11 +16,15 @@ const ORDER_STATUSES = [
 ];
 
 export default async function OrdersPage() {
-  const orders = await getOrders();
+  const [orders, products] = await Promise.all([getOrders(), getProducts()]);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   return (
     <main className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Commandes</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Commandes</h1>
+        <CreateOrderButton apiUrl={apiUrl} products={products} />
+      </div>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b">
@@ -43,7 +48,7 @@ export default async function OrdersPage() {
               </td>
               <td className="py-2">
                 <StatusSelect
-                  apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+                  apiUrl={apiUrl}
                   statusEndpoint={`orders/${order.id}/status`}
                   currentStatus={order.status}
                   options={ORDER_STATUSES}
