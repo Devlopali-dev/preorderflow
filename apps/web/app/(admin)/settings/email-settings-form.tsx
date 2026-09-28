@@ -30,6 +30,41 @@ export function EmailSettingsForm({ settings, apiUrl }: { settings: Settings; ap
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [testTo, setTestTo] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  function currentValues() {
+    return {
+      emailProvider: provider,
+      resendApiKey: resendApiKey || undefined,
+      smtpHost: smtpHost || undefined,
+      smtpPort: smtpPort ? Number(smtpPort) : undefined,
+      smtpSecure,
+      smtpUser: smtpUser || undefined,
+      smtpPassword: smtpPassword || undefined,
+      emailFrom: emailFrom || undefined,
+    };
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/settings/test-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify({ ...currentValues(), to: testTo }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message ?? `Erreur (${res.status})`);
+      setTestResult(body);
+    } catch (err) {
+      setTestResult({ success: false, message: err instanceof Error ? err.message : "Erreur inconnue" });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   function applyPreset(name: keyof typeof PRESETS) {
     const preset = PRESETS[name];
@@ -48,16 +83,7 @@ export function EmailSettingsForm({ settings, apiUrl }: { settings: Settings; ap
       const res = await fetch(`${apiUrl}/api/v1/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-        body: JSON.stringify({
-          emailProvider: provider,
-          resendApiKey: resendApiKey || undefined,
-          smtpHost: smtpHost || undefined,
-          smtpPort: smtpPort ? Number(smtpPort) : undefined,
-          smtpSecure,
-          smtpUser: smtpUser || undefined,
-          smtpPassword: smtpPassword || undefined,
-          emailFrom: emailFrom || undefined,
-        }),
+        body: JSON.stringify(currentValues()),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       setResendApiKey("");
@@ -178,6 +204,27 @@ export function EmailSettingsForm({ settings, apiUrl }: { settings: Settings; ap
         {success && <span className="text-green-600">Enregistré</span>}
       </div>
       {error && <p className="text-red-600">{error}</p>}
+
+      <div className="flex flex-col gap-2 border-t pt-4">
+        <p className="text-xs opacity-70">
+          Envoie un email de test avec les valeurs ci-dessus (même si pas encore enregistrées) —
+          valide la configuration avant de sauvegarder.
+        </p>
+        <div className="flex items-center gap-2">
+          <Input
+            type="email"
+            placeholder="destinataire@exemple.com"
+            value={testTo}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setTestTo(e.target.value)}
+          />
+          <Button variant="secondary" loading={testing} disabled={!testTo} onClick={handleTest}>
+            Envoyer un test
+          </Button>
+        </div>
+        {testResult && (
+          <p className={testResult.success ? "text-green-600" : "text-red-600"}>{testResult.message}</p>
+        )}
+      </div>
     </div>
   );
 }

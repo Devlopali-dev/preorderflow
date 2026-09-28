@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
-import { UpdateSettingsDto } from "./dto/update-settings.dto";
+import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.dto";
+import { createEmailProviderFromConfig } from "../notification/email-provider";
+import { sendNtfyNotificationWithConfig } from "../notification/ntfy-provider";
 
 const SINGLETON_ID = "singleton";
 
@@ -89,5 +91,58 @@ export class SettingsService {
       topic: row?.ntfyTopic ?? process.env.PREORDERFLOW_NTFY_TOPIC,
       auth: row?.ntfyAuth ?? process.env.PREORDERFLOW_NTFY_AUTH,
     };
+  }
+
+  // Teste avec les valeurs du formulaire (pas forcément encore enregistrées)
+  // — un admin doit pouvoir valider avant de sauvegarder. Un champ omis
+  // retombe sur la config déjà enregistrée (DB puis .env). Renvoie un
+  // succès/échec plutôt que de laisser remonter une exception : un test qui
+  // échoue est un résultat attendu ("mauvais mot de passe"), pas une panne.
+  async testEmail(dto: TestEmailSettingsDto): Promise<{ success: boolean; message: string }> {
+    const saved = await this.getEmailConfig();
+    const provider = createEmailProviderFromConfig({
+      provider: dto.emailProvider ?? saved.provider,
+      resendApiKey: dto.resendApiKey || saved.resendApiKey,
+      smtpHost: dto.smtpHost || saved.smtpHost,
+      smtpPort: dto.smtpPort ?? saved.smtpPort,
+      smtpSecure: dto.smtpSecure ?? saved.smtpSecure,
+      smtpUser: dto.smtpUser || saved.smtpUser,
+      smtpPassword: dto.smtpPassword || saved.smtpPassword,
+      from: dto.emailFrom || saved.from,
+    });
+
+    try {
+      await provider.send(
+        dto.to,
+        "Email de test PreOrderFlow",
+        "<p>Cet email confirme que la configuration email de PreOrderFlow fonctionne.</p>",
+      );
+      return { success: true, message: `Email de test envoyé à ${dto.to}` };
+    } catch (error) {
+      return { success: false, message: (error as Error).message };
+    }
+  }
+
+  async testNtfy(dto: UpdateSettingsDto): Promise<{ success: boolean; message: string }> {
+    const saved = await this.getNtfyConfig();
+    const config = {
+      url: dto.ntfyUrl || saved.url,
+      topic: dto.ntfyTopic || saved.topic,
+      auth: dto.ntfyAuth || saved.auth,
+    };
+
+    if (!config.topic) {
+      return { success: false, message: "Aucun sujet (topic) ntfy renseigné" };
+    }
+
+    try {
+      await sendNtfyNotificationWithConfig(
+        { title: "Test PreOrderFlow", message: "Cette alerte confirme que ntfy est bien configuré." },
+        config,
+      );
+      return { success: true, message: `Notification envoyée sur le sujet "${config.topic}"` };
+    } catch (error) {
+      return { success: false, message: (error as Error).message };
+    }
   }
 }

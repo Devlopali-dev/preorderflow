@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Min } from "class-validator";
 
 // Tous les champs optionnels : un PATCH ne touche que ce qui est fourni.
 // Un secret (resendApiKey/smtpPassword/ntfyAuth) omis ou vide = inchangé,
@@ -61,3 +61,13 @@ export class UpdateSettingsDto {
   @IsString()
   ntfyAuth?: string;
 }
+
+// Teste avec les valeurs du formulaire (pas forcément encore enregistrées)
+// — un admin doit pouvoir valider avant de sauvegarder. Tout champ omis
+// retombe sur la config déjà enregistrée (DB puis .env).
+export class TestEmailSettingsDto extends UpdateSettingsDto {
+  @ApiProperty()
+  @IsEmail()
+  to!: string;
+}
+

@@ -14,6 +14,16 @@ export function NtfySettingsForm({ settings, apiUrl }: { settings: Settings; api
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  function currentValues() {
+    return {
+      ntfyUrl: ntfyUrl || undefined,
+      ntfyTopic: ntfyTopic || undefined,
+      ntfyAuth: ntfyAuth || undefined,
+    };
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -23,11 +33,7 @@ export function NtfySettingsForm({ settings, apiUrl }: { settings: Settings; api
       const res = await fetch(`${apiUrl}/api/v1/settings`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-        body: JSON.stringify({
-          ntfyUrl: ntfyUrl || undefined,
-          ntfyTopic: ntfyTopic || undefined,
-          ntfyAuth: ntfyAuth || undefined,
-        }),
+        body: JSON.stringify(currentValues()),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       setNtfyAuth("");
@@ -37,6 +43,25 @@ export function NtfySettingsForm({ settings, apiUrl }: { settings: Settings; api
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/settings/test-ntfy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify(currentValues()),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message ?? `Erreur (${res.status})`);
+      setTestResult(body);
+    } catch (err) {
+      setTestResult({ success: false, message: err instanceof Error ? err.message : "Erreur inconnue" });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -68,9 +93,15 @@ export function NtfySettingsForm({ settings, apiUrl }: { settings: Settings; api
         <Button variant="primary" loading={saving} onClick={handleSave}>
           Enregistrer
         </Button>
+        <Button variant="secondary" loading={testing} disabled={!ntfyTopic} onClick={handleTest}>
+          Envoyer un test
+        </Button>
         {success && <span className="text-green-600">Enregistré</span>}
       </div>
       {error && <p className="text-red-600">{error}</p>}
+      {testResult && (
+        <p className={testResult.success ? "text-green-600" : "text-red-600"}>{testResult.message}</p>
+      )}
     </div>
   );
 }

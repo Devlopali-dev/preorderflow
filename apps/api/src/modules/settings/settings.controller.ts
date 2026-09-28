@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Patch } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { NotificationTemplate } from "@preorderflow/database";
 import { SettingsService } from "./settings.service";
-import { UpdateSettingsDto } from "./dto/update-settings.dto";
+import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.dto";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Roles } from "../auth/roles.decorator";
@@ -40,5 +41,22 @@ export class SettingsController {
       fieldsChanged,
     });
     return result;
+  }
+
+  // Throttle dédié — envoie un vrai email/push, pas question qu'un compte
+  // ADMIN compromis serve de relai de spam même limité aux 100 req/min
+  // globales du throttler par défaut.
+  @Roles("ADMIN")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("test-email")
+  testEmail(@Body() dto: TestEmailSettingsDto) {
+    return this.settingsService.testEmail(dto);
+  }
+
+  @Roles("ADMIN")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("test-ntfy")
+  testNtfy(@Body() dto: UpdateSettingsDto) {
+    return this.settingsService.testNtfy(dto);
   }
 }
