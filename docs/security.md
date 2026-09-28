@@ -39,6 +39,9 @@
   vrai email/push, un compte compromis ne doit pas pouvoir servir de relai de spam.
 - `GET /settings` (ouvert à tout admin authentifié) ne renvoie jamais un secret en clair — juste
   des booléens "configuré" et les champs non sensibles (host, port, utilisateur, expéditeur).
+- `PATCH /settings/templates/:template` et `DELETE /settings/templates/:template` (édition des
+  templates de notification) sont aussi restreints à `ADMIN` — un template altéré est un vecteur
+  de phishing potentiel envers les clients. `GET /settings/templates` reste ouvert à tout admin.
 - Toute action sensible (RGPD, modification des paramètres, statuts) est journalisée dans
   `AuditLog` avec l'identité de l'admin — jamais les valeurs secrètes elles-mêmes dans le journal.
 

@@ -62,6 +62,7 @@ preorderflow/
 ```
 
 Points d'extensibilité prévus par cette structure :
+
 - `apps/mobile` pourra s'ajouter plus tard en consommant `packages/types` et l'API REST.
 - `apps/mcp-server` pourra s'ajouter en lisant directement via des services applicatifs partagés (pas d'accès direct DB hors Prisma).
 - API publique versionnée : préfixe `/api/v1` dès le départ dans NestJS (voir §6).
@@ -159,16 +160,22 @@ Il n'existe pas de champ qui fusionnerait ces valeurs. Le dashboard campagne cal
 ```text
 DRAFT → RECENSEMENT → COMMANDES_OUVERTES → COMMANDES_FERMÉES → PRODUCTION → EXPÉDITION → TERMINEE
                                                                                               ↑
-DRAFT/RECENSEMENT/COMMANDES_OUVERTES → ANNULEE (à tout moment avant TERMINEE)
+Tout statut non terminal → ANNULEE (jusqu'à EXPÉDITION inclus)
 ```
 
 Transitions interdites : retour arrière (ex. `COMMANDES_FERMÉES → RECENSEMENT`), saut direct `DRAFT → PRODUCTION`.
+
+ANNULEE est volontairement atteignable depuis n'importe quel statut non terminal (pas seulement
+avant l'ouverture des commandes) : une campagne dont le recensement a des inscrits ne peut jamais
+être supprimée (`DELETE /campaigns/:id` refuse s'il existe un `CampaignInterest`, cf. §8), donc si
+ANNULEE n'était pas atteignable au-delà de `COMMANDES_OUVERTES`, une campagne avancée resterait
+bloquée définitivement sans aucune sortie.
 
 ### 4.2 Order.status
 
 ```text
 DRAFT → PENDING_PAYMENT → PAID → PROCESSING → READY_TO_SHIP → SHIPPED → DELIVERED
-              │                                                    
+              │
               ├──→ CANCELLED (depuis DRAFT, PENDING_PAYMENT, PAID)
               └──→ REFUNDED (depuis PAID, PROCESSING, READY_TO_SHIP, SHIPPED, DELIVERED)
 ```
@@ -273,6 +280,9 @@ GET    /api/v1/settings
 PATCH  /api/v1/settings                         # ADMIN uniquement — voir §8
 POST   /api/v1/settings/test-email              # ADMIN uniquement, throttlé
 POST   /api/v1/settings/test-ntfy               # ADMIN uniquement, throttlé
+GET    /api/v1/settings/templates                # liste les templates email éditables
+PATCH  /api/v1/settings/templates/:template     # ADMIN uniquement — voir §8
+DELETE /api/v1/settings/templates/:template     # ADMIN uniquement — réinitialise au défaut
 
 GET    /api/v1/audit-logs
 
@@ -330,6 +340,16 @@ Pas d'OAuth réel pour "connecter Gmail/Outlook" : un vrai flux Google/Microsoft
 écran de consentement validé, refresh tokens) est disproportionné pour ce projet self-hosted (§32).
 À la place, deux boutons préremplissent juste l'hôte/port SMTP connus et expliquent comment générer
 un mot de passe d'application — l'usage standard hors application tierce validée.
+
+**Templates de notification éditables** — modèle `NotificationTemplateOverride` (une ligne par
+`NotificationTemplate` personnalisé ; l'absence de ligne = le template par défaut codé en dur
+s'applique). Les templates par défaut sont écrits en `{{placeholder}}` (substitution par regex au
+rendu) plutôt qu'en template literals JS, pour être éditables tels quels depuis `/settings` — même
+mécanisme pour le défaut et pour une surcharge, aucune distinction de traitement.
+`GET /settings/templates` liste les 8 templates email (`ADMIN_ALERT` exclu : c'est une alerte push
+ntfy, pas un email, elle ne passe jamais par `renderTemplate()`), avec sujet/corps effectifs,
+`customized` et les placeholders détectés automatiquement. `PATCH`/`DELETE .../:template` sont
+`ADMIN` uniquement et audités (`SETTINGS_UPDATED`).
 
 **Photo produit uploadée** — `Product.imageUrl`/`Product.documentUrl` (`String?`). L'image passe
 par un vrai upload (`POST /products/:id/photo`, multipart via `multer`, stockage disque local sous

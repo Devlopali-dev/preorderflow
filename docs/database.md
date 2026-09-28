@@ -16,11 +16,20 @@ d'architecture (Shipment 1-1, Interest→Customer obligatoire, stock calculé, e
 
 ## Configuration admin (`AppSettings`)
 
-Table singleton (une seule ligne, id fixe `"singleton"`) portant la configuration email/ntfy
-éditable depuis `/settings` : provider email, clé Resend, host/port/secure/user/password SMTP,
-adresse expéditeur, url/topic/auth ntfy. Prime sur `.env` (bootstrap par défaut si la ligne
-n'existe pas). Aucun champ n'est chiffré — protégés par le RBAC `ADMIN` en écriture et jamais
-renvoyés en lecture par l'API (voir `docs/security.md`).
+Table singleton (une seule ligne, id fixe `"singleton"`) portant l'identité de l'atelier
+(`businessName`, `contactEmail`) et la configuration email/ntfy éditable depuis `/settings` :
+provider email, clé Resend, host/port/secure/user/password SMTP, adresse expéditeur, url/topic/auth
+ntfy. La config email/ntfy prime sur `.env` (bootstrap par défaut si la ligne n'existe pas) ;
+`businessName`/`contactEmail` n'ont pas d'équivalent `.env`. Les secrets ne sont pas chiffrés —
+protégés par le RBAC `ADMIN` en écriture et jamais renvoyés en lecture par l'API (voir
+`docs/security.md`).
+
+## Templates de notification (`NotificationTemplateOverride`)
+
+Une ligne par valeur de `NotificationTemplate` personnalisée depuis `/settings` (id = le template
+lui-même). Sujet et corps HTML en `{{placeholder}}`, substitués par regex au moment de l'envoi
+(`renderTemplate()`). Absence de ligne = le template par défaut codé en dur dans
+`notification-templates.ts` s'applique — aucune valeur "vide" à distinguer d'un défaut.
 
 ## Fichiers uploadés
 
