@@ -8,43 +8,55 @@ export default async function InventoryPage() {
   const productById = new Map(products.map((p) => [p.id, p]));
 
   return (
-    <main className="p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Stock</h1>
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Produits</h1>
+          <p className="card-subtitle">
+            {rows.length} produit{rows.length > 1 ? "s" : ""}
+          </p>
+        </div>
         <CreateProductButton apiUrl={apiUrl} />
       </div>
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b">
-            <th className="py-2">Produit</th>
-            <th className="py-2">Stock physique</th>
-            <th className="py-2">Réservé</th>
-            <th className="py-2">Disponible</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const product = productById.get(row.product.id);
-            return (
-              <tr key={row.product.id} className="border-b">
-                <td className="py-2">
-                  {product ? (
-                    <ProductNameButton product={product} apiUrl={apiUrl} />
-                  ) : (
-                    row.product.name
-                  )}
-                  {product && !product.active && (
-                    <span className="badge badge-default ml-2">archivé</span>
-                  )}
-                </td>
-                <td className="py-2">{row.stock.physicalStock}</td>
-                <td className="py-2">{row.stock.reservedStock}</td>
-                <td className="py-2">{row.stock.availableStock}</td>
+
+      {rows.length === 0 ? (
+        <div className="card card-body text-center text-sm opacity-60">Aucun produit</div>
+      ) : (
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th>Stock physique</th>
+                <th>Réservé</th>
+                <th>Disponible</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const product = productById.get(row.product.id);
+                return (
+                  <tr key={row.product.id}>
+                    <td>
+                      {product ? (
+                        <ProductNameButton product={product} apiUrl={apiUrl} />
+                      ) : (
+                        row.product.name
+                      )}
+                      {product && !product.active && (
+                        <span className="badge badge-default ml-2">archivé</span>
+                      )}
+                    </td>
+                    <td>{row.stock.physicalStock}</td>
+                    <td>{row.stock.reservedStock}</td>
+                    <td>{row.stock.availableStock}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </main>
   );
 }
