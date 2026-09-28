@@ -2,6 +2,7 @@ import { getProductionBatches, getProducts } from "@/lib/api";
 import { ProductionReferenceButton } from "./production-reference-button";
 import { CreateProductionButton } from "./create-production-button";
 import { ProductionIncrementButtons } from "./production-increment-buttons";
+import { ProductionStartButton } from "./production-start-button";
 
 export default async function ProductionPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -21,6 +22,7 @@ export default async function ProductionPage() {
             <th className="py-2">Statut</th>
             <th className="py-2">Prévu</th>
             <th className="py-2">Fabriqué</th>
+            <th className="py-2">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -36,9 +38,12 @@ export default async function ProductionPage() {
                 <td className="py-2">{productNames}</td>
                 <td className="py-2">{batch.status}</td>
                 <td className="py-2">{planned}</td>
+                <td className="py-2">{produced}</td>
                 <td className="py-2">
                   <div className="flex items-center gap-2">
-                    <span>{produced}</span>
+                    {batch.status === "PLANNED" && (
+                      <ProductionStartButton batchId={batch.id} apiUrl={apiUrl} />
+                    )}
                     <ProductionIncrementButtons batch={batch} apiUrl={apiUrl} />
                   </div>
                 </td>
@@ -47,7 +52,7 @@ export default async function ProductionPage() {
           })}
           {batches.length === 0 && (
             <tr>
-              <td colSpan={5} className="py-4 text-center opacity-60">
+              <td colSpan={6} className="py-4 text-center opacity-60">
                 Aucun lot de production
               </td>
             </tr>

@@ -49,24 +49,6 @@ export function ProductionEditModal({
     }
   }
 
-  async function handleStart() {
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/production/batches/${batch.id}/start`, {
-        method: "POST",
-        headers: { ...getClientAuthHeaders() },
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
-      onClose();
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <Modal
       isOpen
@@ -78,14 +60,9 @@ export function ProductionEditModal({
             Fermer
           </Button>
           {editable && (
-            <>
-              <Button variant="secondary" loading={saving} onClick={handleStart}>
-                Démarrer
-              </Button>
-              <Button variant="primary" loading={saving} onClick={handleSave}>
-                Enregistrer
-              </Button>
-            </>
+            <Button variant="primary" loading={saving} onClick={handleSave}>
+              Enregistrer
+            </Button>
           )}
         </>
       }
@@ -93,8 +70,9 @@ export function ProductionEditModal({
       <div className="flex flex-col gap-3">
         {!editable && (
           <p className="text-sm opacity-70">
-            Lot en statut {batch.status} — les infos ne sont modifiables que pendant PLANNED. La
-            quantité fabriquée se déclare directement dans la liste (boutons +1 / +10).
+            Lot en statut {batch.status} — les infos ne sont modifiables que pendant PLANNED. Le
+            démarrage et la quantité fabriquée se déclarent directement dans la colonne Actions de
+            la liste.
           </p>
         )}
 

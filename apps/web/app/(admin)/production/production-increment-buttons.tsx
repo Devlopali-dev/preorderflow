@@ -21,22 +21,14 @@ export function ProductionIncrementButtons({
   const [error, setError] = useState<string | null>(null);
 
   if (batch.items.length !== 1) return null;
+  if (batch.status !== "IN_PROGRESS" && batch.status !== "PARTIALLY_COMPLETED") return null;
   const item = batch.items[0];
   const atMax = item.quantityProduced >= item.quantityPlanned;
-  const canAct = batch.status === "PLANNED" || batch.status === "IN_PROGRESS" || batch.status === "PARTIALLY_COMPLETED";
-  if (!canAct) return null;
 
   async function increment(step: number) {
     setSaving(true);
     setError(null);
     try {
-      if (batch.status === "PLANNED") {
-        const startRes = await fetch(`${apiUrl}/api/v1/production/batches/${batch.id}/start`, {
-          method: "POST",
-          headers: { ...getClientAuthHeaders() },
-        });
-        if (!startRes.ok) throw new Error((await startRes.json()).message ?? `Erreur (${startRes.status})`);
-      }
       const quantityProduced = Math.min(item.quantityProduced + step, item.quantityPlanned);
       const res = await fetch(`${apiUrl}/api/v1/production/batches/${batch.id}/complete`, {
         method: "POST",
