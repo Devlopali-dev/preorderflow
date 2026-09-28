@@ -3,11 +3,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 // En dev, sans RESEND_API_KEY, les emails sont journalisés en console par
-// ConsoleEmailProvider (cf. apps/api/src/modules/notification/email-provider.ts)
-// dans api-debug.log (process de dev lancé manuellement pour cette session).
+// ConsoleEmailProvider (cf. apps/api/src/modules/notification/email-provider.ts).
 // Sert de "boîte mail" de test pour extraire le lien magique sans mock.
+// Chemin configurable (PREORDERFLOW_API_LOG_PATH) : en local le fichier
+// s'appelle souvent api-debug.log, en CI le step qui démarre l'API redirige
+// vers api.log — un chemin en dur cassait la CI (ENOENT) alors que le test
+// passait toujours en local.
 function extractLatestMagicLinkToken(): string {
-  const logPath = path.resolve(__dirname, "../../../api-debug.log");
+  const logPath =
+    process.env.PREORDERFLOW_API_LOG_PATH ?? path.resolve(__dirname, "../../../api-debug.log");
   const log = readFileSync(logPath, "utf-8");
   const matches = [...log.matchAll(/token=([A-Za-z0-9._-]+)/g)];
   const last = matches.at(-1);
@@ -39,7 +43,9 @@ test("un client peut se connecter par magic link et voir ses commandes, isolées
       headers: { Authorization: `Bearer ${await getAdminToken(request, apiUrl)}` },
     })
   ).json();
-  const otherCustomer = otherOrders.find((c: { email: string }) => c.email === "client1@example.com");
+  const otherCustomer = otherOrders.find(
+    (c: { email: string }) => c.email === "client1@example.com",
+  );
   const otherCustomerOrders = await (
     await request.get(`${apiUrl}/api/v1/customers/${otherCustomer.id}`, {
       headers: { Authorization: `Bearer ${await getAdminToken(request, apiUrl)}` },
@@ -59,7 +65,10 @@ test("un client peut se connecter par magic link et voir ses commandes, isolées
   await expect(page).toHaveURL(/\/mon-compte\/connexion/);
 });
 
-async function getAdminToken(request: import("@playwright/test").APIRequestContext, apiUrl: string) {
+async function getAdminToken(
+  request: import("@playwright/test").APIRequestContext,
+  apiUrl: string,
+) {
   const res = await request.post(`${apiUrl}/api/v1/auth/login`, {
     data: { email: "admin@preorderflow.dev", password: "password123" },
   });
