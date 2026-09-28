@@ -1,4 +1,5 @@
 import { getAuditLogs, getSettings } from "@/lib/api";
+import { BusinessInfoForm } from "./business-info-form";
 import { EmailSettingsForm } from "./email-settings-form";
 import { NtfySettingsForm } from "./ntfy-settings-form";
 
@@ -9,6 +10,11 @@ export default async function SettingsPage() {
   return (
     <main className="flex flex-col gap-10 p-8">
       <h1 className="text-2xl font-semibold">Paramètres</h1>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Informations</h2>
+        <BusinessInfoForm settings={settings} apiUrl={apiUrl} />
+      </section>
 
       <section>
         <div className="mb-3 flex items-center gap-2">

@@ -487,6 +487,8 @@ enum AuditAction {
 // lecture (cf. SettingsController).
 model AppSettings {
   id              String   @id @default("singleton")
+  businessName    String?
+  contactEmail    String?
   emailProvider   String?
   resendApiKey    String?
   smtpHost        String?

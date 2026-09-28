@@ -39,6 +39,8 @@ export class SettingsService {
     const smtpConfigured = Boolean(smtpHost);
 
     return {
+      businessName: row?.businessName ?? null,
+      contactEmail: row?.contactEmail ?? null,
       email: {
         provider: emailProvider,
         resendConfigured,

@@ -5,6 +5,16 @@ import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Min } from "clas
 // Un secret (resendApiKey/smtpPassword/ntfyAuth) omis ou vide = inchangé,
 // jamais écrasé silencieusement par une valeur vide.
 export class UpdateSettingsDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsEmail()
+  contactEmail?: string;
+
   @ApiProperty({ required: false, enum: ["console", "resend", "smtp"] })
   @IsOptional()
   @IsIn(["console", "resend", "smtp"])

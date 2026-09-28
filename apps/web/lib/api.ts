@@ -128,6 +128,8 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
 }
 
 export interface Settings {
+  businessName: string | null;
+  contactEmail: string | null;
   email: {
     provider: string | null;
     resendConfigured: boolean;
