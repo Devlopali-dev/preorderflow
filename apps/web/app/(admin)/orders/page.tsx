@@ -24,6 +24,18 @@ const PAYMENT_BADGE: Record<string, string> = {
   PARTIALLY_REFUNDED: "badge-warning",
 };
 
+const ORDER_STATUS_BADGE: Record<string, string> = {
+  DRAFT: "badge-default",
+  PENDING_PAYMENT: "badge-warning",
+  PAID: "badge-primary",
+  PROCESSING: "badge-primary",
+  READY_TO_SHIP: "badge-primary",
+  SHIPPED: "badge-primary",
+  DELIVERED: "badge-success",
+  CANCELLED: "badge-danger",
+  REFUNDED: "badge-danger",
+};
+
 export default async function OrdersPage() {
   const [orders, products, customers] = await Promise.all([
     getOrders(),
@@ -31,6 +43,11 @@ export default async function OrdersPage() {
     getCustomers(),
   ]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+  const groups = ORDER_STATUSES.map((status) => ({
+    status,
+    orders: orders.filter((order) => order.status === status),
+  })).filter((group) => group.orders.length > 0);
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
@@ -44,55 +61,67 @@ export default async function OrdersPage() {
         <CreateOrderButton apiUrl={apiUrl} products={products} customers={customers} />
       </div>
 
-      {orders.length === 0 ? (
+      {groups.length === 0 && (
         <div className="card card-body text-center text-sm opacity-60">Aucune commande</div>
-      ) : (
-        <div className="table-wrapper">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Numéro</th>
-                <th>Client</th>
-                <th>Statut</th>
-                <th>Paiement</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td>
-                    <Link href={`/orders/${order.id}`} className="btn-link">
-                      {order.number}
-                    </Link>
-                  </td>
-                  <td>
-                    {order.customer.firstName} {order.customer.lastName}
-                  </td>
-                  <td>
-                    <StatusSelect
-                      apiUrl={apiUrl}
-                      statusEndpoint={`orders/${order.id}/status`}
-                      currentStatus={order.status}
-                      options={ORDER_STATUSES}
-                    />
-                  </td>
-                  <td>
-                    <span
-                      className={`badge ${PAYMENT_BADGE[order.paymentStatus] ?? "badge-default"}`}
-                    >
-                      {order.paymentStatus}
-                    </span>
-                  </td>
-                  <td>
-                    {order.total} {order.currency}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
+
+      <div className="flex flex-col gap-6">
+        {groups.map((group) => (
+          <section key={group.status} className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className={`badge ${ORDER_STATUS_BADGE[group.status] ?? "badge-default"}`}>
+                {group.status}
+              </span>
+              <span className="table-muted">{group.orders.length}</span>
+            </div>
+            <div className="table-wrapper">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Numéro</th>
+                    <th>Client</th>
+                    <th style={{ textAlign: "center" }}>Statut</th>
+                    <th style={{ textAlign: "center" }}>Paiement</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.orders.map((order) => (
+                    <tr key={order.id}>
+                      <td>
+                        <Link href={`/orders/${order.id}`} className="btn-link">
+                          {order.number}
+                        </Link>
+                      </td>
+                      <td>
+                        {order.customer.firstName} {order.customer.lastName}
+                      </td>
+                      <td className="text-center">
+                        <StatusSelect
+                          apiUrl={apiUrl}
+                          statusEndpoint={`orders/${order.id}/status`}
+                          currentStatus={order.status}
+                          options={ORDER_STATUSES}
+                        />
+                      </td>
+                      <td className="text-center">
+                        <span
+                          className={`badge ${PAYMENT_BADGE[order.paymentStatus] ?? "badge-default"}`}
+                        >
+                          {order.paymentStatus}
+                        </span>
+                      </td>
+                      <td>
+                        {order.total} {order.currency}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+      </div>
     </main>
   );
 }
