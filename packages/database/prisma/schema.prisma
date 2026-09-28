@@ -505,6 +505,19 @@ model AppSettings {
   @@map("app_settings")
 }
 
+// Surcharge éditable d'un template de notification (§17) — une ligne par
+// valeur de NotificationTemplate qui a été personnalisée ; l'absence de
+// ligne = le template par défaut codé en dur (cf. notification-templates.ts)
+// s'applique. Substitution simple {{placeholder}} au moment de l'envoi.
+model NotificationTemplateOverride {
+  template  NotificationTemplate @id
+  subject   String
+  html      String
+  updatedAt DateTime             @updatedAt
+
+  @@map("notification_template_overrides")
+}
+
 model AuditLog {
   id         String      @id @default(uuid())
   userId     String

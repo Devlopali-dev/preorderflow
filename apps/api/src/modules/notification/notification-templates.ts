@@ -1,3 +1,5 @@
+import { prisma } from "@preorderflow/database";
+
 export interface RenderedEmail {
   subject: string;
   html: string;
@@ -14,77 +16,62 @@ export type TemplatePayloads = {
   CUSTOMER_MAGIC_LINK: { firstName: string; magicLinkUrl: string; expiresInMinutes: number };
 };
 
-// Templates HTML minimaux, sans dépendance externe (§32 : pas de
-// dépendance obligatoire au cœur de l'application). À enrichir plus tard
-// avec une vraie mise en forme, sans changer la signature.
+// Templates par défaut, en `{{placeholder}}` plutôt qu'en template literals
+// JS — même format que les surcharges éditables depuis /settings (aucune
+// distinction de traitement entre "défaut" et "personnalisé"). À enrichir
+// plus tard avec une vraie mise en forme, sans changer TemplatePayloads.
 // NB: ADMIN_ALERT (alerte push ntfy) n'a pas de rendu email et n'est donc
-// pas dans TemplatePayloads — cf. NotificationService.notifyAdmin().
-export function renderTemplate<T extends keyof TemplatePayloads>(
+// pas ici — cf. NotificationService.notifyAdmin().
+export const DEFAULT_TEMPLATES: Record<keyof TemplatePayloads, RenderedEmail> = {
+  INTEREST_REGISTERED: {
+    subject: "Merci pour votre intérêt — {{campaignName}}",
+    html: '<p>Bonjour {{firstName}},</p><p>Nous avons bien reçu votre demande pour {{quantity}} exemplaire(s) de "{{campaignName}}". Ceci ne constitue pas une commande.</p>',
+  },
+  ORDERS_OPENED: {
+    subject: "Les commandes sont ouvertes — {{campaignName}}",
+    html: '<p>Bonne nouvelle, vous pouvez maintenant commander "{{campaignName}}" : <a href="{{campaignUrl}}">{{campaignUrl}}</a></p>',
+  },
+  ORDER_CREATED: {
+    subject: "Commande {{orderNumber}} confirmée",
+    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} d'un montant de {{total}} € a bien été enregistrée.</p>",
+  },
+  PAYMENT_RECEIVED: {
+    subject: "Paiement reçu — commande {{orderNumber}}",
+    html: "<p>Bonjour {{firstName}},</p><p>Nous avons bien reçu votre paiement de {{amount}} € pour la commande {{orderNumber}}.</p>",
+  },
+  ORDER_READY: {
+    subject: "Commande {{orderNumber}} prête",
+    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} est prête à être expédiée.</p>",
+  },
+  ORDER_SHIPPED: {
+    subject: "Commande {{orderNumber}} expédiée",
+    html: '<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} a été expédiée. Suivi : <a href="{{trackingUrl}}">{{trackingUrl}}</a></p>',
+  },
+  ORDER_DELIVERED: {
+    subject: "Commande {{orderNumber}} livrée",
+    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} a été livrée. Merci pour votre confiance !</p>",
+  },
+  CUSTOMER_MAGIC_LINK: {
+    subject: "Votre lien de connexion PreOrderFlow",
+    html: "<p>Bonjour {{firstName}},</p><p>Cliquez sur ce lien pour accéder à votre espace client (valable {{expiresInMinutes}} minutes) : <a href=\"{{magicLinkUrl}}\">{{magicLinkUrl}}</a></p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>",
+  },
+};
+
+export function substitute(text: string, payload: Record<string, unknown>): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const value = payload[key];
+    return value === undefined || value === null ? "" : String(value);
+  });
+}
+
+export async function renderTemplate<T extends keyof TemplatePayloads>(
   template: T,
   payload: TemplatePayloads[T],
-): RenderedEmail {
-  switch (template) {
-    case "INTEREST_REGISTERED": {
-      const p = payload as TemplatePayloads["INTEREST_REGISTERED"];
-      return {
-        subject: `Merci pour votre intérêt — ${p.campaignName}`,
-        html: `<p>Bonjour ${p.firstName},</p><p>Nous avons bien reçu votre demande pour ${p.quantity} exemplaire(s) de "${p.campaignName}". Ceci ne constitue pas une commande.</p>`,
-      };
-    }
-    case "ORDERS_OPENED": {
-      const p = payload as TemplatePayloads["ORDERS_OPENED"];
-      return {
-        subject: `Les commandes sont ouvertes — ${p.campaignName}`,
-        html: `<p>Bonne nouvelle, vous pouvez maintenant commander "${p.campaignName}" : <a href="${p.campaignUrl}">${p.campaignUrl}</a></p>`,
-      };
-    }
-    case "ORDER_CREATED": {
-      const p = payload as TemplatePayloads["ORDER_CREATED"];
-      return {
-        subject: `Commande ${p.orderNumber} confirmée`,
-        html: `<p>Bonjour ${p.firstName},</p><p>Votre commande ${p.orderNumber} d'un montant de ${p.total} € a bien été enregistrée.</p>`,
-      };
-    }
-    case "PAYMENT_RECEIVED": {
-      const p = payload as TemplatePayloads["PAYMENT_RECEIVED"];
-      return {
-        subject: `Paiement reçu — commande ${p.orderNumber}`,
-        html: `<p>Bonjour ${p.firstName},</p><p>Nous avons bien reçu votre paiement de ${p.amount} € pour la commande ${p.orderNumber}.</p>`,
-      };
-    }
-    case "ORDER_READY": {
-      const p = payload as TemplatePayloads["ORDER_READY"];
-      return {
-        subject: `Commande ${p.orderNumber} prête`,
-        html: `<p>Bonjour ${p.firstName},</p><p>Votre commande ${p.orderNumber} est prête à être expédiée.</p>`,
-      };
-    }
-    case "ORDER_SHIPPED": {
-      const p = payload as TemplatePayloads["ORDER_SHIPPED"];
-      return {
-        subject: `Commande ${p.orderNumber} expédiée`,
-        html: `<p>Bonjour ${p.firstName},</p><p>Votre commande ${p.orderNumber} a été expédiée.${
-          p.trackingUrl ? ` Suivi : <a href="${p.trackingUrl}">${p.trackingUrl}</a>` : ""
-        }</p>`,
-      };
-    }
-    case "ORDER_DELIVERED": {
-      const p = payload as TemplatePayloads["ORDER_DELIVERED"];
-      return {
-        subject: `Commande ${p.orderNumber} livrée`,
-        html: `<p>Bonjour ${p.firstName},</p><p>Votre commande ${p.orderNumber} a été livrée. Merci pour votre confiance !</p>`,
-      };
-    }
-    case "CUSTOMER_MAGIC_LINK": {
-      const p = payload as TemplatePayloads["CUSTOMER_MAGIC_LINK"];
-      return {
-        subject: "Votre lien de connexion PreOrderFlow",
-        html: `<p>Bonjour ${p.firstName},</p><p>Cliquez sur ce lien pour accéder à votre espace client (valable ${p.expiresInMinutes} minutes) : <a href="${p.magicLinkUrl}">${p.magicLinkUrl}</a></p><p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`,
-      };
-    }
-    default: {
-      const exhaustive: never = template;
-      throw new Error(`Template inconnu: ${exhaustive}`);
-    }
-  }
+): Promise<RenderedEmail> {
+  const override = await prisma.notificationTemplateOverride.findUnique({ where: { template } });
+  const source = override ?? DEFAULT_TEMPLATES[template];
+  return {
+    subject: substitute(source.subject, payload),
+    html: substitute(source.html, payload),
+  };
 }

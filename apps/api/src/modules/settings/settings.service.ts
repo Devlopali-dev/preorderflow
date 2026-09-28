@@ -1,8 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
 import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.dto";
+import { UpdateTemplateDto } from "./dto/update-template.dto";
 import { createEmailProviderFromConfig } from "../notification/email-provider";
 import { sendNtfyNotificationWithConfig } from "../notification/ntfy-provider";
+import { DEFAULT_TEMPLATES, TemplatePayloads } from "../notification/notification-templates";
 
 const SINGLETON_ID = "singleton";
 
@@ -51,7 +53,11 @@ export class SettingsService {
         smtpSecure: row?.smtpSecure ?? process.env.SMTP_SECURE === "true",
         smtpUser: row?.smtpUser ?? process.env.SMTP_USER ?? null,
         active:
-          emailProvider === "resend" ? resendConfigured : emailProvider === "smtp" ? smtpConfigured : false,
+          emailProvider === "resend"
+            ? resendConfigured
+            : emailProvider === "smtp"
+              ? smtpConfigured
+              : false,
       },
       ntfy: {
         configured: Boolean(row?.ntfyTopic || process.env.PREORDERFLOW_NTFY_TOPIC),
@@ -139,12 +145,59 @@ export class SettingsService {
 
     try {
       await sendNtfyNotificationWithConfig(
-        { title: "Test PreOrderFlow", message: "Cette alerte confirme que ntfy est bien configuré." },
+        {
+          title: "Test PreOrderFlow",
+          message: "Cette alerte confirme que ntfy est bien configuré.",
+        },
         config,
       );
       return { success: true, message: `Notification envoyée sur le sujet "${config.topic}"` };
     } catch (error) {
       return { success: false, message: (error as Error).message };
     }
+  }
+
+  // Liste éditable = uniquement les templates email (TemplatePayloads) —
+  // ADMIN_ALERT (push ntfy) n'a pas de rendu email et ne passe jamais par
+  // renderTemplate(), donc pas de sens à l'éditer ici.
+  async getTemplates() {
+    const overrides = await prisma.notificationTemplateOverride.findMany();
+    const overrideByTemplate = new Map(overrides.map((o) => [o.template, o]));
+
+    return (Object.keys(DEFAULT_TEMPLATES) as Array<keyof TemplatePayloads>).map((template) => {
+      const override = overrideByTemplate.get(template);
+      const effective = override ?? DEFAULT_TEMPLATES[template];
+      const placeholders = [
+        ...effective.html.matchAll(/\{\{(\w+)\}\}/g),
+        ...effective.subject.matchAll(/\{\{(\w+)\}\}/g),
+      ].map((m) => m[1]);
+      return {
+        template,
+        subject: effective.subject,
+        html: effective.html,
+        customized: Boolean(override),
+        placeholders: [...new Set(placeholders)],
+      };
+    });
+  }
+
+  async updateTemplate(template: keyof TemplatePayloads, dto: UpdateTemplateDto) {
+    if (!(template in DEFAULT_TEMPLATES)) {
+      throw new NotFoundException(`Template "${template}" introuvable`);
+    }
+    await prisma.notificationTemplateOverride.upsert({
+      where: { template },
+      create: { template, subject: dto.subject, html: dto.html },
+      update: { subject: dto.subject, html: dto.html },
+    });
+    return { template, subject: dto.subject, html: dto.html, customized: true };
+  }
+
+  async resetTemplate(template: keyof TemplatePayloads) {
+    if (!(template in DEFAULT_TEMPLATES)) {
+      throw new NotFoundException(`Template "${template}" introuvable`);
+    }
+    await prisma.notificationTemplateOverride.deleteMany({ where: { template } });
+    return { template, ...DEFAULT_TEMPLATES[template], customized: false };
   }
 }

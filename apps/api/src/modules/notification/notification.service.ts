@@ -16,7 +16,7 @@ export class NotificationService {
     template: T,
     payload: TemplatePayloads[T],
   ) {
-    const { subject, html } = renderTemplate(template, payload);
+    const { subject, html } = await renderTemplate(template, payload);
 
     const notification = await prisma.notification.create({
       data: {
@@ -36,7 +36,11 @@ export class NotificationService {
       const { providerReference } = await provider.send(to, subject, html);
       await prisma.notification.update({
         where: { id: notification.id },
-        data: { status: "SENT", sentAt: new Date(), payload: { ...payload, providerReference } as object },
+        data: {
+          status: "SENT",
+          sentAt: new Date(),
+          payload: { ...payload, providerReference } as object,
+        },
       });
     } catch (error) {
       // Une notification qui échoue ne doit jamais faire échouer l'action

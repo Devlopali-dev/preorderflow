@@ -4,7 +4,8 @@ import { CUSTOMER_AUTH_COOKIE_NAME } from "./customer-auth";
 
 // URL de l'API côté serveur (réseau interne) — côté client, utiliser
 // NEXT_PUBLIC_API_URL directement dans les composants "use client".
-export const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+export const API_URL =
+  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // Pour les pages admin (Server Components) : lit le cookie de session posé
 // par /api/auth/login et l'attache en Authorization. Sans token, l'appel
@@ -61,7 +62,10 @@ export interface DashboardOverview {
 }
 
 export async function getDashboardOverview(): Promise<DashboardOverview> {
-  const res = await fetch(`${API_URL}/api/v1/dashboard`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/dashboard`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -79,7 +83,10 @@ export interface OrderSummary {
 }
 
 export async function getOrders(): Promise<OrderSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/orders`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/orders`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -93,19 +100,31 @@ export interface CustomerSummary {
 }
 
 export async function getCustomers(): Promise<CustomerSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/customers`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/customers`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
 
 export interface CustomerDetail extends CustomerSummary {
   phone: string | null;
-  addresses: Array<{ id: string; address1: string; city: string; postalCode: string; country: string }>;
+  addresses: Array<{
+    id: string;
+    address1: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  }>;
   orders: Array<{ id: string; number: string; status: string; total: string; currency: string }>;
 }
 
 export async function getCustomer(id: string): Promise<CustomerDetail | null> {
-  const res = await fetch(`${API_URL}/api/v1/customers/${id}`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/customers/${id}`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
@@ -122,7 +141,10 @@ export interface AuditLogEntry {
 }
 
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
-  const res = await fetch(`${API_URL}/api/v1/audit-logs`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/audit-logs`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -146,7 +168,27 @@ export interface Settings {
 }
 
 export async function getSettings(): Promise<Settings> {
-  const res = await fetch(`${API_URL}/api/v1/settings`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/settings`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface NotificationTemplateDetail {
+  template: string;
+  subject: string;
+  html: string;
+  customized: boolean;
+  placeholders: string[];
+}
+
+export async function getNotificationTemplates(): Promise<NotificationTemplateDetail[]> {
+  const res = await fetch(`${API_URL}/api/v1/settings/templates`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -178,7 +220,10 @@ export interface InventoryRow {
 }
 
 export async function getInventory(): Promise<InventoryRow[]> {
-  const res = await fetch(`${API_URL}/api/v1/inventory`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/inventory`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
@@ -234,13 +279,19 @@ export interface ShipmentSummary {
 }
 
 export async function getShipments(): Promise<ShipmentSummary[]> {
-  const res = await fetch(`${API_URL}/api/v1/shipments`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/shipments`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }
 
 export async function getOrder(id: string): Promise<OrderDetail | null> {
-  const res = await fetch(`${API_URL}/api/v1/orders/${id}`, { cache: "no-store", headers: authHeaders() });
+  const res = await fetch(`${API_URL}/api/v1/orders/${id}`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();

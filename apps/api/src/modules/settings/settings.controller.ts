@@ -1,12 +1,14 @@
-import { Body, Controller, Get, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { NotificationTemplate } from "@preorderflow/database";
 import { SettingsService } from "./settings.service";
 import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.dto";
+import { UpdateTemplateDto } from "./dto/update-template.dto";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Roles } from "../auth/roles.decorator";
+import type { TemplatePayloads } from "../notification/notification-templates";
 
 // Identifiants de messagerie = donnée sensible : lecture ouverte à tout
 // admin authentifié (juste des booléens/valeurs non sensibles, jamais un
@@ -58,5 +60,37 @@ export class SettingsController {
   @Post("test-ntfy")
   testNtfy(@Body() dto: UpdateSettingsDto) {
     return this.settingsService.testNtfy(dto);
+  }
+
+  @Get("templates")
+  getTemplates() {
+    return this.settingsService.getTemplates();
+  }
+
+  @Roles("ADMIN")
+  @Patch("templates/:template")
+  async updateTemplate(
+    @Param("template") template: keyof TemplatePayloads,
+    @Body() dto: UpdateTemplateDto,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const result = await this.settingsService.updateTemplate(template, dto);
+    await this.auditService.log(adminId, "SETTINGS_UPDATED", "NotificationTemplate", template, {
+      fieldsChanged: ["subject", "html"],
+    });
+    return result;
+  }
+
+  @Roles("ADMIN")
+  @Delete("templates/:template")
+  async resetTemplate(
+    @Param("template") template: keyof TemplatePayloads,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const result = await this.settingsService.resetTemplate(template);
+    await this.auditService.log(adminId, "SETTINGS_UPDATED", "NotificationTemplate", template, {
+      reset: true,
+    });
+    return result;
   }
 }

@@ -1,11 +1,16 @@
-import { getAuditLogs, getSettings } from "@/lib/api";
+import { getAuditLogs, getNotificationTemplates, getSettings } from "@/lib/api";
 import { BusinessInfoForm } from "./business-info-form";
 import { EmailSettingsForm } from "./email-settings-form";
 import { NtfySettingsForm } from "./ntfy-settings-form";
+import { TemplateButton } from "./template-button";
 
 export default async function SettingsPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-  const [settings, logs] = await Promise.all([getSettings(), getAuditLogs()]);
+  const [settings, logs, templates] = await Promise.all([
+    getSettings(),
+    getAuditLogs(),
+    getNotificationTemplates(),
+  ]);
 
   return (
     <main className="flex flex-col gap-10 p-8">
@@ -38,11 +43,12 @@ export default async function SettingsPage() {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Templates de notification</h2>
+        <p className="mb-3 text-xs opacity-70">
+          Cliquer sur un template pour en modifier le sujet et le contenu.
+        </p>
         <div className="flex flex-wrap gap-2">
-          {settings.templates.map((template) => (
-            <span key={template} className="badge badge-default">
-              {template}
-            </span>
+          {templates.map((template) => (
+            <TemplateButton key={template.template} template={template} apiUrl={apiUrl} />
           ))}
         </div>
       </section>
