@@ -4,7 +4,7 @@ import { loginAsAdmin } from "./helpers";
 test("la page stock affiche les produits", async ({ page, request }) => {
   await loginAsAdmin(page, request);
   await page.goto("/inventory");
-  await expect(page.getByRole("heading", { name: "Stock" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Produits" })).toBeVisible();
   await expect(page.getByText("Sifflet anti-agression")).toBeVisible();
 });
 

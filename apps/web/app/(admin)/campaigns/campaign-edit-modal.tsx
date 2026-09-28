@@ -26,8 +26,7 @@ export function CampaignEditModal({
   const [indicativePrice, setIndicativePrice] = useState(String(campaign.indicativePrice));
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
-  const [documentUrl, setDocumentUrl] = useState(campaign.documentUrl);
-  const [imageUrl, setImageUrl] = useState(campaign.imageUrl);
+  const [media, setMedia] = useState(campaign.media ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -71,7 +70,7 @@ export function CampaignEditModal({
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       const updated = await res.json();
-      setImageUrl(updated.imageUrl);
+      setMedia(updated.media ?? []);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -95,7 +94,26 @@ export function CampaignEditModal({
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       const updated = await res.json();
-      setDocumentUrl(updated.documentUrl);
+      setMedia(updated.media ?? []);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteMedia(mediaId: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/media/${mediaId}`, {
+        method: "DELETE",
+        headers: { ...getClientAuthHeaders() },
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      const updated = await res.json();
+      setMedia(updated.media ?? []);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -176,31 +194,67 @@ export function CampaignEditModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Image
-          {imageUrl && (
-            <img src={`${apiUrl}${imageUrl}`} alt="" className="h-24 w-24 rounded object-cover" />
+        <div className="flex flex-col gap-2 text-sm">
+          <span className="form-label">Aperçus ({media.length}/5)</span>
+          {media.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {media.map((item) => (
+                <div key={item.id} className="relative overflow-hidden rounded">
+                  {item.type === "DOCUMENT" ? (
+                    <a
+                      href={`${apiUrl}${item.url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={
+                        item.thumbnailUrl
+                          ? "block overflow-hidden"
+                          : "flex aspect-[3/4] items-center justify-center bg-bg-subtle p-2 text-center text-xs"
+                      }
+                    >
+                      {item.thumbnailUrl ? (
+                        <img
+                          src={`${apiUrl}${item.thumbnailUrl}`}
+                          alt="Aperçu du document PDF"
+                          className="aspect-[3/4] w-full object-cover"
+                        />
+                      ) : (
+                        "PDF"
+                      )}
+                    </a>
+                  ) : (
+                    <img
+                      src={`${apiUrl}${item.url}`}
+                      alt=""
+                      className="aspect-[3/4] w-full object-cover"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Supprimer l'aperçu"
+                    onClick={() => handleDeleteMedia(item.id)}
+                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900/70 text-xs text-white hover:bg-neutral-900"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleUploadPhoto}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          PDF de présentation
-          {documentUrl && (
-            <a
-              href={`${apiUrl}${documentUrl}`}
-              target="_blank"
-              rel="noreferrer"
-              className="btn-link w-fit"
-            >
-              Voir le PDF actuel
-            </a>
-          )}
-          <input type="file" accept="application/pdf" onChange={handleUploadDocument} />
-        </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="form-label">Ajouter une image</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleUploadPhoto}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="form-label">Ajouter un PDF</span>
+              <input type="file" accept="application/pdf" onChange={handleUploadDocument} />
+            </label>
+          </div>
+        </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
       {confirmDeleteOpen && (

@@ -24,6 +24,14 @@ function customerAuthHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export interface CampaignMedia {
+  id: string;
+  url: string;
+  type: "IMAGE" | "DOCUMENT";
+  position: number;
+  thumbnailUrl?: string | null;
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -36,6 +44,7 @@ export interface Campaign {
   documentUrl: string | null;
   startDate: string | null;
   endDate: string | null;
+  media: CampaignMedia[];
 }
 
 export async function getCampaign(slug: string): Promise<Campaign | null> {

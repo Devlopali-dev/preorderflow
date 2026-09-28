@@ -15,8 +15,10 @@ import { ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { diskStorage } from "multer";
 import { randomUUID } from "node:crypto";
+import { unlink } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { CampaignService } from "./campaign.service";
+import { PdfThumbnailService } from "./pdf-thumbnail.service";
 import {
   CreateCampaignDto,
   CreateInterestDto,
@@ -31,7 +33,10 @@ const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
 @ApiTags("campaigns")
 @Controller("campaigns")
 export class CampaignController {
-  constructor(private readonly campaignService: CampaignService) {}
+  constructor(
+    private readonly campaignService: CampaignService,
+    private readonly pdfThumbnailService: PdfThumbnailService,
+  ) {}
 
   // Lecture publique : page vitrine de campagne (§19) + dashboard admin.
   @Public()
@@ -90,7 +95,14 @@ export class CampaignController {
     if (!file) {
       throw new BadRequestException("Aucun fichier reçu");
     }
-    return this.campaignService.update(id, { imageUrl: `/uploads/campaigns/${file.filename}` });
+    const url = `/uploads/campaigns/${file.filename}`;
+    try {
+      return await this.campaignService.addMedia(id, url, "IMAGE");
+    } catch (error) {
+      // Limite atteinte ou autre : pas d'image orpheline sur le disque.
+      await unlink(file.path).catch(() => undefined);
+      throw error;
+    }
   }
 
   // PDF de présentation : contrairement au produit, la campagne l'accepte
@@ -119,9 +131,42 @@ export class CampaignController {
     if (!file) {
       throw new BadRequestException("Aucun fichier reçu");
     }
-    return this.campaignService.update(id, {
-      documentUrl: `/uploads/campaigns/${file.filename}`,
-    });
+
+    // Génère un vrai aperçu (image de la 1ère page) à côté du PDF, pour la
+    // galerie publique. En cas d'échec (conversion ou limite atteinte), on
+    // supprime les fichiers écrits sur disque : ne jamais laisser d'orphelins.
+    const pdfUrl = `/uploads/campaigns/${file.filename}`;
+    const thumbnailFilename = `${file.filename.slice(0, -extname(file.filename).length)}.jpg`;
+    const thumbnailPath = join(file.destination, thumbnailFilename);
+
+    let thumbnailUrl: string | null = null;
+    try {
+      await this.pdfThumbnailService.generateThumbnail(file.path, thumbnailPath);
+      thumbnailUrl = `/uploads/campaigns/${thumbnailFilename}`;
+      return await this.campaignService.addMedia(id, pdfUrl, "DOCUMENT", thumbnailUrl);
+    } catch (error) {
+      await Promise.all([
+        unlink(file.path).catch(() => undefined),
+        thumbnailUrl ? unlink(thumbnailPath).catch(() => undefined) : Promise.resolve(),
+      ]);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException("Impossible de générer l'aperçu de ce PDF");
+    }
+  }
+
+  @Delete(":id/media/:mediaId")
+  async removeMedia(@Param("id") id: string, @Param("mediaId") mediaId: string) {
+    const { campaign, removed } = await this.campaignService.removeMedia(id, mediaId);
+
+    // Nettoie les fichiers associés (PDF + vignette) du disque local.
+    const files = [removed.url, removed.thumbnailUrl]
+      .filter((url): url is string => Boolean(url))
+      .map((url) => join(process.cwd(), "uploads", url.replace(/^\/uploads\//, "")));
+    await Promise.all(files.map((file) => unlink(file).catch(() => undefined)));
+
+    return campaign;
   }
 
   @Patch(":id/status")

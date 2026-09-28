@@ -73,8 +73,34 @@ model Campaign {
   updatedAt         DateTime       @updatedAt
 
   interests CampaignInterest[]
+  media     CampaignMedia[]
 
   @@map("campaigns")
+}
+
+// Médias d'une campagne (photos + PDF) affichés en galerie sur la page
+// publique. Jusqu'à 5 aperçus (limite d'écriture côté backend). Une entité
+// séparée plutôt qu'un champ JSON pour garder un ordre stable et prévoir
+// plus tard légendes/variantes.
+enum CampaignMediaType {
+  IMAGE
+  DOCUMENT
+}
+
+model CampaignMedia {
+  id           String            @id @default(uuid())
+  campaignId   String
+  campaign     Campaign          @relation(fields: [campaignId], references: [id])
+  url          String
+  type         CampaignMediaType @default(IMAGE)
+  // Aperçu de la 1ère page généré à l'upload d'un PDF (documents uniquement).
+  // Permet d'afficher un vrai visuel dans la galerie au lieu d'une icône.
+  thumbnailUrl String?
+  position     Int               @default(0)
+  createdAt    DateTime          @default(now())
+
+  @@index([campaignId, position])
+  @@map("campaign_media")
 }
 
 // ---------------------------------------------------------------------------

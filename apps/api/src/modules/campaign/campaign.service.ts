@@ -7,15 +7,22 @@ import { NotificationService } from "../notification/notification.service";
 
 @Injectable()
 export class CampaignService {
+  // Nombre maximal d'aperçus (photos + PDF) affichés sur la page publique.
+  static readonly MAX_MEDIA = 5;
+
   constructor(private readonly notificationService: NotificationService) {}
 
   async list() {
-    return prisma.campaign.findMany({ orderBy: { createdAt: "desc" } });
+    return prisma.campaign.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { media: { orderBy: { position: "asc" } } },
+    });
   }
 
   async getBySlugOrId(idOrSlug: string) {
     const campaign = await prisma.campaign.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      include: { media: { orderBy: { position: "asc" } } },
     });
     if (!campaign) {
       throw new NotFoundException(`Campagne "${idOrSlug}" introuvable`);
@@ -147,5 +154,74 @@ export class CampaignService {
       select: { quantity: true, createdAt: true },
     });
     return computeCampaignStatistics(interests);
+  }
+
+  // Ajoute un média (photo ou PDF) à la galerie publique, en respectant la
+  // limite de 5 aperçus. Retourne la campagne à jour avec sa liste media.
+  async addMedia(
+    campaignSlugOrId: string,
+    url: string,
+    type: "IMAGE" | "DOCUMENT",
+    thumbnailUrl?: string,
+  ) {
+    const campaign = await this.getBySlugOrId(campaignSlugOrId);
+    const count = await prisma.campaignMedia.count({ where: { campaignId: campaign.id } });
+    if (count >= CampaignService.MAX_MEDIA) {
+      throw new BadRequestException(
+        `Limite de ${CampaignService.MAX_MEDIA} aperçus atteinte pour cette campagne`,
+      );
+    }
+
+    await prisma.campaignMedia.create({
+      data: {
+        campaignId: campaign.id,
+        url,
+        type,
+        thumbnailUrl,
+        position: count,
+      },
+    });
+
+    return prisma.campaign.findUniqueOrThrow({
+      where: { id: campaign.id },
+      include: { media: { orderBy: { position: "asc" } } },
+    });
+  }
+
+  // Supprime un média de la galerie puis réordonne les positions restantes
+  // pour garder une suite 0..n-1 continue (affichage déterministe).
+  // Retourne la campagne à jour et le média supprimé (pour nettoyage disque).
+  async removeMedia(campaignSlugOrId: string, mediaId: string) {
+    const campaign = await this.getBySlugOrId(campaignSlugOrId);
+    const removed = await prisma.campaignMedia.findFirst({
+      where: { id: mediaId, campaignId: campaign.id },
+    });
+    if (!removed) {
+      throw new NotFoundException("Aperçu introuvable");
+    }
+
+    await prisma.campaignMedia.deleteMany({
+      where: { id: mediaId, campaignId: campaign.id },
+    });
+
+    const remaining = await prisma.campaignMedia.findMany({
+      where: { campaignId: campaign.id },
+      orderBy: { position: "asc" },
+    });
+    await prisma.$transaction(
+      remaining.map((media, index) =>
+        prisma.campaignMedia.update({
+          where: { id: media.id },
+          data: { position: index },
+        }),
+      ),
+    );
+
+    const updatedCampaign = await prisma.campaign.findUniqueOrThrow({
+      where: { id: campaign.id },
+      include: { media: { orderBy: { position: "asc" } } },
+    });
+
+    return { campaign: updatedCampaign, removed };
   }
 }

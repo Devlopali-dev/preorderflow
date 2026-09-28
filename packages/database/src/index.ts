@@ -23,6 +23,7 @@ export type * from "@prisma/client";
 export {
   AdminRole,
   CampaignStatus,
+  CampaignMediaType,
   AddressType,
   OrderStatus,
   OrderPaymentStatus,
