@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@preorderflow/ui";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { getClientAuthHeaders } from "@/lib/auth";
 
 // Reflète ALLOWED_TRANSITIONS côté API (campaign-status.ts) — seule la
@@ -27,14 +28,14 @@ export function CampaignNextStatusButton({
   apiUrl: string;
 }) {
   const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const next = NEXT_STATUS[currentStatus];
 
   if (!next) return null;
 
-  async function handleClick() {
-    if (!confirm(`Passer la campagne au statut ${next} ?`)) return;
+  async function handleConfirm() {
     setSaving(true);
     setError(null);
     try {
@@ -44,6 +45,7 @@ export function CampaignNextStatusButton({
         body: JSON.stringify({ status: next }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      setConfirmOpen(false);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -54,9 +56,19 @@ export function CampaignNextStatusButton({
 
   return (
     <>
-      <Button variant="secondary" loading={saving} onClick={handleClick}>
+      <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
         Passer à {next}
       </Button>
+      {confirmOpen && (
+        <ConfirmModal
+          title="Changer le statut"
+          message={`Passer la campagne au statut ${next} ?`}
+          confirmLabel="Confirmer"
+          loading={saving}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </>
   );

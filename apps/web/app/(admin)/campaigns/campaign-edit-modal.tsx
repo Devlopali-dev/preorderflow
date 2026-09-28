@@ -4,6 +4,7 @@ import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Campaign } from "@/lib/api";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { getClientAuthHeaders } from "@/lib/auth";
 
 function toDateInputValue(iso: string | null): string {
@@ -27,6 +28,7 @@ export function CampaignEditModal({
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -53,7 +55,6 @@ export function CampaignEditModal({
   }
 
   async function handleDelete() {
-    if (!confirm(`Supprimer la campagne "${campaign.name}" ? Cette action est irréversible.`)) return;
     setSaving(true);
     setError(null);
     try {
@@ -78,7 +79,7 @@ export function CampaignEditModal({
       title="Paramétrer la campagne"
       footer={
         <>
-          <Button variant="danger" loading={saving} onClick={handleDelete}>
+          <Button variant="danger" onClick={() => setConfirmDeleteOpen(true)}>
             Supprimer
           </Button>
           <Button variant="secondary" onClick={onClose}>
@@ -121,6 +122,17 @@ export function CampaignEditModal({
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
+      {confirmDeleteOpen && (
+        <ConfirmModal
+          title="Supprimer la campagne"
+          message={`Supprimer la campagne "${campaign.name}" ? Cette action est irréversible.`}
+          confirmLabel="Supprimer"
+          danger
+          loading={saving}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDeleteOpen(false)}
+        />
+      )}
     </Modal>
   );
 }

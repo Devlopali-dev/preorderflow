@@ -44,9 +44,12 @@ test("l'admin peut exporter et anonymiser un client, chaque action est journalis
   await page.getByRole("button", { name: "Exporter les données (RGPD)" }).click();
   await expect(page.getByText(/"email": "playwright-gdpr@example.com"/)).toBeVisible();
 
-  // Anonymisation : confirmation navigateur, puis rafraîchissement
-  page.once("dialog", (dialog) => dialog.accept());
+  // Anonymisation : confirmation via modale (pas un confirm() navigateur)
   await page.getByRole("button", { name: "Anonymiser" }).click();
+  await page
+    .getByRole("dialog", { name: "Anonymiser le client" })
+    .getByRole("button", { name: "Anonymiser" })
+    .click();
   await expect(page.getByRole("heading", { name: "Anonymisé Anonymisé" })).toBeVisible();
 
   // Le snapshot de la commande, lui, n'est jamais touché (obligation

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@preorderflow/ui";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { getClientAuthHeaders } from "@/lib/auth";
 
 export function GdprActions({ customerId, apiUrl }: { customerId: string; apiUrl: string }) {
@@ -10,6 +11,7 @@ export function GdprActions({ customerId, apiUrl }: { customerId: string; apiUrl
   const [error, setError] = useState<string | null>(null);
   const [exportedData, setExportedData] = useState<unknown>(null);
   const [loading, setLoading] = useState<"export" | "anonymize" | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function exportData() {
     setError(null);
@@ -30,7 +32,6 @@ export function GdprActions({ customerId, apiUrl }: { customerId: string; apiUrl
   }
 
   async function anonymize() {
-    if (!confirm("Anonymiser ce client ? Cette action est irréversible.")) return;
     setError(null);
     setLoading("anonymize");
     try {
@@ -40,6 +41,7 @@ export function GdprActions({ customerId, apiUrl }: { customerId: string; apiUrl
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.message ?? `Erreur (${res.status})`);
+      setConfirmOpen(false);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -54,10 +56,21 @@ export function GdprActions({ customerId, apiUrl }: { customerId: string; apiUrl
         <Button variant="secondary" onClick={exportData} loading={loading === "export"}>
           Exporter les données (RGPD)
         </Button>
-        <Button variant="danger" onClick={anonymize} loading={loading === "anonymize"}>
+        <Button variant="danger" onClick={() => setConfirmOpen(true)}>
           Anonymiser
         </Button>
       </div>
+      {confirmOpen && (
+        <ConfirmModal
+          title="Anonymiser le client"
+          message="Anonymiser ce client ? Cette action est irréversible."
+          confirmLabel="Anonymiser"
+          danger
+          loading={loading === "anonymize"}
+          onConfirm={anonymize}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {typeof exportedData === "object" && exportedData !== null ? (
         <pre className="max-h-80 overflow-auto rounded bg-black/5 p-3 text-xs">
