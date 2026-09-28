@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCampaigns } from "@/lib/api";
+import { StatusSelect } from "@/components/status-select";
 
 // Ordre du workflow métier (§5 du cahier des charges), pas alphabétique —
 // une campagne DRAFT ou en cours de recensement doit remonter avant une
@@ -39,7 +40,14 @@ export default async function AdminCampaignsPage() {
                   {campaign.name}
                 </Link>
               </td>
-              <td className="py-2">{campaign.status}</td>
+              <td className="py-2">
+                <StatusSelect
+                  apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+                  statusEndpoint={`campaigns/${campaign.id}/status`}
+                  currentStatus={campaign.status}
+                  options={STATUS_ORDER}
+                />
+              </td>
               <td className="py-2">
                 {campaign.indicativePrice} {campaign.currency}
               </td>

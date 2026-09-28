@@ -1,4 +1,16 @@
 import { getShipments } from "@/lib/api";
+import { StatusSelect } from "@/components/status-select";
+
+const SHIPMENT_STATUSES = [
+  "PENDING",
+  "LABEL_CREATED",
+  "SHIPPED",
+  "IN_TRANSIT",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "EXCEPTION",
+  "RETURNED",
+];
 
 export default async function ShipmentsPage() {
   const shipments = await getShipments();
@@ -21,7 +33,14 @@ export default async function ShipmentsPage() {
               <td className="py-2">{shipment.order.number}</td>
               <td className="py-2">{shipment.carrier ?? "—"}</td>
               <td className="py-2">{shipment.trackingNumber ?? "—"}</td>
-              <td className="py-2">{shipment.status}</td>
+              <td className="py-2">
+                <StatusSelect
+                  apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+                  statusEndpoint={`shipments/${shipment.id}/status`}
+                  currentStatus={shipment.status}
+                  options={SHIPMENT_STATUSES}
+                />
+              </td>
             </tr>
           ))}
           {shipments.length === 0 && (

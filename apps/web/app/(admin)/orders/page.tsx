@@ -1,5 +1,18 @@
 import Link from "next/link";
 import { getOrders } from "@/lib/api";
+import { StatusSelect } from "@/components/status-select";
+
+const ORDER_STATUSES = [
+  "DRAFT",
+  "PENDING_PAYMENT",
+  "PAID",
+  "PROCESSING",
+  "READY_TO_SHIP",
+  "SHIPPED",
+  "DELIVERED",
+  "CANCELLED",
+  "REFUNDED",
+];
 
 export default async function OrdersPage() {
   const orders = await getOrders();
@@ -28,7 +41,14 @@ export default async function OrdersPage() {
               <td className="py-2">
                 {order.customer.firstName} {order.customer.lastName}
               </td>
-              <td className="py-2">{order.status}</td>
+              <td className="py-2">
+                <StatusSelect
+                  apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+                  statusEndpoint={`orders/${order.id}/status`}
+                  currentStatus={order.status}
+                  options={ORDER_STATUSES}
+                />
+              </td>
               <td className="py-2">{order.paymentStatus}</td>
               <td className="py-2">
                 {order.total} {order.currency}
