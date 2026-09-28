@@ -1,6 +1,7 @@
 import { getProductionBatches, getProducts } from "@/lib/api";
 import { ProductionReferenceButton } from "./production-reference-button";
 import { CreateProductionButton } from "./create-production-button";
+import { ProductionIncrementButtons } from "./production-increment-buttons";
 
 export default async function ProductionPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -35,7 +36,12 @@ export default async function ProductionPage() {
                 <td className="py-2">{productNames}</td>
                 <td className="py-2">{batch.status}</td>
                 <td className="py-2">{planned}</td>
-                <td className="py-2">{produced}</td>
+                <td className="py-2">
+                  <div className="flex items-center gap-2">
+                    <span>{produced}</span>
+                    <ProductionIncrementButtons batch={batch} apiUrl={apiUrl} />
+                  </div>
+                </td>
               </tr>
             );
           })}
