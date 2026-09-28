@@ -3,19 +3,24 @@
 import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
-import type { Product } from "@/lib/api";
+import type { CustomerSummary, Product } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+
+const NEW_CUSTOMER = "__new__";
 
 export function OrderCreateModal({
   apiUrl,
   products,
+  customers,
   onClose,
 }: {
   apiUrl: string;
   products: Product[];
+  customers: CustomerSummary[];
   onClose: () => void;
 }) {
   const router = useRouter();
+  const [customerId, setCustomerId] = useState(NEW_CUSTOMER);
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
@@ -28,10 +33,30 @@ export function OrderCreateModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isExistingCustomer = customerId !== NEW_CUSTOMER;
+
+  function handleSelectCustomer(e: ChangeEvent<HTMLSelectElement>) {
+    const id = e.target.value;
+    setCustomerId(id);
+    const customer = customers.find((c) => c.id === id);
+    if (customer) {
+      setCustomerEmail(customer.email);
+      setCustomerFirstName(customer.firstName);
+      setCustomerLastName(customer.lastName);
+    } else {
+      setCustomerEmail("");
+      setCustomerFirstName("");
+      setCustomerLastName("");
+    }
+  }
+
   async function handleCreate() {
     setSaving(true);
     setError(null);
     try {
+      // POST /orders retrouve le client par email (upsert côté API) — pas
+      // besoin d'un customerId séparé, choisir un client existant revient
+      // juste à préremplir ces champs avec ses infos réelles.
       const res = await fetch(`${apiUrl}/api/v1/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
@@ -77,63 +102,103 @@ export function OrderCreateModal({
       }
     >
       <div className="flex flex-col gap-3">
-        <Input
-          placeholder="Email du client"
-          type="email"
-          value={customerEmail}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerEmail(e.target.value)}
-        />
-        <Input
-          placeholder="Prénom"
-          value={customerFirstName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerFirstName(e.target.value)}
-        />
-        <Input
-          placeholder="Nom"
-          value={customerLastName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerLastName(e.target.value)}
-        />
-        <div className="flex gap-2">
-          <select
-            className="select flex-1"
-            value={productId}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
-          >
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
+        <label className="flex flex-col gap-1 text-sm">
+          Client
+          <select className="select" value={customerId} onChange={handleSelectCustomer}>
+            <option value={NEW_CUSTOMER}>Nouveau client</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.firstName} {customer.lastName} ({customer.email})
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Email du client
           <Input
-            type="number"
-            min={1}
-            className="w-20"
-            value={quantity}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
+            placeholder="Email du client"
+            type="email"
+            value={customerEmail}
+            disabled={isExistingCustomer}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerEmail(e.target.value)}
           />
-        </div>
-        <Input
-          placeholder="Adresse"
-          value={address1}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress1(e.target.value)}
-        />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Prénom
+          <Input
+            placeholder="Prénom"
+            value={customerFirstName}
+            disabled={isExistingCustomer}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerFirstName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Nom
+          <Input
+            placeholder="Nom"
+            value={customerLastName}
+            disabled={isExistingCustomer}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerLastName(e.target.value)}
+          />
+        </label>
         <div className="flex gap-2">
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Produit
+            <select
+              className="select"
+              value={productId}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
+            >
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex w-20 flex-col gap-1 text-sm">
+            Qté
+            <Input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
+            />
+          </label>
+        </div>
+        <label className="flex flex-col gap-1 text-sm">
+          Adresse
           <Input
-            placeholder="Code postal"
-            value={postalCode}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPostalCode(e.target.value)}
+            placeholder="Adresse"
+            value={address1}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress1(e.target.value)}
           />
-          <Input
-            placeholder="Ville"
-            value={city}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
-          />
-          <Input
-            placeholder="Pays"
-            value={country}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)}
-          />
+        </label>
+        <div className="flex gap-2">
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Code postal
+            <Input
+              placeholder="Code postal"
+              value={postalCode}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPostalCode(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Ville
+            <Input
+              placeholder="Ville"
+              value={city}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Pays
+            <Input
+              placeholder="Pays"
+              value={country}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)}
+            />
+          </label>
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>

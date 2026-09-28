@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getOrders, getProducts } from "@/lib/api";
+import { getCustomers, getOrders, getProducts } from "@/lib/api";
 import { StatusSelect } from "@/components/status-select";
 import { CreateOrderButton } from "./create-order-button";
 
@@ -16,14 +16,18 @@ const ORDER_STATUSES = [
 ];
 
 export default async function OrdersPage() {
-  const [orders, products] = await Promise.all([getOrders(), getProducts()]);
+  const [orders, products, customers] = await Promise.all([
+    getOrders(),
+    getProducts(),
+    getCustomers(),
+  ]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   return (
     <main className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Commandes</h1>
-        <CreateOrderButton apiUrl={apiUrl} products={products} />
+        <CreateOrderButton apiUrl={apiUrl} products={products} customers={customers} />
       </div>
       <table className="w-full text-left text-sm">
         <thead>
