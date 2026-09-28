@@ -65,9 +65,16 @@ jobs:
         with:
           version: 9
 
+      # packages/database n'a pas d'étape de build (src/index.ts est chargé
+      # tel quel via le type-stripping natif de Node, cf. commentaire dans ce
+      # fichier) : `declare global` n'y est correctement strippé qu'à partir
+      # de Node 22 — sous Node 20 l'API échoue au démarrage avec
+      # "SyntaxError: Unexpected identifier 'global'" (confirmé par un run CI
+      # réel). Le reste de l'app (engines du package.json) reste compatible
+      # >=20, seule la CI a besoin de ce minimum.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
