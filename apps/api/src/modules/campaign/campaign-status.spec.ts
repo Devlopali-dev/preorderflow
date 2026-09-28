@@ -16,10 +16,13 @@ describe("assertValidCampaignTransition", () => {
     }
   });
 
-  it("autorise l'annulation depuis DRAFT/RECENSEMENT/COMMANDES_OUVERTES", () => {
+  it("autorise l'annulation depuis n'importe quel statut non terminal", () => {
     expect(() => assertValidCampaignTransition("DRAFT", "ANNULEE")).not.toThrow();
     expect(() => assertValidCampaignTransition("RECENSEMENT", "ANNULEE")).not.toThrow();
     expect(() => assertValidCampaignTransition("COMMANDES_OUVERTES", "ANNULEE")).not.toThrow();
+    expect(() => assertValidCampaignTransition("COMMANDES_FERMEES", "ANNULEE")).not.toThrow();
+    expect(() => assertValidCampaignTransition("PRODUCTION", "ANNULEE")).not.toThrow();
+    expect(() => assertValidCampaignTransition("EXPEDITION", "ANNULEE")).not.toThrow();
   });
 
   it("refuse un retour en arrière", () => {
@@ -30,12 +33,6 @@ describe("assertValidCampaignTransition", () => {
 
   it("refuse un saut d'étape", () => {
     expect(() => assertValidCampaignTransition("DRAFT", "PRODUCTION")).toThrow(
-      InvalidCampaignTransitionError,
-    );
-  });
-
-  it("refuse l'annulation une fois la production commencée", () => {
-    expect(() => assertValidCampaignTransition("PRODUCTION", "ANNULEE")).toThrow(
       InvalidCampaignTransitionError,
     );
   });
