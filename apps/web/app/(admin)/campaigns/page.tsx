@@ -68,7 +68,7 @@ export default async function AdminCampaignsPage() {
                   <tr>
                     <th>Nom</th>
                     <th>Prix indicatif</th>
-                    <th className="text-center">Action</th>
+                    <th style={{ textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>

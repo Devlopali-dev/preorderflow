@@ -33,8 +33,8 @@ export default async function ShipmentsPage() {
               <tr>
                 <th>Commande</th>
                 <th>Transporteur</th>
-                <th>Suivi</th>
-                <th>Statut</th>
+                <th style={{ textAlign: "center" }}>Suivi</th>
+                <th style={{ textAlign: "center" }}>Statut</th>
               </tr>
             </thead>
             <tbody>
@@ -42,8 +42,8 @@ export default async function ShipmentsPage() {
                 <tr key={shipment.id}>
                   <td>{shipment.order.number}</td>
                   <td>{shipment.carrier ?? "—"}</td>
-                  <td>{shipment.trackingNumber ?? "—"}</td>
-                  <td>
+                  <td className="text-center">{shipment.trackingNumber ?? "—"}</td>
+                  <td className="text-center">
                     <StatusSelect
                       apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
                       statusEndpoint={`shipments/${shipment.id}/status`}

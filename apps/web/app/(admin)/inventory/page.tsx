@@ -27,9 +27,9 @@ export default async function InventoryPage() {
             <thead>
               <tr>
                 <th>Produit</th>
-                <th>Stock physique</th>
-                <th>Réservé</th>
-                <th>Disponible</th>
+                <th style={{ textAlign: "center" }}>Stock physique</th>
+                <th style={{ textAlign: "center" }}>Réservé</th>
+                <th style={{ textAlign: "center" }}>Disponible</th>
               </tr>
             </thead>
             <tbody>
@@ -47,9 +47,9 @@ export default async function InventoryPage() {
                         <span className="badge badge-default ml-2">archivé</span>
                       )}
                     </td>
-                    <td>{row.stock.physicalStock}</td>
-                    <td>{row.stock.reservedStock}</td>
-                    <td>{row.stock.availableStock}</td>
+                    <td className="text-center">{row.stock.physicalStock}</td>
+                    <td className="text-center">{row.stock.reservedStock}</td>
+                    <td className="text-center">{row.stock.availableStock}</td>
                   </tr>
                 );
               })}
