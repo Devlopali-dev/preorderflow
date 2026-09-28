@@ -32,6 +32,8 @@ export interface Campaign {
   indicativePrice: string;
   currency: string;
   imageUrl: string | null;
+  startDate: string | null;
+  endDate: string | null;
 }
 
 export async function getCampaign(slug: string): Promise<Campaign | null> {
@@ -171,6 +173,27 @@ export interface InventoryRow {
 
 export async function getInventory(): Promise<InventoryRow[]> {
   const res = await fetch(`${API_URL}/api/v1/inventory`, { cache: "no-store", headers: authHeaders() });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
+export interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  currency: string;
+  taxRate: string;
+  weight: string | null;
+  active: boolean;
+  imageUrl: string | null;
+  documentUrl: string | null;
+}
+
+export async function getProducts(): Promise<Product[]> {
+  const res = await fetch(`${API_URL}/api/v1/products`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
   return res.json();
 }

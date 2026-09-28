@@ -42,19 +42,30 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
     }
   }
 
-  async function createShipment() {
+  async function createShipment(overrides?: { carrier?: string; trackingNumber?: string; trackingUrl?: string }) {
     setError(null);
     try {
       const res = await fetch(`${apiUrl}/api/v1/shipments`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-        body: JSON.stringify({ orderId: order.id, carrier, trackingNumber, trackingUrl }),
+        body: JSON.stringify({
+          orderId: order.id,
+          carrier: overrides?.carrier ?? carrier,
+          trackingNumber: overrides?.trackingNumber ?? trackingNumber,
+          trackingUrl: overrides?.trackingUrl ?? trackingUrl,
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       startTransition(() => router.refresh());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     }
+  }
+
+  // Pas de transporteur ni de suivi pour une remise en main propre — juste
+  // le libellé, qui sert de trace (§16, "livraison manuelle" en phase 7).
+  function handleHandDelivery() {
+    createShipment({ carrier: "Remise en main propre", trackingNumber: "", trackingUrl: "" });
   }
 
   async function advanceShipment(status: string) {
@@ -114,9 +125,14 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
             value={trackingUrl}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setTrackingUrl(e.target.value)}
           />
-          <Button variant="primary" loading={isPending} onClick={createShipment}>
-            Créer l'expédition
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="primary" loading={isPending} onClick={() => createShipment()}>
+              Créer l'expédition
+            </Button>
+            <Button variant="secondary" loading={isPending} onClick={handleHandDelivery}>
+              Remise en main propre
+            </Button>
+          </div>
         </div>
       ) : nextOrderAction ? (
         <Button variant="secondary" loading={isPending} onClick={() => advanceOrder(nextOrderAction.status)}>

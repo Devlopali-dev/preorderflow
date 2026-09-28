@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { getCampaigns } from "@/lib/api";
 import { StatusSelect } from "@/components/status-select";
+import { CampaignNameButton } from "./campaign-name-button";
 
 // Ordre du workflow métier (§5 du cahier des charges), pas alphabétique —
 // une campagne DRAFT ou en cours de recensement doit remonter avant une
@@ -20,6 +20,7 @@ export default async function AdminCampaignsPage() {
   const campaigns = [...(await getCampaigns())].sort(
     (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
   );
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   return (
     <main className="p-8">
@@ -36,13 +37,11 @@ export default async function AdminCampaignsPage() {
           {campaigns.map((campaign) => (
             <tr key={campaign.id} className="border-b">
               <td className="py-2">
-                <Link href={`/campaigns/${campaign.slug}`} className="underline">
-                  {campaign.name}
-                </Link>
+                <CampaignNameButton campaign={campaign} apiUrl={apiUrl} />
               </td>
               <td className="py-2">
                 <StatusSelect
-                  apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+                  apiUrl={apiUrl}
                   statusEndpoint={`campaigns/${campaign.id}/status`}
                   currentStatus={campaign.status}
                   options={STATUS_ORDER}

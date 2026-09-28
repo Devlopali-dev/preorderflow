@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma, CampaignStatus } from "@preorderflow/database";
-import { CreateCampaignDto, CreateInterestDto } from "./dto/create-campaign.dto";
+import { CreateCampaignDto, CreateInterestDto, UpdateCampaignDto } from "./dto/create-campaign.dto";
 import { assertValidCampaignTransition, InvalidCampaignTransitionError } from "./campaign-status";
 import { computeCampaignStatistics } from "./campaign-statistics";
 import { NotificationService } from "../notification/notification.service";
@@ -34,6 +34,20 @@ export class CampaignService {
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,
+      },
+    });
+  }
+
+  async update(id: string, dto: UpdateCampaignDto) {
+    const campaign = await this.getBySlugOrId(id);
+    return prisma.campaign.update({
+      where: { id: campaign.id },
+      data: {
+        name: dto.name,
+        description: dto.description,
+        indicativePrice: dto.indicativePrice,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
       },
     });
   }

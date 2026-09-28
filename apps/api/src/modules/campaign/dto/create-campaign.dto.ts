@@ -49,6 +49,37 @@ export class CreateCampaignDto {
   imageUrl?: string;
 }
 
+// Champs éditables une fois la campagne créée — jamais slug/productId, qui
+// sont structurants (changer le produit d'une campagne en cours romprait
+// le lien avec le recensement/les commandes déjà passés dessus).
+export class UpdateCampaignDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  indicativePrice?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsISO8601()
+  startDate?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsISO8601()
+  endDate?: string;
+}
+
 export class UpdateCampaignStatusDto {
   @ApiProperty({
     enum: [

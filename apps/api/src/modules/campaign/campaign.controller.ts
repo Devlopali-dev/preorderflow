@@ -2,7 +2,12 @@ import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { CampaignService } from "./campaign.service";
-import { CreateCampaignDto, CreateInterestDto, UpdateCampaignStatusDto } from "./dto/create-campaign.dto";
+import {
+  CreateCampaignDto,
+  CreateInterestDto,
+  UpdateCampaignDto,
+  UpdateCampaignStatusDto,
+} from "./dto/create-campaign.dto";
 import { Public } from "../auth/public.decorator";
 
 @ApiTags("campaigns")
@@ -26,6 +31,11 @@ export class CampaignController {
   @Get(":id")
   getOne(@Param("id") id: string) {
     return this.campaignService.getBySlugOrId(id);
+  }
+
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() dto: UpdateCampaignDto) {
+    return this.campaignService.update(id, dto);
   }
 
   @Patch(":id/status")

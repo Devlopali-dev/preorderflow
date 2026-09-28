@@ -117,6 +117,10 @@ model Product {
   weight         Decimal? @db.Decimal(10, 3) // kg
   active         Boolean  @default(true)
   manufacturable Boolean  @default(true)
+  // Simple champ URL, même pattern que Campaign.imageUrl — pas d'infra
+  // d'upload de fichier dans le projet (§32, aucune dépendance obligatoire).
+  imageUrl       String?
+  documentUrl    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
