@@ -68,7 +68,7 @@ export default async function AdminCampaignsPage() {
                   <tr>
                     <th>Nom</th>
                     <th>Prix indicatif</th>
-                    <th style={{ textAlign: "center" }}>Action</th>
+                    {group.status !== "TERMINEE" && <th style={{ textAlign: "center" }}>Action</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -80,15 +80,17 @@ export default async function AdminCampaignsPage() {
                       <td>
                         {campaign.indicativePrice} {campaign.currency}
                       </td>
-                      <td className="text-center">
-                        <div className="table-cell-actions justify-center">
-                          <CampaignNextStatusButton
-                            campaignId={campaign.id}
-                            currentStatus={campaign.status}
-                            apiUrl={apiUrl}
-                          />
-                        </div>
-                      </td>
+                      {group.status !== "TERMINEE" && (
+                        <td className="text-center">
+                          <div className="table-cell-actions justify-center">
+                            <CampaignNextStatusButton
+                              campaignId={campaign.id}
+                              currentStatus={campaign.status}
+                              apiUrl={apiUrl}
+                            />
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
