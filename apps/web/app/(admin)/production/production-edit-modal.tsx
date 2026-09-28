@@ -16,15 +16,19 @@ export function ProductionEditModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const editable = batch.status === "PLANNED";
+  const editablePlanned = batch.status === "PLANNED";
+  const canReportProduction = batch.status === "IN_PROGRESS" || batch.status === "PARTIALLY_COMPLETED";
   const [reference, setReference] = useState(batch.reference);
-  const [quantities, setQuantities] = useState<Record<string, string>>(
+  const [plannedQuantities, setPlannedQuantities] = useState<Record<string, string>>(
     Object.fromEntries(batch.items.map((item) => [item.id, String(item.quantityPlanned)])),
+  );
+  const [producedQuantities, setProducedQuantities] = useState<Record<string, string>>(
+    Object.fromEntries(batch.items.map((item) => [item.id, String(item.quantityProduced)])),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSave() {
+  async function handleSavePlanned() {
     setSaving(true);
     setError(null);
     try {
@@ -35,7 +39,49 @@ export function ProductionEditModal({
           reference,
           items: batch.items.map((item) => ({
             productionItemId: item.id,
-            quantityPlanned: Number(quantities[item.id]),
+            quantityPlanned: Number(plannedQuantities[item.id]),
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      onClose();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleStart() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/production/batches/${batch.id}/start`, {
+        method: "POST",
+        headers: { ...getClientAuthHeaders() },
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      onClose();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReportProduction() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/production/batches/${batch.id}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify({
+          items: batch.items.map((item) => ({
+            productionItemId: item.id,
+            quantityProduced: Number(producedQuantities[item.id]),
           })),
         }),
       });
@@ -59,41 +105,84 @@ export function ProductionEditModal({
           <Button variant="secondary" onClick={onClose}>
             Fermer
           </Button>
-          {editable && (
-            <Button variant="primary" loading={saving} onClick={handleSave}>
-              Enregistrer
+          {editablePlanned && (
+            <>
+              <Button variant="secondary" loading={saving} onClick={handleStart}>
+                Démarrer
+              </Button>
+              <Button variant="primary" loading={saving} onClick={handleSavePlanned}>
+                Enregistrer
+              </Button>
+            </>
+          )}
+          {canReportProduction && (
+            <Button variant="primary" loading={saving} onClick={handleReportProduction}>
+              Enregistrer la production
             </Button>
           )}
         </>
       }
     >
       <div className="flex flex-col gap-3">
-        {!editable && (
-          <p className="text-sm opacity-70">
-            Lot en statut {batch.status} — les infos ne sont modifiables que pendant PLANNED.
-          </p>
+        {!editablePlanned && !canReportProduction && (
+          <p className="text-sm opacity-70">Lot en statut {batch.status} — plus d'action disponible.</p>
         )}
-        <Input
-          placeholder="Référence"
-          value={reference}
-          disabled={!editable}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
-        />
-        {batch.items.map((item) => (
-          <label key={item.id} className="flex items-center justify-between gap-2 text-sm">
-            {item.product.name}
+
+        {editablePlanned && (
+          <>
             <Input
-              type="number"
-              min={1}
-              className="w-24"
-              value={quantities[item.id]}
-              disabled={!editable}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setQuantities((q) => ({ ...q, [item.id]: e.target.value }))
-              }
+              placeholder="Référence"
+              value={reference}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
             />
-          </label>
-        ))}
+            {batch.items.map((item) => (
+              <label key={item.id} className="flex items-center justify-between gap-2 text-sm">
+                {item.product.name} (prévu)
+                <Input
+                  type="number"
+                  min={1}
+                  className="w-24"
+                  value={plannedQuantities[item.id]}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setPlannedQuantities((q) => ({ ...q, [item.id]: e.target.value }))
+                  }
+                />
+              </label>
+            ))}
+          </>
+        )}
+
+        {canReportProduction && (
+          <>
+            <p className="text-sm opacity-70">Quantité fabriquée à ce jour, par produit :</p>
+            {batch.items.map((item) => (
+              <label key={item.id} className="flex items-center justify-between gap-2 text-sm">
+                {item.product.name} (prévu {item.quantityPlanned})
+                <Input
+                  type="number"
+                  min={item.quantityProduced}
+                  max={item.quantityPlanned}
+                  className="w-24"
+                  value={producedQuantities[item.id]}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setProducedQuantities((q) => ({ ...q, [item.id]: e.target.value }))
+                  }
+                />
+              </label>
+            ))}
+          </>
+        )}
+
+        {!editablePlanned && !canReportProduction && (
+          <ul className="text-sm">
+            {batch.items.map((item) => (
+              <li key={item.id}>
+                {item.product.name} : {item.quantityProduced} / {item.quantityPlanned}
+              </li>
+            ))}
+          </ul>
+        )}
+
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>
