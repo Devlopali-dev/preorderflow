@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { getCustomers } from "@/lib/api";
 import { CreateCustomerButton } from "./create-customer-button";
+import { CustomerRowButton } from "./customer-row-button";
 
 export default async function CustomersPage() {
   const customers = await getCustomers();
@@ -23,9 +23,11 @@ export default async function CustomersPage() {
           {customers.map((customer) => (
             <tr key={customer.id} className="border-b">
               <td className="py-2">
-                <Link href={`/customers/${customer.id}`} className="underline">
-                  {customer.firstName} {customer.lastName}
-                </Link>
+                <CustomerRowButton
+                  customerId={customer.id}
+                  label={`${customer.firstName} ${customer.lastName}`}
+                  apiUrl={apiUrl}
+                />
               </td>
               <td className="py-2">{customer.email}</td>
             </tr>
