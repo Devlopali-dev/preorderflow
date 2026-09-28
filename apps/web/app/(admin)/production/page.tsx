@@ -1,11 +1,17 @@
-import { getProductionBatches } from "@/lib/api";
+import { getProductionBatches, getProducts } from "@/lib/api";
+import { ProductionReferenceButton } from "./production-reference-button";
+import { CreateProductionButton } from "./create-production-button";
 
 export default async function ProductionPage() {
-  const batches = await getProductionBatches();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  const [batches, products] = await Promise.all([getProductionBatches(), getProducts()]);
 
   return (
     <main className="p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Production</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Production</h1>
+        <CreateProductionButton apiUrl={apiUrl} products={products} />
+      </div>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b">
@@ -23,7 +29,9 @@ export default async function ProductionPage() {
             const productNames = [...new Set(batch.items.map((i) => i.product.name))].join(", ");
             return (
               <tr key={batch.id} className="border-b">
-                <td className="py-2">{batch.reference}</td>
+                <td className="py-2">
+                  <ProductionReferenceButton batch={batch} apiUrl={apiUrl} />
+                </td>
                 <td className="py-2">{productNames}</td>
                 <td className="py-2">{batch.status}</td>
                 <td className="py-2">{planned}</td>

@@ -1,7 +1,11 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ProductionService } from "./production.service";
-import { CompleteProductionBatchDto, CreateProductionBatchDto } from "./dto/create-production-batch.dto";
+import {
+  CompleteProductionBatchDto,
+  CreateProductionBatchDto,
+  UpdateProductionBatchDto,
+} from "./dto/create-production-batch.dto";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 
@@ -26,6 +30,11 @@ export class ProductionController {
   @Get(":id")
   getOne(@Param("id") id: string) {
     return this.productionService.getById(id);
+  }
+
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() dto: UpdateProductionBatchDto) {
+    return this.productionService.update(id, dto);
   }
 
   @Post(":id/start")

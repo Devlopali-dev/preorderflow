@@ -202,7 +202,12 @@ export interface ProductionBatchSummary {
   id: string;
   reference: string;
   status: string;
-  items: Array<{ quantityPlanned: number; quantityProduced: number; product: { name: string } }>;
+  items: Array<{
+    id: string;
+    quantityPlanned: number;
+    quantityProduced: number;
+    product: { id: string; name: string };
+  }>;
 }
 
 export async function getProductionBatches(): Promise<ProductionBatchSummary[]> {

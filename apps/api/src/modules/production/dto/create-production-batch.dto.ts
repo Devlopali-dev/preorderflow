@@ -31,6 +31,39 @@ export class CreateProductionBatchDto {
   notes?: string;
 }
 
+export class UpdateProductionItemDto {
+  @ApiProperty()
+  @IsUUID()
+  productionItemId!: string;
+
+  @ApiProperty()
+  @IsInt()
+  @Min(1)
+  quantityPlanned!: number;
+}
+
+// Reference/notes/quantités prévues uniquement — jamais les lignes elles-
+// mêmes (ajouter/retirer un produit) ni quantityProduced, qui passent par
+// /complete une fois le lot démarré.
+export class UpdateProductionBatchDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  reference?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiProperty({ type: [UpdateProductionItemDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateProductionItemDto)
+  items?: UpdateProductionItemDto[];
+}
+
 export class CompleteProductionItemDto {
   @ApiProperty()
   @IsUUID()

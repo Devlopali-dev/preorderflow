@@ -1,6 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
-import { CompleteProductionBatchDto, CreateProductionBatchDto } from "./dto/create-production-batch.dto";
+import {
+  CompleteProductionBatchDto,
+  CreateProductionBatchDto,
+  UpdateProductionBatchDto,
+} from "./dto/create-production-batch.dto";
 import {
   assertValidProductionTransition,
   computeCompletionStatus,
@@ -40,6 +44,38 @@ export class ProductionService {
         },
       },
       include: { items: true },
+    });
+  }
+
+  // Uniquement pendant PLANNED — une fois démarré, changer la quantité
+  // prévue romprait le suivi produit/mouvements de stock déjà engagés.
+  async update(id: string, dto: UpdateProductionBatchDto) {
+    const batch = await this.getById(id);
+    if (batch.status !== "PLANNED") {
+      throw new BadRequestException("Seul un lot encore PLANNED peut être modifié");
+    }
+
+    if (dto.items) {
+      const itemIds = new Set(batch.items.map((i) => i.id));
+      for (const line of dto.items) {
+        if (!itemIds.has(line.productionItemId)) {
+          throw new BadRequestException(`Ligne de production "${line.productionItemId}" introuvable`);
+        }
+      }
+    }
+
+    return prisma.$transaction(async (tx) => {
+      for (const line of dto.items ?? []) {
+        await tx.productionItem.update({
+          where: { id: line.productionItemId },
+          data: { quantityPlanned: line.quantityPlanned },
+        });
+      }
+      return tx.productionBatch.update({
+        where: { id: batch.id },
+        data: { reference: dto.reference, notes: dto.notes },
+        include: { items: { include: { product: true } } },
+      });
     });
   }
 
