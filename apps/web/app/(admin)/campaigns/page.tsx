@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { getCampaigns, getProducts } from "@/lib/api";
 import { CampaignNameButton } from "./campaign-name-button";
 import { CreateCampaignButton } from "./create-campaign-button";
@@ -18,6 +17,17 @@ const STATUS_ORDER = [
   "ANNULEE",
 ];
 
+const STATUS_BADGE: Record<string, string> = {
+  DRAFT: "badge-default",
+  RECENSEMENT: "badge-primary",
+  COMMANDES_OUVERTES: "badge-primary",
+  COMMANDES_FERMEES: "badge-warning",
+  PRODUCTION: "badge-warning",
+  EXPEDITION: "badge-warning",
+  TERMINEE: "badge-success",
+  ANNULEE: "badge-danger",
+};
+
 export default async function AdminCampaignsPage() {
   const [campaignsRaw, products] = await Promise.all([getCampaigns(), getProducts()]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -28,57 +38,65 @@ export default async function AdminCampaignsPage() {
   })).filter((group) => group.campaigns.length > 0);
 
   return (
-    <main className="p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Campagnes</h1>
+    <main className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Campagnes</h1>
+          <p className="card-subtitle">
+            {campaignsRaw.length} campagne{campaignsRaw.length > 1 ? "s" : ""}
+          </p>
+        </div>
         <CreateCampaignButton apiUrl={apiUrl} products={products} />
       </div>
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b">
-            <th className="py-2">Nom</th>
-            <th className="py-2">Prix indicatif</th>
-            <th className="py-2 text-center">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((group) => (
-            <Fragment key={group.status}>
-              <tr className="border-b bg-[var(--color-bg-muted)]">
-                <td colSpan={3} className="py-1.5 text-xs font-semibold uppercase opacity-70">
-                  {group.status} ({group.campaigns.length})
-                </td>
-              </tr>
-              {group.campaigns.map((campaign) => (
-                <tr key={campaign.id} className="border-b">
-                  <td className="py-2">
-                    <CampaignNameButton campaign={campaign} apiUrl={apiUrl} />
-                  </td>
-                  <td className="py-2">
-                    {campaign.indicativePrice} {campaign.currency}
-                  </td>
-                  <td className="py-2 text-center">
-                    <div className="flex justify-center">
-                      <CampaignNextStatusButton
-                        campaignId={campaign.id}
-                        currentStatus={campaign.status}
-                        apiUrl={apiUrl}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </Fragment>
-          ))}
-          {groups.length === 0 && (
-            <tr>
-              <td colSpan={3} className="py-4 text-center opacity-60">
-                Aucune campagne
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+
+      {groups.length === 0 && (
+        <div className="card card-body text-center text-sm opacity-60">Aucune campagne</div>
+      )}
+
+      <div className="flex flex-col gap-6">
+        {groups.map((group) => (
+          <section key={group.status} className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className={`badge ${STATUS_BADGE[group.status] ?? "badge-default"}`}>
+                {group.status}
+              </span>
+              <span className="table-muted">{group.campaigns.length}</span>
+            </div>
+            <div className="table-wrapper">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Nom</th>
+                    <th>Prix indicatif</th>
+                    <th className="text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.campaigns.map((campaign) => (
+                    <tr key={campaign.id}>
+                      <td>
+                        <CampaignNameButton campaign={campaign} apiUrl={apiUrl} />
+                      </td>
+                      <td>
+                        {campaign.indicativePrice} {campaign.currency}
+                      </td>
+                      <td className="text-center">
+                        <div className="table-cell-actions justify-center">
+                          <CampaignNextStatusButton
+                            campaignId={campaign.id}
+                            currentStatus={campaign.status}
+                            apiUrl={apiUrl}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))}
+      </div>
     </main>
   );
 }
