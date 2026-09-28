@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { getCustomers, getOrders, getProducts } from "@/lib/api";
-import { StatusSelect } from "@/components/status-select";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { CreateOrderButton } from "./create-order-button";
+import { OrderActions } from "./order-actions";
 
 const ORDER_STATUSES = [
   "DRAFT",
@@ -67,22 +68,26 @@ export default async function OrdersPage() {
 
       <div className="flex flex-col gap-6">
         {groups.map((group) => (
-          <section key={group.status} className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`badge ${ORDER_STATUS_BADGE[group.status] ?? "badge-default"}`}>
-                {group.status}
-              </span>
-              <span className="table-muted">{group.orders.length}</span>
-            </div>
+          <CollapsibleSection
+            key={group.status}
+            header={
+              <>
+                <span className={`badge ${ORDER_STATUS_BADGE[group.status] ?? "badge-default"}`}>
+                  {group.status}
+                </span>
+                <span className="table-muted">{group.orders.length}</span>
+              </>
+            }
+          >
             <div className="table-wrapper">
               <table className="table">
                 <thead>
                   <tr>
                     <th>Numéro</th>
                     <th>Client</th>
-                    <th style={{ textAlign: "center" }}>Statut</th>
-                    <th style={{ textAlign: "center" }}>Paiement</th>
                     <th>Total</th>
+                    <th style={{ textAlign: "center" }}>Paiement</th>
+                    <th style={{ textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -96,13 +101,8 @@ export default async function OrdersPage() {
                       <td>
                         {order.customer.firstName} {order.customer.lastName}
                       </td>
-                      <td className="text-center">
-                        <StatusSelect
-                          apiUrl={apiUrl}
-                          statusEndpoint={`orders/${order.id}/status`}
-                          currentStatus={order.status}
-                          options={ORDER_STATUSES}
-                        />
+                      <td>
+                        {order.total} {order.currency}
                       </td>
                       <td className="text-center">
                         <span
@@ -111,15 +111,15 @@ export default async function OrdersPage() {
                           {order.paymentStatus}
                         </span>
                       </td>
-                      <td>
-                        {order.total} {order.currency}
+                      <td className="text-center">
+                        <OrderActions orderId={order.id} status={order.status} apiUrl={apiUrl} />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </section>
+          </CollapsibleSection>
         ))}
       </div>
     </main>

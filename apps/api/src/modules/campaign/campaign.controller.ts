@@ -26,6 +26,7 @@ import {
 import { Public } from "../auth/public.decorator";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
 
 @ApiTags("campaigns")
 @Controller("campaigns")
@@ -90,6 +91,37 @@ export class CampaignController {
       throw new BadRequestException("Aucun fichier reçu");
     }
     return this.campaignService.update(id, { imageUrl: `/uploads/campaigns/${file.filename}` });
+  }
+
+  // PDF de présentation : contrairement au produit, la campagne l'accepte
+  // en upload réel (demande utilisateur) et pas seulement en URL texte.
+  @ApiConsumes("multipart/form-data")
+  @Post(":id/document")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: diskStorage({
+        destination: join(__dirname, "..", "..", "..", "uploads", "campaigns"),
+        filename: (_req, file, callback) => {
+          callback(null, `${randomUUID()}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_DOCUMENT_TYPES.includes(file.mimetype)) {
+          callback(new BadRequestException("Seuls les fichiers PDF sont acceptés"), false);
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadDocument(@Param("id") id: string, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Aucun fichier reçu");
+    }
+    return this.campaignService.update(id, {
+      documentUrl: `/uploads/campaigns/${file.filename}`,
+    });
   }
 
   @Patch(":id/status")

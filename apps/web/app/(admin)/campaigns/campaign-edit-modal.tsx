@@ -26,7 +26,7 @@ export function CampaignEditModal({
   const [indicativePrice, setIndicativePrice] = useState(String(campaign.indicativePrice));
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
-  const [documentUrl, setDocumentUrl] = useState(campaign.documentUrl ?? "");
+  const [documentUrl, setDocumentUrl] = useState(campaign.documentUrl);
   const [imageUrl, setImageUrl] = useState(campaign.imageUrl);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +44,6 @@ export function CampaignEditModal({
           indicativePrice: Number(indicativePrice),
           startDate: startDate ? new Date(startDate).toISOString() : undefined,
           endDate: endDate ? new Date(endDate).toISOString() : undefined,
-          documentUrl: documentUrl || undefined,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
@@ -73,6 +72,30 @@ export function CampaignEditModal({
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       const updated = await res.json();
       setImageUrl(updated.imageUrl);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUploadDocument(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/document`, {
+        method: "POST",
+        headers: { ...getClientAuthHeaders() },
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      const updated = await res.json();
+      setDocumentUrl(updated.documentUrl);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -165,12 +188,18 @@ export function CampaignEditModal({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          URL du PDF de présentation
-          <Input
-            placeholder="URL du PDF de présentation"
-            value={documentUrl}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
-          />
+          PDF de présentation
+          {documentUrl && (
+            <a
+              href={`${apiUrl}${documentUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-link w-fit"
+            >
+              Voir le PDF actuel
+            </a>
+          )}
+          <input type="file" accept="application/pdf" onChange={handleUploadDocument} />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
