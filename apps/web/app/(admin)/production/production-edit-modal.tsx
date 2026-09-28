@@ -78,11 +78,14 @@ export function ProductionEditModal({
 
         {editable ? (
           <>
-            <Input
-              placeholder="Référence"
-              value={reference}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
-            />
+            <label className="flex flex-col gap-1 text-sm">
+              Référence
+              <Input
+                placeholder="Référence"
+                value={reference}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
+              />
+            </label>
             {batch.items.map((item) => (
               <label key={item.id} className="flex items-center justify-between gap-2 text-sm">
                 {item.product.name} (prévu)

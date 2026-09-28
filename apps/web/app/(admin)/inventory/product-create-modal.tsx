@@ -59,34 +59,56 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
       }
     >
       <div className="flex flex-col gap-3">
-        <Input placeholder="SKU" value={sku} onChange={(e: ChangeEvent<HTMLInputElement>) => setSku(e.target.value)} />
-        <Input
-          placeholder="Nom"
-          value={name}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-        />
-        <Input
-          placeholder="Slug"
-          value={slug}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setSlug(e.target.value)}
-        />
-        <Input
-          type="number"
-          step="0.01"
-          placeholder="Prix"
-          value={price}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
-        />
-        <Input
-          placeholder="URL de la photo"
-          value={imageUrl}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setImageUrl(e.target.value)}
-        />
-        <Input
-          placeholder="URL du PDF de présentation"
-          value={documentUrl}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          SKU
+          <Input
+            placeholder="SKU"
+            value={sku}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSku(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Nom
+          <Input
+            placeholder="Nom"
+            value={name}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Slug
+          <Input
+            placeholder="Slug"
+            value={slug}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSlug(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Prix
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Prix"
+            value={price}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          URL de la photo
+          <Input
+            placeholder="URL de la photo"
+            value={imageUrl}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setImageUrl(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          URL du PDF de présentation
+          <Input
+            placeholder="URL du PDF de présentation"
+            value={documentUrl}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
+          />
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>

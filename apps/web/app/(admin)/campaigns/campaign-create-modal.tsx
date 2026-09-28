@@ -59,34 +59,46 @@ export function CampaignCreateModal({
       }
     >
       <div className="flex flex-col gap-3">
-        <Input
-          placeholder="Nom"
-          value={name}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-        />
-        <Input
-          placeholder="Slug"
-          value={slug}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setSlug(e.target.value)}
-        />
-        <select
-          className="select"
-          value={productId}
-          onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
-        >
-          {products.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.name}
-            </option>
-          ))}
-        </select>
-        <Input
-          type="number"
-          step="0.01"
-          placeholder="Prix indicatif"
-          value={indicativePrice}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Nom
+          <Input
+            placeholder="Nom"
+            value={name}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Slug
+          <Input
+            placeholder="Slug"
+            value={slug}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSlug(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Produit
+          <select
+            className="select"
+            value={productId}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
+          >
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Prix indicatif
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Prix indicatif"
+            value={indicativePrice}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
+          />
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>

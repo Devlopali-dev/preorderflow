@@ -104,7 +104,12 @@ export function ProductEditModal({
             variant="primary"
             loading={saving}
             onClick={() =>
-              patch({ name, description, price: Number(price), documentUrl: documentUrl || undefined })
+              patch({
+                name,
+                description,
+                price: Number(price),
+                documentUrl: documentUrl || undefined,
+              })
             }
           >
             Enregistrer
@@ -113,35 +118,51 @@ export function ProductEditModal({
       }
     >
       <div className="flex flex-col gap-3">
-        <Input
-          placeholder="Nom"
-          value={name}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-        />
-        <Input
-          placeholder="Description"
-          value={description}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
-        />
-        <Input
-          type="number"
-          step="0.01"
-          placeholder="Prix"
-          value={price}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Nom
+          <Input
+            placeholder="Nom"
+            value={name}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Description
+          <Input
+            placeholder="Description"
+            value={description}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Prix
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Prix"
+            value={price}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
+          />
+        </label>
         <label className="flex flex-col gap-1 text-sm">
           Photo
           {imageUrl && (
             <img src={`${apiUrl}${imageUrl}`} alt="" className="h-24 w-24 rounded object-cover" />
           )}
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleUploadPhoto} />
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleUploadPhoto}
+          />
         </label>
-        <Input
-          placeholder="URL du PDF de présentation"
-          value={documentUrl}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          URL du PDF de présentation
+          <Input
+            placeholder="URL du PDF de présentation"
+            value={documentUrl}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
+          />
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>

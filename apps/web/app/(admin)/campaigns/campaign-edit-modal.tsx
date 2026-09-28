@@ -92,18 +92,24 @@ export function CampaignEditModal({
       }
     >
       <div className="flex flex-col gap-3">
-        <Input
-          placeholder="Nom"
-          value={name}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-        />
-        <Input
-          type="number"
-          step="0.01"
-          placeholder="Prix indicatif"
-          value={indicativePrice}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Nom
+          <Input
+            placeholder="Nom"
+            value={name}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Prix indicatif
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Prix indicatif"
+            value={indicativePrice}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
+          />
+        </label>
         <label className="text-sm">
           Début
           <Input

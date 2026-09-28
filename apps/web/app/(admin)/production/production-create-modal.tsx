@@ -61,29 +61,38 @@ export function ProductionCreateModal({
       }
     >
       <div className="flex flex-col gap-3">
-        <Input
-          placeholder="Référence"
-          value={reference}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
-        />
-        <select
-          className="select"
-          value={productId}
-          onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
-        >
-          {products.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.name}
-            </option>
-          ))}
-        </select>
-        <Input
-          type="number"
-          min={1}
-          placeholder="Quantité prévue"
-          value={quantityPlanned}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantityPlanned(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Référence
+          <Input
+            placeholder="Référence"
+            value={reference}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Produit
+          <select
+            className="select"
+            value={productId}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
+          >
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Quantité prévue
+          <Input
+            type="number"
+            min={1}
+            placeholder="Quantité prévue"
+            value={quantityPlanned}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantityPlanned(e.target.value)}
+          />
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>

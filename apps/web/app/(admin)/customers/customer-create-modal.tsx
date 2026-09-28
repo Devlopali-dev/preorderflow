@@ -50,27 +50,39 @@ export function CustomerCreateModal({ apiUrl, onClose }: { apiUrl: string; onClo
       }
     >
       <div className="flex flex-col gap-3">
-        <Input
-          placeholder="Email"
-          type="email"
-          value={email}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-        />
-        <Input
-          placeholder="Prénom"
-          value={firstName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-        />
-        <Input
-          placeholder="Nom"
-          value={lastName}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-        />
-        <Input
-          placeholder="Téléphone"
-          value={phone}
-          onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
-        />
+        <label className="flex flex-col gap-1 text-sm">
+          Email
+          <Input
+            placeholder="Email"
+            type="email"
+            value={email}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Prénom
+          <Input
+            placeholder="Prénom"
+            value={firstName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Nom
+          <Input
+            placeholder="Nom"
+            value={lastName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Téléphone
+          <Input
+            placeholder="Téléphone"
+            value={phone}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+          />
+        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>
