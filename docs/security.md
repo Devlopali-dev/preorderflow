@@ -24,11 +24,23 @@
 
 ## RGPD
 
-- Export des données d'un client sur demande (`POST /customers/:id/gdpr-export`).
+- Export des données d'un client sur demande (`POST /customers/:id/gdpr-export`, `ADMIN`
+  uniquement).
 - Anonymisation/suppression indépendante des commandes historiques
-  (`POST /customers/:id/gdpr-anonymize`), cf. règle §24 du cahier des charges.
+  (`POST /customers/:id/gdpr-anonymize`, `ADMIN` uniquement), cf. règle §24 du cahier des charges.
 - Consentement explicite (`consentToContact`) stocké sur chaque intérêt de recensement.
 - Durée de conservation configurable (à définir en Phase 4/paramètres).
+
+## Paramètres admin et secrets
+
+- `PATCH /settings` (config email/SMTP/ntfy) et les endpoints `POST /settings/test-email` /
+  `test-ntfy` sont restreints à `ADMIN` — identifiants de messagerie = donnée sensible, même
+  logique que le RGPD. `test-email`/`test-ntfy` sont en plus throttlés (5/min) : ils envoient un
+  vrai email/push, un compte compromis ne doit pas pouvoir servir de relai de spam.
+- `GET /settings` (ouvert à tout admin authentifié) ne renvoie jamais un secret en clair — juste
+  des booléens "configuré" et les champs non sensibles (host, port, utilisateur, expéditeur).
+- Toute action sensible (RGPD, modification des paramètres, statuts) est journalisée dans
+  `AuditLog` avec l'identité de l'admin — jamais les valeurs secrètes elles-mêmes dans le journal.
 
 ## Signalement d'une vulnérabilité
 

@@ -48,8 +48,10 @@ Ne jamais utiliser `migrate:dev` en production (il peut demander une réinitiali
 
 - PostgreSQL : backups automatiques Coolify (onglet Backups), export régulier vers un stockage
   externe (S3-compatible) recommandé pour la rétention long terme.
-- Fichiers uploadés (images produits/campagnes) : si stockés sur disque local du conteneur,
-  prévoir un volume persistant Coolify ou migrer vers un stockage objet.
+- Photos produit (`POST /products/:id/photo`, stockées dans `apps/api/uploads/products/` sur
+  disque local du conteneur `api`) : monter un volume persistant Coolify sur ce chemin (onglet
+  Storages de l'application `api`), sinon perdu à chaque redéploiement. Alternative : migrer vers
+  un stockage objet (non implémenté à ce jour, cf. `docs/architecture.md` §8).
 
 ## 8. Workers BullMQ
 

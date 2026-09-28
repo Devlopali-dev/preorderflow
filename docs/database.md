@@ -14,6 +14,20 @@ d'architecture (Shipment 1-1, Interest→Customer obligatoire, stock calculé, e
 - Aucune donnée dérivable n'est stockée : le stock (`InventoryMovement`), les statistiques de
   campagne et les totaux dépendants sont toujours calculés, jamais persistés en doublon.
 
+## Configuration admin (`AppSettings`)
+
+Table singleton (une seule ligne, id fixe `"singleton"`) portant la configuration email/ntfy
+éditable depuis `/settings` : provider email, clé Resend, host/port/secure/user/password SMTP,
+adresse expéditeur, url/topic/auth ntfy. Prime sur `.env` (bootstrap par défaut si la ligne
+n'existe pas). Aucun champ n'est chiffré — protégés par le RBAC `ADMIN` en écriture et jamais
+renvoyés en lecture par l'API (voir `docs/security.md`).
+
+## Fichiers uploadés
+
+`Product.imageUrl`/`Product.documentUrl` (`String?`) : URL relative (`/uploads/products/xxx.jpg`)
+pour la photo (upload réel via `multer`, cf. `docs/architecture.md` §8) ou une URL externe pour le
+PDF de présentation. Aucune infra de stockage objet (S3...) dans ce projet.
+
 ## Migrations
 
 ```bash

@@ -229,20 +229,25 @@ Chaque changement de statut crée un `ShipmentEvent` (append-only).
 GET    /api/v1/campaigns
 POST   /api/v1/campaigns
 GET    /api/v1/campaigns/:id
-PATCH  /api/v1/campaigns/:id
+PATCH  /api/v1/campaigns/:id                    # nom/prix/dates — pas le statut
+PATCH  /api/v1/campaigns/:id/status
+DELETE /api/v1/campaigns/:id                    # bloqué (400) si des CampaignInterest existent
 POST   /api/v1/campaigns/:id/interests          # public, rate-limited
 GET    /api/v1/campaigns/:id/statistics
 
-GET    /api/v1/products
+GET    /api/v1/products                         # public
 POST   /api/v1/products
-GET    /api/v1/products/:id
+GET    /api/v1/products/:id                     # public
 PATCH  /api/v1/products/:id
+PATCH  /api/v1/products/:id/archive             # active=false, jamais de suppression réelle
+POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8)
 
 GET    /api/v1/customers
+POST   /api/v1/customers
 GET    /api/v1/customers/:id
 PATCH  /api/v1/customers/:id
-POST   /api/v1/customers/:id/gdpr-export
-POST   /api/v1/customers/:id/gdpr-anonymize
+POST   /api/v1/customers/:id/gdpr-export        # ADMIN uniquement
+POST   /api/v1/customers/:id/gdpr-anonymize     # ADMIN uniquement
 
 GET    /api/v1/orders
 POST   /api/v1/orders
@@ -252,6 +257,7 @@ POST   /api/v1/orders/:id/payments
 
 GET    /api/v1/production/batches
 POST   /api/v1/production/batches
+PATCH  /api/v1/production/batches/:id           # référence/notes/quantités prévues — PLANNED uniquement
 POST   /api/v1/production/batches/:id/start
 POST   /api/v1/production/batches/:id/complete
 
@@ -262,6 +268,13 @@ POST   /api/v1/inventory/adjustments
 GET    /api/v1/shipments
 POST   /api/v1/shipments
 PATCH  /api/v1/shipments/:id/status
+
+GET    /api/v1/settings
+PATCH  /api/v1/settings                         # ADMIN uniquement — voir §8
+POST   /api/v1/settings/test-email              # ADMIN uniquement, throttlé
+POST   /api/v1/settings/test-ntfy               # ADMIN uniquement, throttlé
+
+GET    /api/v1/audit-logs
 
 POST   /api/v1/auth/login
 POST   /api/v1/auth/magic-link
@@ -299,7 +312,35 @@ docs: database/api/deployment/security/coolify
 chore: seed dev
 ```
 
-## 8. Points restants avant Phase 2
+## 8. Paramètres admin (`AppSettings`) et upload de fichiers
+
+Ajouté après la Phase 1 initiale (§21 — page `/settings`), au-delà de ce qui était prévu au départ.
+
+**Configuration email/ntfy éditable depuis l'admin** — modèle `AppSettings` (une seule ligne, id
+fixe `"singleton"`) : provider email (`console`/`resend`/`smtp`), clé Resend, host/port/secure/
+user/password SMTP, adresse expéditeur, url/topic/auth ntfy. Les valeurs en base priment sur
+`.env`, qui reste le bootstrap par défaut si rien n'est configuré en base
+(`SettingsService.getEmailConfig()`/`getNtfyConfig()` fusionnent DB puis env à chaque envoi — pas
+de cache au démarrage, un changement depuis `/settings` prend effet immédiatement). `GET /settings`
+ne renvoie jamais un secret en clair, seulement des booléens "configuré" et les champs non
+sensibles. `PATCH /settings` et les deux endpoints `test-*` sont restreints à `ADMIN` (identifiants
+de messagerie = donnée sensible, même logique que le RGPD §24).
+
+Pas d'OAuth réel pour "connecter Gmail/Outlook" : un vrai flux Google/Microsoft (projet Cloud,
+écran de consentement validé, refresh tokens) est disproportionné pour ce projet self-hosted (§32).
+À la place, deux boutons préremplissent juste l'hôte/port SMTP connus et expliquent comment générer
+un mot de passe d'application — l'usage standard hors application tierce validée.
+
+**Photo produit uploadée** — `Product.imageUrl`/`Product.documentUrl` (`String?`). L'image passe
+par un vrai upload (`POST /products/:id/photo`, multipart via `multer`, stockage disque local sous
+`apps/api/uploads/products/`, servi en statique par `app.useStaticAssets`) ; le PDF de présentation
+reste un simple champ URL texte (seule la photo a été demandée en upload). Pas de S3/Cloudinary —
+cohérent avec §32. **Le dossier `uploads/` doit être un volume Docker persistant en production**
+(voir `docs/deployment.md`), sinon son contenu est perdu à chaque rebuild d'image.
+
+## 9. Points restants avant Phase 2
 
 - RBAC `OPERATOR` : périmètre exact des restrictions (proposition §5.5 à confirmer).
 - Format définitif du numéro de commande (proposition §5.6 à confirmer).
+- Volume Docker persistant pour `apps/api/uploads/` en production — pas encore ajouté à
+  `docker-compose.yml` (cf. §8).
