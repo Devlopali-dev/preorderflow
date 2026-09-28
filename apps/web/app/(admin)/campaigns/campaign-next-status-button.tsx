@@ -34,6 +34,7 @@ export function CampaignNextStatusButton({
   if (!next) return null;
 
   async function handleClick() {
+    if (!confirm(`Passer la campagne au statut ${next} ?`)) return;
     setSaving(true);
     setError(null);
     try {
