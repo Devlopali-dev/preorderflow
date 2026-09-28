@@ -47,6 +47,11 @@ export class CreateCampaignDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  documentUrl?: string;
 }
 
 // Champs éditables une fois la campagne créée — jamais slug/productId, qui
@@ -78,6 +83,16 @@ export class UpdateCampaignDto {
   @IsOptional()
   @IsISO8601()
   endDate?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  documentUrl?: string;
 }
 
 export class UpdateCampaignStatusDto {

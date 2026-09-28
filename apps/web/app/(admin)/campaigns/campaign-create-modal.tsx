@@ -20,6 +20,8 @@ export function CampaignCreateModal({
   const [slug, setSlug] = useState("");
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [indicativePrice, setIndicativePrice] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [documentUrl, setDocumentUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,7 +32,14 @@ export function CampaignCreateModal({
       const res = await fetch(`${apiUrl}/api/v1/campaigns`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-        body: JSON.stringify({ name, slug, productId, indicativePrice: Number(indicativePrice) }),
+        body: JSON.stringify({
+          name,
+          slug,
+          productId,
+          indicativePrice: Number(indicativePrice),
+          imageUrl: imageUrl || undefined,
+          documentUrl: documentUrl || undefined,
+        }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       onClose();
@@ -97,6 +106,22 @@ export function CampaignCreateModal({
             placeholder="Prix indicatif"
             value={indicativePrice}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          URL de l&apos;image
+          <Input
+            placeholder="URL de l'image"
+            value={imageUrl}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setImageUrl(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          URL du PDF de présentation
+          <Input
+            placeholder="URL du PDF de présentation"
+            value={documentUrl}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
           />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}

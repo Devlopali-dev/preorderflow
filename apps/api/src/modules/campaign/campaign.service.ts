@@ -34,6 +34,7 @@ export class CampaignService {
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,
+        documentUrl: dto.documentUrl,
       },
     });
   }
@@ -48,6 +49,8 @@ export class CampaignService {
         indicativePrice: dto.indicativePrice,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        imageUrl: dto.imageUrl,
+        documentUrl: dto.documentUrl,
       },
     });
   }
@@ -59,7 +62,9 @@ export class CampaignService {
   // ANNULEE à la place.
   async remove(id: string) {
     const campaign = await this.getBySlugOrId(id);
-    const interestCount = await prisma.campaignInterest.count({ where: { campaignId: campaign.id } });
+    const interestCount = await prisma.campaignInterest.count({
+      where: { campaignId: campaign.id },
+    });
     if (interestCount > 0) {
       throw new BadRequestException(
         `Impossible de supprimer : ${interestCount} personne(s) ont déjà manifesté un intérêt. Utilisez le statut ANNULEE à la place.`,

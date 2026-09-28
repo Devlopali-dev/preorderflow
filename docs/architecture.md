@@ -358,6 +358,10 @@ reste un simple champ URL texte (seule la photo a été demandée en upload). Pa
 cohérent avec §32. **Le dossier `uploads/` doit être un volume Docker persistant en production**
 (voir `docs/deployment.md`), sinon son contenu est perdu à chaque rebuild d'image.
 
+**Image/PDF de campagne** — même pattern que le produit : `Campaign.imageUrl` (`POST
+/campaigns/:id/photo`, upload réel sous `apps/api/uploads/campaigns/`) et `Campaign.documentUrl`
+(champ URL texte pour le PDF de présentation).
+
 ## 9. Points restants avant Phase 2
 
 - RBAC `OPERATOR` : périmètre exact des restrictions (proposition §5.5 à confirmer).

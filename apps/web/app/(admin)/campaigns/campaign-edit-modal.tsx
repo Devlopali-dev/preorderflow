@@ -26,6 +26,8 @@ export function CampaignEditModal({
   const [indicativePrice, setIndicativePrice] = useState(String(campaign.indicativePrice));
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
+  const [documentUrl, setDocumentUrl] = useState(campaign.documentUrl ?? "");
+  const [imageUrl, setImageUrl] = useState(campaign.imageUrl);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -42,10 +44,35 @@ export function CampaignEditModal({
           indicativePrice: Number(indicativePrice),
           startDate: startDate ? new Date(startDate).toISOString() : undefined,
           endDate: endDate ? new Date(endDate).toISOString() : undefined,
+          documentUrl: documentUrl || undefined,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       onClose();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUploadPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/photo`, {
+        method: "POST",
+        headers: { ...getClientAuthHeaders() },
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      const updated = await res.json();
+      setImageUrl(updated.imageUrl);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -124,6 +151,25 @@ export function CampaignEditModal({
             type="date"
             value={endDate}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Image
+          {imageUrl && (
+            <img src={`${apiUrl}${imageUrl}`} alt="" className="h-24 w-24 rounded object-cover" />
+          )}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleUploadPhoto}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          URL du PDF de présentation
+          <Input
+            placeholder="URL du PDF de présentation"
+            value={documentUrl}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
           />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}

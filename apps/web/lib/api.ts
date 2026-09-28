@@ -33,6 +33,7 @@ export interface Campaign {
   indicativePrice: string;
   currency: string;
   imageUrl: string | null;
+  documentUrl: string | null;
   startDate: string | null;
   endDate: string | null;
 }

@@ -1,6 +1,21 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
+import { diskStorage } from "multer";
+import { randomUUID } from "node:crypto";
+import { extname, join } from "node:path";
 import { CampaignService } from "./campaign.service";
 import {
   CreateCampaignDto,
@@ -9,6 +24,8 @@ import {
   UpdateCampaignStatusDto,
 } from "./dto/create-campaign.dto";
 import { Public } from "../auth/public.decorator";
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 @ApiTags("campaigns")
 @Controller("campaigns")
@@ -41,6 +58,38 @@ export class CampaignController {
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.campaignService.remove(id);
+  }
+
+  // Même pattern que ProductController (stockage disque local, nom de
+  // fichier jamais fourni par le client — cf. docs/architecture.md §8).
+  @ApiConsumes("multipart/form-data")
+  @Post(":id/photo")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: diskStorage({
+        destination: join(__dirname, "..", "..", "..", "uploads", "campaigns"),
+        filename: (_req, file, callback) => {
+          callback(null, `${randomUUID()}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+          callback(
+            new BadRequestException("Seules les images JPEG, PNG ou WebP sont acceptées"),
+            false,
+          );
+          return;
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadPhoto(@Param("id") id: string, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Aucun fichier reçu");
+    }
+    return this.campaignService.update(id, { imageUrl: `/uploads/campaigns/${file.filename}` });
   }
 
   @Patch(":id/status")
