@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { getCampaigns, getProducts } from "@/lib/api";
 import { CampaignNameButton } from "./campaign-name-button";
 import { CreateCampaignButton } from "./create-campaign-button";
@@ -19,10 +20,12 @@ const STATUS_ORDER = [
 
 export default async function AdminCampaignsPage() {
   const [campaignsRaw, products] = await Promise.all([getCampaigns(), getProducts()]);
-  const campaigns = [...campaignsRaw].sort(
-    (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status),
-  );
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+  const groups = STATUS_ORDER.map((status) => ({
+    status,
+    campaigns: campaignsRaw.filter((campaign) => campaign.status === status),
+  })).filter((group) => group.campaigns.length > 0);
 
   return (
     <main className="p-8">
@@ -34,35 +37,42 @@ export default async function AdminCampaignsPage() {
         <thead>
           <tr className="border-b">
             <th className="py-2">Nom</th>
-            <th className="py-2">Statut</th>
             <th className="py-2">Prix indicatif</th>
             <th className="py-2 text-center">Action</th>
           </tr>
         </thead>
         <tbody>
-          {campaigns.map((campaign) => (
-            <tr key={campaign.id} className="border-b">
-              <td className="py-2">
-                <CampaignNameButton campaign={campaign} apiUrl={apiUrl} />
-              </td>
-              <td className="py-2">{campaign.status}</td>
-              <td className="py-2">
-                {campaign.indicativePrice} {campaign.currency}
-              </td>
-              <td className="py-2 text-center">
-                <div className="flex justify-center">
-                  <CampaignNextStatusButton
-                    campaignId={campaign.id}
-                    currentStatus={campaign.status}
-                    apiUrl={apiUrl}
-                  />
-                </div>
-              </td>
-            </tr>
+          {groups.map((group) => (
+            <Fragment key={group.status}>
+              <tr className="border-b bg-[var(--color-bg-muted)]">
+                <td colSpan={3} className="py-1.5 text-xs font-semibold uppercase opacity-70">
+                  {group.status} ({group.campaigns.length})
+                </td>
+              </tr>
+              {group.campaigns.map((campaign) => (
+                <tr key={campaign.id} className="border-b">
+                  <td className="py-2">
+                    <CampaignNameButton campaign={campaign} apiUrl={apiUrl} />
+                  </td>
+                  <td className="py-2">
+                    {campaign.indicativePrice} {campaign.currency}
+                  </td>
+                  <td className="py-2 text-center">
+                    <div className="flex justify-center">
+                      <CampaignNextStatusButton
+                        campaignId={campaign.id}
+                        currentStatus={campaign.status}
+                        apiUrl={apiUrl}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </Fragment>
           ))}
-          {campaigns.length === 0 && (
+          {groups.length === 0 && (
             <tr>
-              <td colSpan={4} className="py-4 text-center opacity-60">
+              <td colSpan={3} className="py-4 text-center opacity-60">
                 Aucune campagne
               </td>
             </tr>
