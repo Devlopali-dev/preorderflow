@@ -1,6 +1,9 @@
 import { getAuditLogs, getSettings } from "@/lib/api";
+import { EmailSettingsForm } from "./email-settings-form";
+import { NtfySettingsForm } from "./ntfy-settings-form";
 
 export default async function SettingsPage() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   const [settings, logs] = await Promise.all([getSettings(), getAuditLogs()]);
 
   return (
@@ -8,29 +11,23 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-semibold">Paramètres</h1>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Email</h2>
-        <div className="card card-body flex flex-col gap-2 text-sm">
-          <p>
-            Canal actif :{" "}
-            <span className={`badge ${settings.email.active ? "badge-success" : "badge-warning"}`}>
-              {settings.email.provider ?? "aucun (console)"}
-            </span>
-          </p>
-          <p className="opacity-70">Expéditeur : {settings.email.from ?? "—"}</p>
-          <p className="opacity-70">
-            Resend : {settings.email.resendConfigured ? "configuré" : "non configuré"} · SMTP :{" "}
-            {settings.email.smtpConfigured ? "configuré" : "non configuré"}
-          </p>
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Email</h2>
+          <span className={`badge ${settings.email.active ? "badge-success" : "badge-warning"}`}>
+            {settings.email.active ? settings.email.provider : "non actif"}
+          </span>
         </div>
+        <EmailSettingsForm settings={settings} apiUrl={apiUrl} />
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Alertes admin (ntfy)</h2>
-        <div className="card card-body text-sm">
+        <div className="mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Alertes admin (ntfy)</h2>
           <span className={`badge ${settings.ntfy.configured ? "badge-success" : "badge-default"}`}>
             {settings.ntfy.configured ? "configuré" : "non configuré"}
           </span>
         </div>
+        <NtfySettingsForm settings={settings} apiUrl={apiUrl} />
       </section>
 
       <section>

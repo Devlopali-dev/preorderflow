@@ -476,6 +476,31 @@ enum AuditAction {
   CUSTOMER_UPDATED
   CUSTOMER_DATA_EXPORTED
   CUSTOMER_ANONYMIZED
+  SETTINGS_UPDATED
+}
+
+// Config email/ntfy éditable depuis /settings — une seule ligne (id fixe),
+// prime sur .env qui reste le bootstrap par défaut si rien n'est configuré
+// ici. Les secrets (clé API, mot de passe SMTP, auth ntfy) sont en clair
+// comme ils l'étaient déjà dans .env — aucune infra de chiffrement dans le
+// projet, protégés par le RBAC ADMIN sur l'écriture et jamais renvoyés en
+// lecture (cf. SettingsController).
+model AppSettings {
+  id              String   @id @default("singleton")
+  emailProvider   String?
+  resendApiKey    String?
+  smtpHost        String?
+  smtpPort        Int?
+  smtpSecure      Boolean  @default(false)
+  smtpUser        String?
+  smtpPassword    String?
+  emailFrom       String?
+  ntfyUrl         String?
+  ntfyTopic       String?
+  ntfyAuth        String?
+  updatedAt       DateTime @updatedAt
+
+  @@map("app_settings")
 }
 
 model AuditLog {

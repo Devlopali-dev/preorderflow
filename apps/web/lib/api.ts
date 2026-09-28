@@ -133,9 +133,13 @@ export interface Settings {
     resendConfigured: boolean;
     smtpConfigured: boolean;
     from: string | null;
+    smtpHost: string | null;
+    smtpPort: number | null;
+    smtpSecure: boolean;
+    smtpUser: string | null;
     active: boolean;
   };
-  ntfy: { configured: boolean };
+  ntfy: { configured: boolean; url: string; topic: string | null };
   templates: string[];
 }
 

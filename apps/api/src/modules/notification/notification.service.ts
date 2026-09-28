@@ -1,17 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
-import { createEmailProvider, EmailProvider } from "./email-provider";
+import { createEmailProviderFromConfig } from "./email-provider";
 import { renderTemplate, TemplatePayloads } from "./notification-templates";
-import { sendNtfyNotification } from "./ntfy-provider";
+import { sendNtfyNotificationWithConfig } from "./ntfy-provider";
+import { SettingsService } from "../settings/settings.service";
 
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
-  private readonly provider: EmailProvider;
 
-  constructor() {
-    this.provider = createEmailProvider();
-  }
+  constructor(private readonly settingsService: SettingsService) {}
 
   async sendEmail<T extends keyof TemplatePayloads>(
     to: string,
@@ -31,7 +29,11 @@ export class NotificationService {
     });
 
     try {
-      const { providerReference } = await this.provider.send(to, subject, html);
+      // Résolu à chaque envoi (pas mis en cache au démarrage) — un
+      // changement de config depuis /settings prend effet immédiatement.
+      const config = await this.settingsService.getEmailConfig();
+      const provider = createEmailProviderFromConfig(config);
+      const { providerReference } = await provider.send(to, subject, html);
       await prisma.notification.update({
         where: { id: notification.id },
         data: { status: "SENT", sentAt: new Date(), payload: { ...payload, providerReference } as object },
@@ -50,7 +52,7 @@ export class NotificationService {
   /**
    * Alerte push admin (ntfy) — canal WEBHOOK distinct de l'email client,
    * pour être notifié en temps réel (nouvelle commande, paiement reçu...)
-   * sans dépendance obligatoire : no-op si PREORDERFLOW_NTFY_TOPIC n'est pas configuré.
+   * sans dépendance obligatoire : no-op si aucun topic n'est configuré.
    */
   async notifyAdmin(title: string, message: string, tags?: string[]) {
     const notification = await prisma.notification.create({
@@ -64,7 +66,8 @@ export class NotificationService {
     });
 
     try {
-      await sendNtfyNotification({ title, message, tags });
+      const config = await this.settingsService.getNtfyConfig();
+      await sendNtfyNotificationWithConfig({ title, message, tags }, config);
       await prisma.notification.update({
         where: { id: notification.id },
         data: { status: "SENT", sentAt: new Date() },

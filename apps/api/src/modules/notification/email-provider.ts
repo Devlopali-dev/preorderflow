@@ -96,3 +96,41 @@ export function createEmailProvider(): EmailProvider {
 
   return new ConsoleEmailProvider();
 }
+
+// Même sélection que createEmailProvider(), mais à partir d'une config déjà
+// résolue (base de données + fallback .env, cf. SettingsService) plutôt que
+// de relire process.env directement — utilisée par NotificationService pour
+// qu'un changement depuis /settings prenne effet sans redémarrer l'API.
+export function createEmailProviderFromConfig(config: {
+  provider: string | null;
+  resendApiKey?: string;
+  smtpHost?: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser?: string;
+  smtpPassword?: string;
+  from: string;
+}): EmailProvider {
+  if (config.provider === "smtp") {
+    if (!config.smtpHost) {
+      return new ConsoleEmailProvider();
+    }
+    return new SmtpEmailProvider(
+      config.smtpHost,
+      config.smtpPort,
+      config.smtpSecure,
+      config.smtpUser,
+      config.smtpPassword,
+      config.from,
+    );
+  }
+
+  if (config.provider === "resend") {
+    if (!config.resendApiKey) {
+      return new ConsoleEmailProvider();
+    }
+    return new ResendEmailProvider(config.resendApiKey, config.from);
+  }
+
+  return new ConsoleEmailProvider();
+}

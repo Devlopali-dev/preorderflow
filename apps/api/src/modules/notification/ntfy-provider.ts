@@ -47,3 +47,31 @@ export async function sendNtfyNotification({ title, message, tags }: NtfyMessage
     throw new Error(`ntfy a répondu ${res.status}`);
   }
 }
+
+// Même logique, mais à partir d'une config déjà résolue (base de données +
+// fallback .env, cf. SettingsService.getNtfyConfig) — utilisée par
+// NotificationService pour qu'un changement depuis /settings prenne effet
+// sans redémarrer l'API.
+export async function sendNtfyNotificationWithConfig(
+  { title, message, tags }: NtfyMessage,
+  config: { url: string; topic?: string; auth?: string },
+): Promise<void> {
+  if (!config.topic) {
+    return;
+  }
+
+  const base = config.url.replace(/\/+$/, "");
+  const res = await fetch(`${base}/${config.topic}`, {
+    method: "POST",
+    headers: {
+      Title: title,
+      ...(tags && tags.length > 0 ? { Tags: tags.join(",") } : {}),
+      ...(config.auth ? { Authorization: `Basic ${Buffer.from(config.auth).toString("base64")}` } : {}),
+    },
+    body: message,
+  });
+
+  if (!res.ok) {
+    throw new Error(`ntfy a répondu ${res.status}`);
+  }
+}
