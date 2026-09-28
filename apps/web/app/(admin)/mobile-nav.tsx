@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { href: "/campaigns", label: "Campagnes" },
   { href: "/orders", label: "Commandes" },
   { href: "/customers", label: "Clients" },
-  { href: "/inventory", label: "Stock" },
+  { href: "/inventory", label: "Produits" },
   { href: "/production", label: "Production" },
   { href: "/shipments", label: "Expéditions" },
 ];

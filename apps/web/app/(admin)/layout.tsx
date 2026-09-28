@@ -12,7 +12,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/campaigns">Campagnes</Link>
           <Link href="/orders">Commandes</Link>
           <Link href="/customers">Clients</Link>
-          <Link href="/inventory">Stock</Link>
+          <Link href="/inventory">Produits</Link>
           <Link href="/production">Production</Link>
           <Link href="/shipments">Expéditions</Link>
         </div>
