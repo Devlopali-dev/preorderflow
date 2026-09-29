@@ -1,4 +1,5 @@
 import { getProductionBatches, getProducts } from "@/lib/api";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { ProductionReferenceButton } from "./production-reference-button";
 import { CreateProductionButton } from "./create-production-button";
 import { ProductionIncrementButtons } from "./production-increment-buttons";
@@ -47,13 +48,17 @@ export default async function ProductionPage() {
 
       <div className="flex flex-col gap-6">
         {groups.map((group) => (
-          <section key={group.status} className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`badge ${BATCH_BADGE[group.status] ?? "badge-default"}`}>
-                {group.status}
-              </span>
-              <span className="table-muted">{group.batches.length}</span>
-            </div>
+          <CollapsibleSection
+            key={group.status}
+            header={
+              <>
+                <span className={`badge ${BATCH_BADGE[group.status] ?? "badge-default"}`}>
+                  {group.status}
+                </span>
+                <span className="table-muted">{group.batches.length}</span>
+              </>
+            }
+          >
             <div className="table-wrapper">
               <table className="table">
                 <thead>
@@ -94,7 +99,7 @@ export default async function ProductionPage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </CollapsibleSection>
         ))}
       </div>
     </main>

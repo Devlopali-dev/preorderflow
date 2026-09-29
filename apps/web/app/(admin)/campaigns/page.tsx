@@ -1,4 +1,5 @@
 import { getCampaigns, getProducts } from "@/lib/api";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { CampaignNameButton } from "./campaign-name-button";
 import { CreateCampaignButton } from "./create-campaign-button";
 import { CampaignNextStatusButton } from "./campaign-next-status-button";
@@ -55,13 +56,17 @@ export default async function AdminCampaignsPage() {
 
       <div className="flex flex-col gap-6">
         {groups.map((group) => (
-          <section key={group.status} className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className={`badge ${STATUS_BADGE[group.status] ?? "badge-default"}`}>
-                {group.status}
-              </span>
-              <span className="table-muted">{group.campaigns.length}</span>
-            </div>
+          <CollapsibleSection
+            key={group.status}
+            header={
+              <>
+                <span className={`badge ${STATUS_BADGE[group.status] ?? "badge-default"}`}>
+                  {group.status}
+                </span>
+                <span className="table-muted">{group.campaigns.length}</span>
+              </>
+            }
+          >
             <div className="table-wrapper">
               <table className="table">
                 <thead>
@@ -96,7 +101,7 @@ export default async function AdminCampaignsPage() {
                 </tbody>
               </table>
             </div>
-          </section>
+          </CollapsibleSection>
         ))}
       </div>
     </main>
