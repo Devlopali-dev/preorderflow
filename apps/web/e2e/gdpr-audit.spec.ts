@@ -59,8 +59,9 @@ test("l'admin peut exporter et anonymiser un client, chaque action est journalis
   ).json();
   expect(orderAfter.shippingAddress.firstName).toBe("Playwright");
 
-  // Chaque action RGPD est dans le journal d'audit
+  // Chaque action RGPD est dans le journal d'audit (section repliée par défaut)
   await page.goto("/settings");
+  await page.getByRole("button", { name: /Journal d'audit/ }).click();
   await expect(page.getByText("CUSTOMER_DATA_EXPORTED").first()).toBeVisible();
   await expect(page.getByText("CUSTOMER_ANONYMIZED").first()).toBeVisible();
   await expect(page.getByText("ORDER_CREATED").first()).toBeVisible();
