@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@preorderflow/ui";
 import type { CustomerSummary, Product } from "@/lib/api";
+import { NoProductNotice } from "@/components/no-product-notice";
 import { OrderCreateModal } from "./order-create-modal";
 
 export function CreateOrderButton({
@@ -15,12 +16,17 @@ export function CreateOrderButton({
   customers: CustomerSummary[];
 }) {
   const [open, setOpen] = useState(false);
+  const [showNotice, setShowNotice] = useState(false);
 
   return (
-    <>
-      <Button variant="primary" onClick={() => setOpen(true)}>
+    <div className="flex flex-col items-end">
+      <Button
+        variant="primary"
+        onClick={() => (products.length === 0 ? setShowNotice(true) : setOpen(true))}
+      >
         Nouvelle commande
       </Button>
+      {showNotice && products.length === 0 && <NoProductNotice what="créer une commande" />}
       {open && (
         <OrderCreateModal
           apiUrl={apiUrl}
@@ -29,6 +35,6 @@ export function CreateOrderButton({
           onClose={() => setOpen(false)}
         />
       )}
-    </>
+    </div>
   );
 }

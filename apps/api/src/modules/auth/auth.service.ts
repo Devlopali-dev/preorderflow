@@ -4,6 +4,7 @@ import * as bcrypt from "bcryptjs";
 import { prisma } from "@preorderflow/database";
 import { LoginDto } from "./dto/login.dto";
 import { SetupDto } from "./dto/setup.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 
 @Injectable()
 export class AuthService {
@@ -57,6 +58,31 @@ export class AuthService {
         lastName: user.lastName,
         role: user.role,
       },
+    };
+  }
+
+  async getProfile(adminId: string) {
+    const user = await prisma.adminUser.findUniqueOrThrow({ where: { id: adminId } });
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    };
+  }
+
+  async updateProfile(adminId: string, dto: UpdateProfileDto) {
+    const user = await prisma.adminUser.update({
+      where: { id: adminId },
+      data: { firstName: dto.firstName, lastName: dto.lastName },
+    });
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
     };
   }
 

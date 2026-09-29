@@ -3,15 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-const NAV_LINKS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/campaigns", label: "Campagnes" },
-  { href: "/orders", label: "Commandes" },
-  { href: "/customers", label: "Clients" },
-  { href: "/inventory", label: "Produits" },
-  { href: "/production", label: "Production" },
-  { href: "/shipments", label: "Expéditions" },
-];
+import { NAV_LINKS } from "./nav-links";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);

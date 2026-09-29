@@ -186,6 +186,23 @@ export async function getSettings(): Promise<Settings> {
   return res.json();
 }
 
+export interface AdminProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "ADMIN" | "OPERATOR";
+}
+
+export async function getAdminProfile(): Promise<AdminProfile> {
+  const res = await fetch(`${API_URL}/api/v1/auth/me`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
+}
+
 export interface NotificationTemplateDetail {
   template: string;
   subject: string;

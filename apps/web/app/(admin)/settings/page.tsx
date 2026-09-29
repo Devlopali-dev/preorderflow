@@ -1,5 +1,6 @@
-import { getAuditLogs, getNotificationTemplates, getSettings } from "@/lib/api";
+import { getAdminProfile, getAuditLogs, getNotificationTemplates, getSettings } from "@/lib/api";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { AdminProfileForm } from "./admin-profile-form";
 import { BusinessInfoForm } from "./business-info-form";
 import { EmailSettingsForm } from "./email-settings-form";
 import { NtfySettingsForm } from "./ntfy-settings-form";
@@ -7,7 +8,8 @@ import { TemplateButton } from "./template-button";
 
 export default async function SettingsPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-  const [settings, logs, templates] = await Promise.all([
+  const [profile, settings, logs, templates] = await Promise.all([
+    getAdminProfile(),
     getSettings(),
     getAuditLogs(),
     getNotificationTemplates(),
@@ -16,6 +18,11 @@ export default async function SettingsPage() {
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 p-8">
       <h1 className="text-2xl font-semibold">Paramètres</h1>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Mon compte</h2>
+        <AdminProfileForm profile={profile} apiUrl={apiUrl} />
+      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Informations</h2>
