@@ -34,6 +34,19 @@ export class AuthService {
       },
     });
 
+    // À la création du premier compte, pré-remplir le mail de contact des
+    // paramètres avec l'email saisi — sans écraser une valeur déjà configurée
+    // (le singleton peut exister sans contactEmail, ex. config par migration).
+    const singleton = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
+    if (!singleton) {
+      await prisma.appSettings.create({ data: { id: "singleton", contactEmail: dto.email } });
+    } else if (!singleton.contactEmail) {
+      await prisma.appSettings.update({
+        where: { id: "singleton" },
+        data: { contactEmail: dto.email },
+      });
+    }
+
     const payload = { sub: user.id, email: user.email, role: user.role };
     return {
       accessToken: this.jwtService.sign(payload),
