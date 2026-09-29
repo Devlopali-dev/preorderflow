@@ -20,10 +20,12 @@ export function OrderActions({
   orderId,
   status,
   apiUrl,
+  onChanged,
 }: {
   orderId: string;
   status: string;
   apiUrl: string;
+  onChanged?: () => void;
 }) {
   const next = NEXT_STATUS[status];
   const cancellable = CANCELLABLE_FROM.includes(status);
@@ -39,6 +41,7 @@ export function OrderActions({
           statusEndpoint={`orders/${orderId}/status`}
           target={next}
           label={`Passer à ${next}`}
+          onChanged={onChanged}
         />
       )}
       {cancellable && (
@@ -48,6 +51,7 @@ export function OrderActions({
           target="CANCELLED"
           label="Annuler"
           danger
+          onChanged={onChanged}
         />
       )}
       {refundable && (
@@ -57,6 +61,7 @@ export function OrderActions({
           target="REFUNDED"
           label="Rembourser"
           danger
+          onChanged={onChanged}
         />
       )}
     </div>

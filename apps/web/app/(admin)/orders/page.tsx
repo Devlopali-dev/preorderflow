@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { getCustomers, getOrders, getProducts } from "@/lib/api";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { CreateOrderButton } from "./create-order-button";
 import { OrderActions } from "./order-actions";
+import { OrderRowButton } from "./order-row-button";
 
 const ORDER_STATUSES = [
   "DRAFT",
@@ -94,9 +94,7 @@ export default async function OrdersPage() {
                   {group.orders.map((order) => (
                     <tr key={order.id}>
                       <td>
-                        <Link href={`/orders/${order.id}`} className="btn-link">
-                          {order.number}
-                        </Link>
+                        <OrderRowButton orderId={order.id} label={order.number} apiUrl={apiUrl} />
                       </td>
                       <td>
                         {order.customer.firstName} {order.customer.lastName}

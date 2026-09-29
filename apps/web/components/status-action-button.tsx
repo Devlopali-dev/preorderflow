@@ -16,12 +16,14 @@ export function StatusActionButton({
   target,
   label,
   danger,
+  onChanged,
 }: {
   apiUrl: string;
   statusEndpoint: string;
   target: string;
   label: string;
   danger?: boolean;
+  onChanged?: () => void;
 }) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -40,6 +42,7 @@ export function StatusActionButton({
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       setConfirmOpen(false);
       router.refresh();
+      onChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
