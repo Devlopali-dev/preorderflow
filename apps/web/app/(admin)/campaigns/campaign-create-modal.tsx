@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Product } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { slugify } from "@/lib/slugify";
 
 export function CampaignCreateModal({
   apiUrl,
@@ -18,6 +19,8 @@ export function CampaignCreateModal({
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  // Tant que le slug n'a pas été modifié à la main, il suit le nom.
+  const [slugEdited, setSlugEdited] = useState(false);
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [indicativePrice, setIndicativePrice] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -73,7 +76,10 @@ export function CampaignCreateModal({
           <Input
             placeholder="Nom"
             value={name}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setName(e.target.value);
+              if (!slugEdited) setSlug(slugify(e.target.value));
+            }}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
@@ -81,7 +87,10 @@ export function CampaignCreateModal({
           <Input
             placeholder="Slug"
             value={slug}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSlug(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setSlugEdited(true);
+              setSlug(e.target.value);
+            }}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
