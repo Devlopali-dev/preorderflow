@@ -8,16 +8,24 @@
 /* Titres en bleu (--color-primary-text) plutôt qu'en noir (--color-text
    hérité du body) — s'adapte automatiquement au dark mode comme le reste
    des tokens. */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   color: var(--color-primary-text);
 }
 
-/* StatCard n'accepte pas de className propre (packages/ui) — le hover
-   du lien passe donc par la carte descendante plutôt que .card-hover. */
 .dashboard-card-link {
   display: block;
 }
+/* Le `a:hover` global (tokens.css) souligne le texte — on le neutralise
+   sur les cartes du dashboard uniquement. */
+.dashboard-card-link:hover {
+  text-decoration: none;
+}
+/* Fond clair au survol de la carte du dashboard. */
+.dashboard-card-link .card {
+  transition: background var(--duration-slow) var(--ease-default);
+}
 .dashboard-card-link:hover .card {
-  box-shadow: var(--shadow-md);
-  border-color: var(--color-border-strong);
+  background: var(--color-bg-subtle);
 }
