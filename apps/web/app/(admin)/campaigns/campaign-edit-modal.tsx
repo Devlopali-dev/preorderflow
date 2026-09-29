@@ -30,6 +30,7 @@ export function CampaignEditModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
@@ -145,6 +146,7 @@ export function CampaignEditModal({
       isOpen
       onClose={onClose}
       title="Paramétrer la campagne"
+      size="lg"
       footer={
         <>
           <Button variant="danger" onClick={() => setConfirmDeleteOpen(true)}>
@@ -197,18 +199,17 @@ export function CampaignEditModal({
         <div className="flex flex-col gap-2 text-sm">
           <span className="form-label">Aperçus ({media.length}/5)</span>
           {media.length > 0 && (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {media.map((item) => (
                 <div key={item.id} className="relative overflow-hidden rounded">
                   {item.type === "DOCUMENT" ? (
-                    <a
-                      href={`${apiUrl}${item.url}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => setPreviewPdfUrl(`${apiUrl}${item.url}`)}
                       className={
                         item.thumbnailUrl
-                          ? "block overflow-hidden"
-                          : "flex aspect-[3/4] items-center justify-center bg-bg-subtle p-2 text-center text-xs"
+                          ? "block w-full overflow-hidden"
+                          : "flex aspect-[3/4] w-full items-center justify-center bg-bg-subtle p-2 text-center text-xs"
                       }
                     >
                       {item.thumbnailUrl ? (
@@ -220,7 +221,7 @@ export function CampaignEditModal({
                       ) : (
                         "PDF"
                       )}
-                    </a>
+                    </button>
                   ) : (
                     <img
                       src={`${apiUrl}${item.url}`}
@@ -267,6 +268,11 @@ export function CampaignEditModal({
           onConfirm={handleDelete}
           onCancel={() => setConfirmDeleteOpen(false)}
         />
+      )}
+      {previewPdfUrl && (
+        <Modal isOpen onClose={() => setPreviewPdfUrl(null)} title="Aperçu du PDF" size="xl">
+          <iframe src={previewPdfUrl} title="Aperçu du PDF" className="h-[75vh] w-full" />
+        </Modal>
       )}
     </Modal>
   );
