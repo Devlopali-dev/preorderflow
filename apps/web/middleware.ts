@@ -24,11 +24,29 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get(AUTH_COOKIE_NAME)?.value;
   if (!token) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(loginUrl);
+    return redirectToLoginOrSetup(request, pathname);
   }
   return NextResponse.next();
+}
+
+// Premier lancement (aucun AdminUser en base) : renvoyer vers /login serait
+// une impasse (aucun identifiant ne fonctionnera jamais) — on vérifie donc
+// /auth/setup-status avant de choisir la destination. Si l'appel échoue
+// (API indisponible), on retombe sur /login, comportement inchangé.
+async function redirectToLoginOrSetup(request: NextRequest, pathname: string) {
+  const apiUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  try {
+    const res = await fetch(`${apiUrl}/api/v1/auth/setup-status`, { cache: "no-store" });
+    const { needsSetup } = await res.json();
+    if (needsSetup) {
+      return NextResponse.redirect(new URL("/setup", request.url));
+    }
+  } catch {
+    // API indisponible — on tente quand même /login ci-dessous.
+  }
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("from", pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

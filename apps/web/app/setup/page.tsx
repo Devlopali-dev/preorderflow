@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
-import { LoginForm } from "./login-form";
+import { SetupForm } from "./setup-form";
 
-export default async function LoginPage() {
+export default async function SetupPage() {
   const apiUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   const res = await fetch(`${apiUrl}/api/v1/auth/setup-status`, { cache: "no-store" });
   const { needsSetup } = await res.json();
 
-  // Aucun admin encore créé : /login ne peut mener à rien, direction /setup.
-  if (needsSetup) {
-    redirect("/setup");
+  // Un admin existe déjà : /setup ne sert plus à rien, direction /login.
+  if (!needsSetup) {
+    redirect("/login");
   }
 
-  return <LoginForm />;
+  return <SetupForm />;
 }

@@ -13,6 +13,12 @@
 
 - Admin : mot de passe hashé (bcrypt), session JWT, cookies `httpOnly` + `secure` en production.
 - Client : magic link à usage unique et expiration courte (`MAGIC_LINK_EXPIRES_IN`).
+- Premier lancement : `GET /auth/setup-status` (`{ needsSetup }`, public) et `POST /auth/setup`
+  (public, même throttle que `/login`) permettent de créer le tout premier compte `ADMIN` tant
+  qu'aucun `AdminUser` n'existe en base. `/setup` se ferme définitivement dès la création du
+  premier admin (`needsSetup` passe à `false`, l'endpoint renvoie alors `409 Conflict`). Le
+  middleware web (`middleware.ts`) redirige vers `/setup` plutôt que `/login` tant que
+  `needsSetup` est vrai, pour éviter une page de connexion sans identifiants possibles.
 
 ## Protections réseau
 
