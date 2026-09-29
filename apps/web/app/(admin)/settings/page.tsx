@@ -1,4 +1,5 @@
 import { getAuditLogs, getNotificationTemplates, getSettings } from "@/lib/api";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { BusinessInfoForm } from "./business-info-form";
 import { EmailSettingsForm } from "./email-settings-form";
 import { NtfySettingsForm } from "./ntfy-settings-form";
@@ -53,8 +54,10 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Journal d'audit</h2>
+      <CollapsibleSection
+        defaultOpen={false}
+        header={<h2 className="text-lg font-semibold">Journal d&apos;audit</h2>}
+      >
         {logs.length === 0 ? (
           <div className="card card-body text-center text-sm opacity-60">
             Aucune action enregistrée
@@ -87,7 +90,7 @@ export default async function SettingsPage() {
             </table>
           </div>
         )}
-      </section>
+      </CollapsibleSection>
     </main>
   );
 }
