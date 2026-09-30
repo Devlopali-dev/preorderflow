@@ -93,7 +93,10 @@ Règle de dépendance : `Order` référence `ProductVariant`/`Customer` par id u
 Une campagne vend un produit ; un produit peut se décliner en couleurs. L'unité vendable et stockable est la **variante** (`ProductVariant`), pas le produit : stock, lignes de commande, lots de production et intérêts référencent tous la variante.
 
 - `Color` est une palette globale gérée dans `/settings` (nom + pastille `#rrggbb`), réutilisable par tous les produits. Une couleur se supprime tant qu'aucune variante ne l'utilise (l'API refuse sinon, il faut alors la désactiver) ; une couleur inactive reste listée, en italique avec un badge d'avertissement.
-- Tout produit a au moins une variante. Un produit sans couleur a une variante par défaut (`colorId = null`, SKU du produit), créée avec lui. Ajouter une première couleur retire cette variante par défaut si rien ne la référence encore.
+- Un produit sans couleur a une variante **Standard** (`colorId = null`, SKU du produit), créée avec lui. Ajouter une première couleur retire le Standard si rien ne le référence encore.
+- **Désactiver une couleur la retire** : la variante est supprimée si elle ne porte aucun historique (stock, réservé et disponible nuls, et aucun mouvement, commande, lot de production ni intérêt). Sinon elle reste, marquée inactive, et peut être réactivée. Ce critère s'appuie sur les références plutôt que sur le seul stock : une variante à stock nul peut avoir des commandes passées, et la base interdit de la supprimer.
+- **Pas de couleur = Standard** : quand un produit n'a plus de variante active, la variante Standard est créée ou réactivée. Elle ne se désactive jamais (l'API refuse). Un produit garde donc toujours une variante active, sans que ce soit une contrainte pour l'admin.
+- Le **slug** d'un produit n'est pas saisi : il est généré depuis le nom (`nom-du-produit`, suffixe `-2`, `-3`… en cas de doublon). Le **SKU** se propose depuis le nom dans l'interface et reste modifiable.
 - Une campagne propose toutes les variantes **actives** de son produit. La page publique reçoit id + couleur, jamais de SKU ni de stock.
 - Une personne peut demander plusieurs couleurs avec un seul consentement : `CampaignInterest` porte une ligne `CampaignInterestItem` par couleur. Sa quantité totale est dérivée (somme des lignes), jamais stockée.
 - `@@unique([productId, colorId])` ne protège pas la variante par défaut (PostgreSQL traite deux `NULL` comme distincts) : l'unicité de la variante sans couleur est garantie par le service produit.
@@ -258,12 +261,12 @@ POST   /api/v1/campaigns/:id/interests          # public, rate-limited — items
 GET    /api/v1/campaigns/:id/statistics         # + ventilation par couleur (byVariant)
 
 GET    /api/v1/products                         # public — inclut les variantes
-POST   /api/v1/products                         # crée aussi la variante par défaut
+POST   /api/v1/products                         # crée aussi la variante Standard ; slug facultatif (généré)
 GET    /api/v1/products/:id                     # public
 PATCH  /api/v1/products/:id
 PATCH  /api/v1/products/:id/archive             # active=false, jamais de suppression réelle
 POST   /api/v1/products/:id/variants            # {colorId} — ajoute une couleur de la palette
-PATCH  /api/v1/products/:id/variants/:variantId # {active} — jamais de suppression, garde ≥ 1 variante active
+PATCH  /api/v1/products/:id/variants/:variantId # {active} — false retire la couleur (ou la laisse inactive si historique) ; Standard jamais désactivable
 
 GET    /api/v1/colors                           # palette globale
 POST   /api/v1/colors                           # ADMIN uniquement — {name, hex}
@@ -285,7 +288,7 @@ PATCH  /api/v1/orders/:id/status
 POST   /api/v1/orders/:id/payments
 
 GET    /api/v1/production/batches
-POST   /api/v1/production/batches               # items: [{variantId, quantityPlanned}]
+POST   /api/v1/production/batches               # items: [{variantId, quantityPlanned}] ; reference facultative (défaut : nom-AAAAMMJJ, #1, #2… si doublon)
 PATCH  /api/v1/production/batches/:id           # référence/notes/quantités prévues — PLANNED uniquement
 POST   /api/v1/production/batches/:id/start
 POST   /api/v1/production/batches/:id/complete

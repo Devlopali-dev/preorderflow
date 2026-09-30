@@ -34,18 +34,32 @@ function apiLogSources(): Array<() => string> {
   return sources;
 }
 
-function extractLatestMagicLinkToken(): string {
+// Tous les liens magiques journalisés, dans l'ordre, depuis la première source
+// disponible qui en contient.
+function readMagicLinkTokens(): string[] {
   for (const readLog of apiLogSources()) {
     try {
-      const matches = [...readLog().matchAll(/token=([A-Za-z0-9._-]+)/g)];
-      const last = matches.at(-1);
-      if (last) return last[1];
+      const tokens = [...readLog().matchAll(/token=([A-Za-z0-9._-]+)/g)].map((m) => m[1]);
+      if (tokens.length > 0) return tokens;
     } catch {
       // Source indisponible (pas de Docker, fichier absent) : essayer la suivante.
     }
   }
+  return [];
+}
+
+// Le log s'écrit après la réponse de l'API (et `docker compose logs` a un léger
+// retard) : lire « le dernier lien » tout de suite risquait de prendre un
+// ancien lien déjà consommé. On attend qu'un lien absent de `known` apparaisse.
+async function waitForNewMagicLinkToken(known: Set<string>): Promise<string> {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const fresh = readMagicLinkTokens().filter((token) => !known.has(token));
+    if (fresh.length > 0) return fresh[fresh.length - 1]!;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
   throw new Error(
-    "Aucun lien magique trouvé dans les logs de l'API (PREORDERFLOW_API_LOG_PATH, conteneur Docker `api` ou api-debug.log)",
+    "Aucun nouveau lien magique dans les logs de l'API (PREORDERFLOW_API_LOG_PATH, conteneur Docker `api` ou api-debug.log)",
   );
 }
 
@@ -55,14 +69,15 @@ test("un client peut se connecter par magic link et voir ses commandes, isolées
 }) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
-  // 1. Demande de lien
+  // 1. Demande de lien (on note les liens déjà journalisés pour reconnaître le nouveau)
+  const knownTokens = new Set(readMagicLinkTokens());
   await page.goto("/mon-compte/connexion");
   await page.getByLabel("Email").fill("client3@example.com");
   await page.getByRole("button", { name: "Recevoir mon lien de connexion" }).click();
   await expect(page.getByText(/Vérifiez vos emails/)).toBeVisible();
 
   // 2. Récupération du token (boîte mail de test) et vérification
-  const token = extractLatestMagicLinkToken();
+  const token = await waitForNewMagicLinkToken(knownTokens);
   await page.goto(`/mon-compte/verifier?token=${token}`);
   await expect(page).toHaveURL(/\/mon-compte$/);
   await expect(page.getByRole("heading", { name: "Mes commandes" })).toBeVisible();

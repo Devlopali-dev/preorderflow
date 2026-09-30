@@ -2,15 +2,7 @@
 // suffixe `#1`, `#2`… quand la même référence existe déjà (plusieurs lots du
 // même produit le même jour).
 
-// « Stylo à bille » -> « stylo-a-bille » : minuscules, sans accents, tirets.
-export function slugifyName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+import { slugifyName } from "../../common/slug";
 
 // Date en UTC (la base est en UTC), au format AAAAMMJJ.
 export function formatDateStamp(date: Date): string {

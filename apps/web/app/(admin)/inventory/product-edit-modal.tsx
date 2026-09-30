@@ -207,6 +207,10 @@ export function ProductEditModal({
         </label>
         <div className="flex flex-col gap-2 text-sm">
           <span>Couleurs</span>
+          <p className="text-xs opacity-60">
+            Désactiver une couleur la retire. Elle reste visible en inactive tant qu&apos;elle a du
+            stock ou de l&apos;historique (commandes, production, recensement).
+          </p>
           <ul className="flex flex-col gap-1">
             {variants.map((variant) => (
               <li key={variant.id} className="flex items-center justify-between gap-2">

@@ -27,8 +27,12 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
   await page.goto("/inventory");
   await page.getByRole("button", { name: "Nouveau produit" }).click();
 
-  await page.getByLabel("SKU").fill(sku);
+  // Le slug n'est plus saisi, et le SKU se propose depuis le nom.
+  await expect(page.getByLabel("Slug")).toHaveCount(0);
   await page.getByLabel("Nom", { exact: true }).fill(name);
+  await expect(page.getByLabel("SKU")).toHaveValue(`PRODUIT-UI-${stamp}`);
+  await page.getByLabel("SKU").fill(sku);
+  await page.getByLabel("Description (optionnel)").fill("Créé par le test de la page produits");
   await page.getByLabel("Prix").fill("9.90");
   await page.getByLabel("Photo (optionnel)").setInputFiles({
     name: "photo.png",

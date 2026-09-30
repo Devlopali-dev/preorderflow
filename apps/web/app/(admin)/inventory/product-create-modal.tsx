@@ -17,9 +17,9 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   const router = useRouter();
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  // Tant que le slug n'a pas été modifié à la main, il suit le nom.
-  const [slugEdited, setSlugEdited] = useState(false);
+  // Tant que le SKU n'a pas été modifié à la main, il se propose depuis le nom.
+  // Le slug n'est plus saisi : l'API le génère depuis le nom.
+  const [skuEdited, setSkuEdited] = useState(false);
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
@@ -67,7 +67,6 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
           body: JSON.stringify({
             sku,
             name,
-            slug,
             price: Number(price),
             description: description.trim() || undefined,
           }),
@@ -136,15 +135,6 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
     >
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          SKU
-          <Input
-            placeholder="SKU"
-            value={sku}
-            disabled={Boolean(createdProductId)}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSku(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
           Nom
           <Input
             placeholder="Nom"
@@ -152,19 +142,19 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
             disabled={Boolean(createdProductId)}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setName(e.target.value);
-              if (!slugEdited) setSlug(slugify(e.target.value));
+              if (!skuEdited) setSku(slugify(e.target.value).toUpperCase());
             }}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Slug
+          SKU
           <Input
-            placeholder="Slug"
-            value={slug}
+            placeholder="SKU"
+            value={sku}
             disabled={Boolean(createdProductId)}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              setSlugEdited(true);
-              setSlug(e.target.value);
+              setSkuEdited(true);
+              setSku(e.target.value);
             }}
           />
         </label>

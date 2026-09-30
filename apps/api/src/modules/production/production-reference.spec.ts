@@ -3,19 +3,7 @@ import {
   formatDateStamp,
   nextAvailableReference,
   productionReferenceBase,
-  slugifyName,
 } from "./production-reference";
-
-describe("slugifyName", () => {
-  it("met en minuscules, retire les accents et remplace les séparateurs par des tirets", () => {
-    expect(slugifyName("Stylo à bille")).toBe("stylo-a-bille");
-    expect(slugifyName("  Gourde inox 500ml !  ")).toBe("gourde-inox-500ml");
-  });
-
-  it("renvoie une chaîne vide quand il ne reste rien", () => {
-    expect(slugifyName("—")).toBe("");
-  });
-});
 
 describe("formatDateStamp", () => {
   it("formate en AAAAMMJJ sur la date UTC", () => {

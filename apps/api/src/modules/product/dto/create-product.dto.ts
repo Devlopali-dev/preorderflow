@@ -10,9 +10,13 @@ export class CreateProductDto {
   @IsString()
   name!: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false,
+    description: "Facultatif : généré depuis le nom, unique (suffixe -2, -3… en cas de doublon).",
+  })
+  @IsOptional()
   @IsString()
-  slug!: string;
+  slug?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
