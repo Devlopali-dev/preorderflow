@@ -4,6 +4,7 @@ import { ProductionService } from "./production.service";
 import {
   CompleteProductionBatchDto,
   CreateProductionBatchDto,
+  DecrementProductionDto,
   UpdateProductionBatchDto,
 } from "./dto/create-production-batch.dto";
 import { AuditService } from "../audit/audit.service";
@@ -58,6 +59,23 @@ export class ProductionController {
         reference: batch.reference,
       });
     }
+    return batch;
+  }
+
+  // Corrige une production en cours : retire des unités déclarées produites,
+  // avec un mouvement de stock négatif (le stock reste dérivé des mouvements).
+  @Post(":id/decrement")
+  async decrement(
+    @Param("id") id: string,
+    @Body() dto: DecrementProductionDto,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const { batch, movement } = await this.productionService.decrement(id, dto);
+    await this.auditService.log(adminId, "INVENTORY_ADJUSTED", "InventoryMovement", movement.id, {
+      reference: batch.reference,
+      quantity: movement.quantity,
+      reason: movement.reason,
+    });
     return batch;
   }
 }

@@ -3,8 +3,10 @@ import { prisma } from "@preorderflow/database";
 import {
   CompleteProductionBatchDto,
   CreateProductionBatchDto,
+  DecrementProductionDto,
   UpdateProductionBatchDto,
 } from "./dto/create-production-batch.dto";
+import { assertCanDecrement, InvalidDecrementError } from "./production-decrement";
 import {
   assertValidProductionTransition,
   computeCompletionStatus,
@@ -197,6 +199,69 @@ export class ProductionService {
         data: { status: finalStatus, completedAt: new Date() },
         include: { items: true },
       });
+    });
+  }
+
+  /**
+   * Corrige une production : retire des unités déjà déclarées produites (erreur
+   * de saisie, casse). Le stock étant dérivé des mouvements, l'historique n'est
+   * jamais réécrit : la correction ajoute un mouvement négatif, dans la même
+   * transaction que la baisse de quantité (jamais l'un sans l'autre, comme à
+   * la fin d'un lot). Le statut du lot ne change pas.
+   */
+  async decrement(id: string, dto: DecrementProductionDto) {
+    const batch = await this.getById(id);
+    const item = batch.items.find((i) => i.id === dto.productionItemId);
+    if (!item) {
+      throw new BadRequestException(`Ligne de production "${dto.productionItemId}" introuvable`);
+    }
+    const quantity = dto.quantity ?? 1;
+
+    return prisma.$transaction(async (tx) => {
+      const stock = await tx.inventoryMovement.aggregate({
+        where: { variantId: item.variantId },
+        _sum: { quantity: true },
+      });
+      try {
+        assertCanDecrement({
+          status: batch.status,
+          quantityProduced: item.quantityProduced,
+          quantity,
+          physicalStock: stock._sum.quantity ?? 0,
+        });
+      } catch (error) {
+        if (error instanceof InvalidDecrementError) {
+          throw new BadRequestException(error.message);
+        }
+        throw error;
+      }
+
+      // Atomique : deux corrections simultanées ne retirent jamais plus que ce
+      // qui a été produit.
+      const updated = await tx.productionItem.updateMany({
+        where: { id: item.id, quantityProduced: { gte: quantity } },
+        data: { quantityProduced: { decrement: quantity } },
+      });
+      if (updated.count === 0) {
+        throw new BadRequestException("La quantité produite a changé : réessayez");
+      }
+
+      const movement = await tx.inventoryMovement.create({
+        data: {
+          variantId: item.variantId,
+          quantity: -quantity,
+          type: "ADJUSTMENT_OUT",
+          referenceType: "PRODUCTION_BATCH",
+          referenceId: batch.id,
+          reason: `Correction production ${batch.reference}`,
+        },
+      });
+
+      const updatedBatch = await tx.productionBatch.findUniqueOrThrow({
+        where: { id: batch.id },
+        include: { items: { include: PRODUCTION_ITEM_INCLUDE } },
+      });
+      return { batch: updatedBatch, movement };
     });
   }
 

@@ -97,3 +97,16 @@ export class CompleteProductionBatchDto {
   @Type(() => CompleteProductionItemDto)
   items!: CompleteProductionItemDto[];
 }
+
+// Correction d'une production : retire des unités déjà déclarées produites.
+export class DecrementProductionDto {
+  @ApiProperty()
+  @IsUUID()
+  productionItemId!: string;
+
+  @ApiProperty({ required: false, default: 1, description: "Unités à retirer (1 par défaut)" })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  quantity?: number;
+}

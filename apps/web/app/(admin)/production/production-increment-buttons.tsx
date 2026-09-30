@@ -44,8 +44,36 @@ export function ProductionIncrementButtons({
     }
   }
 
+  // Retire 1 unité déclarée produite (erreur de saisie, casse) : l'API ajoute un
+  // mouvement de stock négatif, l'historique n'est jamais réécrit.
+  async function decrement() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/production/batches/${batch.id}/decrement`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify({ productionItemId: item.id, quantity: 1 }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="flex items-center gap-1">
+      <Button
+        variant="secondary"
+        aria-label="Décrémenter de 1"
+        disabled={saving || item.quantityProduced <= 0}
+        onClick={decrement}
+      >
+        −1
+      </Button>
       <Button variant="secondary" disabled={saving || atMax} onClick={() => increment(1)}>
         +1
       </Button>

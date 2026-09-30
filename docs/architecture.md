@@ -237,6 +237,16 @@ PLANNED/IN_PROGRESS → CANCELLED
 
 Passage à `COMPLETED` ou `PARTIALLY_COMPLETED` : déclenche dans une transaction SQL la création des `InventoryMovement` (type `PRODUCTION`) pour chaque `ProductionItem.quantityProduced > 0`.
 
+**Référence.** Facultative à la création : à défaut, `nom-AAAAMMJJ` (nom du premier produit, date UTC), suffixée `#1`, `#2`… en cas de doublon. Générée sous verrou consultatif ; une référence saisie déjà prise est refusée (400).
+
+**Correction (`POST /production/batches/:id/decrement`).** Retire des unités déjà déclarées produites (erreur de saisie, casse). Le stock étant dérivé des mouvements, l'historique n'est jamais réécrit : la baisse de `quantityProduced` et un mouvement négatif (`ADJUSTMENT_OUT`, référencé sur le lot) sont écrits dans la même transaction. Règles, vérifiées côté API :
+
+- uniquement sur un lot `IN_PROGRESS` ou `PARTIALLY_COMPLETED` (un lot terminé est clos) ;
+- pas plus que la quantité déjà produite sur la ligne (baisse atomique : deux corrections simultanées ne peuvent pas la dépasser) ;
+- le stock physique de la variante ne doit jamais passer sous zéro (unités déjà sorties du stock : refus).
+
+Le statut du lot ne change pas (la machine à états ne prévoit pas de retour en arrière). L'action est tracée (`INVENTORY_ADJUSTED`).
+
 ### 4.5 Shipment.status
 
 ```text
@@ -303,6 +313,7 @@ POST   /api/v1/production/batches               # items: [{variantId, quantityPl
 PATCH  /api/v1/production/batches/:id           # référence/notes/quantités prévues — PLANNED uniquement
 POST   /api/v1/production/batches/:id/start
 POST   /api/v1/production/batches/:id/complete
+POST   /api/v1/production/batches/:id/decrement # {productionItemId, quantity?=1} — corrige un lot en cours (mouvement négatif)
 
 GET    /api/v1/inventory                        # par produit : stock total + détail par variante
 GET    /api/v1/inventory/:variantId/movements
