@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   prisma,
+  Prisma,
   OrderStatus,
   OrderPaymentStatus,
   OrderFulfillmentStatus,
@@ -67,9 +68,12 @@ export class OrderService {
 
     const totals = computeOrderTotals(lines, dto.shippingAmount ?? 0);
     const billingAddress = dto.billingAddress ?? dto.shippingAddress;
-    const orderNumber = await this.generateOrderNumber();
 
     const order = await prisma.$transaction(async (tx) => {
+      // Le numéro est calculé dans la même transaction que l'insertion, sous
+      // verrou : deux créations simultanées ne peuvent plus lire le même MAX.
+      const orderNumber = await this.generateOrderNumber(tx);
+
       const customer = await tx.customer.upsert({
         where: { email: dto.customerEmail },
         update: {
@@ -185,10 +189,16 @@ export class OrderService {
   // Basé sur le MAX de la séquence existante, pas un COUNT() : après une
   // suppression (tests, annulation nettoyée manuellement), un COUNT()
   // aurait régénéré un numéro déjà pris par une commande restante.
-  private async generateOrderNumber(): Promise<string> {
+  //
+  // Doit être appelé dans la transaction qui insère la commande : le verrou
+  // consultatif est pris jusqu'au commit, donc la commande suivante voit le
+  // numéro déjà inséré. Sans lui, le MAX lu par deux requêtes concurrentes
+  // est identique et la seconde échoue sur l'unicité de `number` (500).
+  private async generateOrderNumber(tx: Prisma.TransactionClient): Promise<string> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('order_number'))`;
     const year = new Date().getUTCFullYear();
     const prefix = `${year}-`;
-    const last = await prisma.order.findFirst({
+    const last = await tx.order.findFirst({
       where: { number: { startsWith: prefix } },
       orderBy: { number: "desc" },
       select: { number: true },
