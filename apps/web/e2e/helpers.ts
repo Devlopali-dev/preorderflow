@@ -6,12 +6,30 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 // un Bearer token depuis la phase auth — nécessaire pour tout appel direct
 // à l'API NestJS depuis un test (setup de données), en plus du cookie posé
 // pour la navigation dans les pages admin.
-export async function getAdminToken(request: APIRequestContext): Promise<string> {
-  const res = await request.post(`${API_URL}/api/v1/auth/login`, {
-    data: { email: "admin@preorderflow.dev", password: "password123" },
+//
+// Un seul jeton par worker Playwright : l'API limite le login à 10 requêtes par
+// minute et par IP (protection brute-force) et chaque spec se reconnectait, ce
+// qui faisait échouer la suite dès qu'elle dépassait ce seuil. Le module reste
+// chargé pendant toute la vie d'un worker, donc le jeton est réutilisé par
+// tous ses tests. Le login lui-même est testé dans auth.spec.ts (via l'UI).
+let adminTokenPromise: Promise<string> | undefined;
+
+export function getAdminToken(request: APIRequestContext): Promise<string> {
+  adminTokenPromise ??= (async () => {
+    const res = await request.post(`${API_URL}/api/v1/auth/login`, {
+      data: { email: "admin@preorderflow.dev", password: "password123" },
+    });
+    if (!res.ok()) {
+      throw new Error(`Connexion admin impossible (${res.status()})`);
+    }
+    const { accessToken } = await res.json();
+    return accessToken as string;
+  })().catch((error) => {
+    // Ne pas garder un échec en cache : le test suivant doit pouvoir réessayer.
+    adminTokenPromise = undefined;
+    throw error;
   });
-  const { accessToken } = await res.json();
-  return accessToken;
+  return adminTokenPromise;
 }
 
 export function authHeader(token: string): { Authorization: string } {
