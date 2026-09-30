@@ -10,6 +10,7 @@ import {
   computeCompletionStatus,
   InvalidProductionTransitionError,
 } from "./production-status";
+import { nextAvailableReference, productionReferenceBase } from "./production-reference";
 
 // Une ligne de production cible une variante (couleur) ; on charge aussi le
 // produit et la couleur pour l'affichage (« Stylo — Rouge »).
@@ -39,24 +40,54 @@ export class ProductionService {
     const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
     const variants = await prisma.productVariant.findMany({
       where: { id: { in: variantIds }, active: true },
-      select: { id: true },
+      select: { id: true, product: { select: { name: true } } },
     });
     if (variants.length !== variantIds.length) {
       throw new BadRequestException("Une ou plusieurs variantes sont introuvables ou inactives");
     }
 
-    return prisma.productionBatch.create({
-      data: {
-        reference: dto.reference,
-        notes: dto.notes,
-        items: {
-          create: dto.items.map((item) => ({
-            variantId: item.variantId,
-            quantityPlanned: item.quantityPlanned,
-          })),
+    const explicitReference = dto.reference?.trim() || undefined;
+    if (
+      explicitReference &&
+      (await prisma.productionBatch.findUnique({
+        where: { reference: explicitReference },
+        select: { id: true },
+      }))
+    ) {
+      throw new BadRequestException(`La référence "${explicitReference}" existe déjà`);
+    }
+    const firstVariant = variants.find((v) => v.id === dto.items[0]!.variantId)!;
+
+    return prisma.$transaction(async (tx) => {
+      let reference = explicitReference;
+      if (!reference) {
+        // Référence automatique nom-AAAAMMJJ (+ #1, #2… en cas de doublon).
+        // Sous verrou : deux lots créés en même temps ne prennent pas la même.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('production_reference'))`;
+        const base = productionReferenceBase(firstVariant.product.name, new Date());
+        const existing = await tx.productionBatch.findMany({
+          where: { reference: { startsWith: base } },
+          select: { reference: true },
+        });
+        reference = nextAvailableReference(
+          base,
+          existing.map((batch) => batch.reference),
+        );
+      }
+
+      return tx.productionBatch.create({
+        data: {
+          reference,
+          notes: dto.notes,
+          items: {
+            create: dto.items.map((item) => ({
+              variantId: item.variantId,
+              quantityPlanned: item.quantityPlanned,
+            })),
+          },
         },
-      },
-      include: { items: true },
+        include: { items: true },
+      });
     });
   }
 

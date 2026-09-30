@@ -37,7 +37,7 @@ export function ProductionCreateModal({
         method: "POST",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({
-          reference,
+          reference: reference.trim() || undefined,
           items: [{ variantId, quantityPlanned: Number(quantityPlanned) }],
         }),
       });
@@ -69,9 +69,9 @@ export function ProductionCreateModal({
     >
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          Référence
+          Référence (optionnel)
           <Input
-            placeholder="Référence"
+            placeholder="Automatique : nom du produit + date (nom-AAAAMMJJ)"
             value={reference}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setReference(e.target.value)}
           />

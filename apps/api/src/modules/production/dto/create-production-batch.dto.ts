@@ -23,9 +23,14 @@ export class ProductionBatchItemDto {
 }
 
 export class CreateProductionBatchDto {
-  @ApiProperty()
+  @ApiProperty({
+    required: false,
+    description:
+      "Référence du lot. Si absente : nom du premier produit + date (nom-AAAAMMJJ), suffixée #1, #2… en cas de doublon.",
+  })
+  @IsOptional()
   @IsString()
-  reference!: string;
+  reference?: string;
 
   @ApiProperty({ type: [ProductionBatchItemDto] })
   @IsArray()
