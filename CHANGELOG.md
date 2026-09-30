@@ -7,6 +7,25 @@ correctifs.
 
 ## [Non publié]
 
+## [0.5.0] — 2026-09-30
+
+### Ajouté
+
+- **Clients complets** : à la création comme à la modification, toutes les informations sont
+  saisissables — email, identité, téléphone et carnet d'adresses (facturation et livraison, société,
+  complément, téléphone). La modale de détail d'un client gagne un mode « Modifier » et affiche
+  l'adresse complète.
+
+### Modifié
+
+- `POST /customers` accepte `addresses[]` ; `PATCH /customers/:id` accepte aussi `email` et
+  `addresses[]` (carnet synchronisé en une transaction : adresses avec `id` mises à jour, sans `id`
+  créées, absentes supprimées).
+- Un client anonymisé n'est plus modifiable (400).
+- L'audit de `PATCH /customers/:id` n'enregistre plus les valeurs modifiées (nom, email, adresses),
+  seulement les champs touchés (`fieldsChanged`) : ce sont des données personnelles qui survivraient
+  à une anonymisation.
+
 ## [0.4.0] — 2026-09-30
 
 ### Ajouté
