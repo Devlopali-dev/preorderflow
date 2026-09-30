@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ColorService } from "./color.service";
 import { CreateColorDto, UpdateColorDto } from "./dto/color.dto";
@@ -49,5 +49,16 @@ export class ColorController {
       fieldsChanged,
     });
     return color;
+  }
+
+  @Roles("ADMIN")
+  @Delete(":id")
+  async remove(@Param("id") id: string, @CurrentAdminId() adminId: string) {
+    const removed = await this.colorService.remove(id);
+    await this.auditService.log(adminId, "SETTINGS_UPDATED", "Color", removed.id, {
+      action: "deleted",
+      name: removed.name,
+    });
+    return removed;
   }
 }

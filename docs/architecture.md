@@ -92,7 +92,7 @@ Règle de dépendance : `Order` référence `ProductVariant`/`Customer` par id u
 
 Une campagne vend un produit ; un produit peut se décliner en couleurs. L'unité vendable et stockable est la **variante** (`ProductVariant`), pas le produit : stock, lignes de commande, lots de production et intérêts référencent tous la variante.
 
-- `Color` est une palette globale gérée dans `/settings` (nom + pastille `#rrggbb`), réutilisable par tous les produits. Une couleur n'est jamais supprimée, seulement désactivée.
+- `Color` est une palette globale gérée dans `/settings` (nom + pastille `#rrggbb`), réutilisable par tous les produits. Une couleur se supprime tant qu'aucune variante ne l'utilise (l'API refuse sinon, il faut alors la désactiver) ; une couleur inactive reste listée, en italique avec un badge d'avertissement.
 - Tout produit a au moins une variante. Un produit sans couleur a une variante par défaut (`colorId = null`, SKU du produit), créée avec lui. Ajouter une première couleur retire cette variante par défaut si rien ne la référence encore.
 - Une campagne propose toutes les variantes **actives** de son produit. La page publique reçoit id + couleur, jamais de SKU ni de stock.
 - Une personne peut demander plusieurs couleurs avec un seul consentement : `CampaignInterest` porte une ligne `CampaignInterestItem` par couleur. Sa quantité totale est dérivée (somme des lignes), jamais stockée.
@@ -268,6 +268,7 @@ PATCH  /api/v1/products/:id/variants/:variantId # {active} — jamais de suppres
 GET    /api/v1/colors                           # palette globale
 POST   /api/v1/colors                           # ADMIN uniquement — {name, hex}
 PATCH  /api/v1/colors/:id                       # ADMIN uniquement — nom/pastille/actif
+DELETE /api/v1/colors/:id                       # ADMIN uniquement — refusé (400) si une variante l'utilise
 POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8)
 
 GET    /api/v1/customers

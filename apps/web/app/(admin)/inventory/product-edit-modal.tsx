@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color, Product, ProductVariant } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { ColorLabel } from "@/components/color-label";
 
 export function ProductEditModal({
   product,
@@ -19,7 +20,6 @@ export function ProductEditModal({
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description ?? "");
   const [price, setPrice] = useState(String(product.price));
-  const [documentUrl, setDocumentUrl] = useState(product.documentUrl ?? "");
   const [imageUrl, setImageUrl] = useState(product.imageUrl);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +170,6 @@ export function ProductEditModal({
                 name,
                 description,
                 price: Number(price),
-                documentUrl: documentUrl || undefined,
               })
             }
           >
@@ -212,16 +211,12 @@ export function ProductEditModal({
             {variants.map((variant) => (
               <li key={variant.id} className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2">
-                  {variant.color && (
-                    <span
-                      aria-hidden="true"
-                      className="inline-block h-4 w-4 rounded-full border"
-                      style={{ backgroundColor: variant.color.hex }}
-                    />
-                  )}
-                  {variant.color?.name ?? "Standard (sans couleur)"}
+                  <ColorLabel
+                    name={variant.color?.name ?? "Standard (sans couleur)"}
+                    hex={variant.color?.hex}
+                    inactive={!variant.active || variant.color?.active === false}
+                  />
                   <span className="opacity-60">{variant.sku}</span>
-                  {!variant.active && <span className="badge badge-default">inactive</span>}
                 </span>
                 <Button
                   variant="secondary"
@@ -266,14 +261,6 @@ export function ProductEditModal({
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleUploadPhoto}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          URL du PDF de présentation
-          <Input
-            placeholder="URL du PDF de présentation"
-            value={documentUrl}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setDocumentUrl(e.target.value)}
           />
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { prisma } from "@preorderflow/database";
 import { CreateColorDto, UpdateColorDto } from "./dto/color.dto";
 
-// Palette globale : les couleurs ne sont jamais supprimées (une variante de
-// produit peut y faire référence) — on les désactive.
+// Palette globale. Une couleur se supprime tant qu'aucune variante de produit
+// ne l'utilise ; sinon on la désactive (elle reste visible, marquée inactive).
 @Injectable()
 export class ColorService {
   async list() {
@@ -34,6 +34,25 @@ export class ColorService {
         active: dto.active,
       },
     });
+  }
+
+  // Refuse si une variante (même inactive) référence la couleur : elle porte
+  // du stock, des commandes ou des intérêts qu'on ne doit pas orpheliner.
+  async remove(id: string) {
+    const color = await prisma.color.findUnique({
+      where: { id },
+      include: { _count: { select: { variants: true } } },
+    });
+    if (!color) {
+      throw new NotFoundException(`Couleur "${id}" introuvable`);
+    }
+    if (color._count.variants > 0) {
+      throw new BadRequestException(
+        `La couleur "${color.name}" est utilisée par ${color._count.variants} variante(s) de produit : désactivez-la plutôt que de la supprimer.`,
+      );
+    }
+    await prisma.color.delete({ where: { id } });
+    return { id: color.id, name: color.name };
   }
 
   // Unicité insensible à la casse : « Rouge » et « rouge » sont la même
