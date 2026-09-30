@@ -74,7 +74,7 @@ Chaque domaine ci-dessous est un module NestJS indépendant avec ses propres ser
 ```text
 Campaign      — cycle de vie d'une opération commerciale
 Interest      — recensement (CampaignInterest)
-Product       — catalogue
+Product       — catalogue (+ variantes par couleur, palette globale Color)
 Customer      — identité client + adresses
 Order         — commandes + lignes
 Payment       — paiements
@@ -86,7 +86,17 @@ Audit         — journal d'actions admin
 Auth          — comptes admin (RBAC) + magic links client
 ```
 
-Règle de dépendance : `Order` référence `Product`/`Customer` par id uniquement (pas de duplication de règles métier). `Inventory` ne connaît que `Product` + une référence polymorphe (`referenceType`/`referenceId`) vers `Production` ou `Order`. `Interest` ne référence jamais `Order`.
+Règle de dépendance : `Order` référence `ProductVariant`/`Customer` par id uniquement (pas de duplication de règles métier). `Inventory` ne connaît que `ProductVariant` + une référence polymorphe (`referenceType`/`referenceId`) vers `Production` ou `Order`. `Interest` ne référence jamais `Order`.
+
+### Variantes (couleurs)
+
+Une campagne vend un produit ; un produit peut se décliner en couleurs. L'unité vendable et stockable est la **variante** (`ProductVariant`), pas le produit : stock, lignes de commande, lots de production et intérêts référencent tous la variante.
+
+- `Color` est une palette globale gérée dans `/settings` (nom + pastille `#rrggbb`), réutilisable par tous les produits. Une couleur n'est jamais supprimée, seulement désactivée.
+- Tout produit a au moins une variante. Un produit sans couleur a une variante par défaut (`colorId = null`, SKU du produit), créée avec lui. Ajouter une première couleur retire cette variante par défaut si rien ne la référence encore.
+- Une campagne propose toutes les variantes **actives** de son produit. La page publique reçoit id + couleur, jamais de SKU ni de stock.
+- Une personne peut demander plusieurs couleurs avec un seul consentement : `CampaignInterest` porte une ligne `CampaignInterestItem` par couleur. Sa quantité totale est dérivée (somme des lignes), jamais stockée.
+- `@@unique([productId, colorId])` ne protège pas la variante par défaut (PostgreSQL traite deux `NULL` comme distincts) : l'unicité de la variante sans couleur est garantie par le service produit.
 
 ## 3. Modèle de données (vue relationnelle)
 
@@ -95,6 +105,11 @@ Le schéma Prisma complet est dans `packages/database/prisma/schema.prisma`. Ré
 ```text
 Campaign 1---N CampaignInterest
 Campaign N---1 Product        (produit associé à la campagne)
+
+Product 1---N ProductVariant  (une variante par couleur, ou une variante par défaut)
+ProductVariant N---1 Color    (nullable : variante par défaut sans couleur)
+CampaignInterest 1---N CampaignInterestItem
+CampaignInterestItem N---1 ProductVariant
 
 Customer 1---N Address
 Customer 1---N Order
@@ -107,13 +122,13 @@ Order N---1 Customer
 Order 1---1 Shipment (une commande = un colis, décision validée)
 Order references Address (billing + shipping) — copie figée au moment de la commande
 
-OrderItem N---1 Product
+OrderItem N---1 ProductVariant
 
 ProductionBatch 1---N ProductionItem
-ProductionItem N---1 Product
+ProductionItem N---1 ProductVariant
 ProductionBatch (COMPLETED) ---> génère N InventoryMovement (type PRODUCTION)
 
-InventoryMovement N---1 Product
+InventoryMovement N---1 ProductVariant
 InventoryMovement.referenceType/referenceId ---> Order | ProductionBatch (polymorphe, non-FK)
 
 Shipment 1---N ShipmentEvent
@@ -128,26 +143,26 @@ AuditLog N---1 AdminUser (userId)
 
 ### Stock calculé, jamais stocké
 
-Conformément au §13/§36 du cahier des charges : pas de colonne `Product.stock`. Le stock est dérivé de `InventoryMovement` :
+Conformément au §13/§36 du cahier des charges : pas de colonne `Product.stock`. Le stock est dérivé de `InventoryMovement`, **par variante** ; le stock d'un produit est la somme de ses variantes :
 
 ```text
-physicalStock  = SUM(quantity) des mouvements du produit (signe selon type)
+physicalStock  = SUM(quantity) des mouvements de la variante (signe selon type)
 reservedStock  = SUM(quantity) des OrderItem des commandes ayant reçu au moins
                  un paiement (paymentStatus IN (PARTIALLY_PAID, PAID)) et non
                  terminales/annulées (PAID, PROCESSING, READY_TO_SHIP)
 availableStock = physicalStock - reservedStock
 ```
 
-Ce calcul est fait dans une vue/service dédié (`InventoryService.getStockSnapshot(productId)`), jamais persisté.
+Ce calcul est fait dans une vue/service dédié (`InventoryService.getStockSnapshot(variantId)`, somme via `sumStockSnapshots`), jamais persisté. Une couleur en rupture ne masque pas le stock des autres.
 
 ### Prévisions vs commandes vs production (règle du §14)
 
 Trois entités distinctes, jamais agrégées silencieusement :
 
 ```text
-Prévisions = SUM(CampaignInterest.quantity) pour une campagne
-Commandes  = SUM(OrderItem.quantity) pour les commandes liées au produit de la campagne
-Production = SUM(ProductionItem.quantityProduced) pour les lots liés au produit
+Prévisions = SUM(CampaignInterestItem.quantity) pour une campagne (ventilable par variante)
+Commandes  = SUM(OrderItem.quantity) pour les commandes liées aux variantes du produit de la campagne
+Production = SUM(ProductionItem.quantityProduced) pour les lots liés aux variantes du produit
 Stock      = dérivé de InventoryMovement (voir ci-dessus)
 ```
 
@@ -239,14 +254,20 @@ GET    /api/v1/campaigns/:id
 PATCH  /api/v1/campaigns/:id                    # nom/prix/dates — pas le statut
 PATCH  /api/v1/campaigns/:id/status
 DELETE /api/v1/campaigns/:id                    # bloqué (400) si des CampaignInterest existent
-POST   /api/v1/campaigns/:id/interests          # public, rate-limited
-GET    /api/v1/campaigns/:id/statistics
+POST   /api/v1/campaigns/:id/interests          # public, rate-limited — items: [{variantId, quantity}]
+GET    /api/v1/campaigns/:id/statistics         # + ventilation par couleur (byVariant)
 
-GET    /api/v1/products                         # public
-POST   /api/v1/products
+GET    /api/v1/products                         # public — inclut les variantes
+POST   /api/v1/products                         # crée aussi la variante par défaut
 GET    /api/v1/products/:id                     # public
 PATCH  /api/v1/products/:id
 PATCH  /api/v1/products/:id/archive             # active=false, jamais de suppression réelle
+POST   /api/v1/products/:id/variants            # {colorId} — ajoute une couleur de la palette
+PATCH  /api/v1/products/:id/variants/:variantId # {active} — jamais de suppression, garde ≥ 1 variante active
+
+GET    /api/v1/colors                           # palette globale
+POST   /api/v1/colors                           # ADMIN uniquement — {name, hex}
+PATCH  /api/v1/colors/:id                       # ADMIN uniquement — nom/pastille/actif
 POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8)
 
 GET    /api/v1/customers
@@ -257,20 +278,20 @@ POST   /api/v1/customers/:id/gdpr-export        # ADMIN uniquement
 POST   /api/v1/customers/:id/gdpr-anonymize     # ADMIN uniquement
 
 GET    /api/v1/orders
-POST   /api/v1/orders
+POST   /api/v1/orders                           # items: [{variantId, quantity}]
 GET    /api/v1/orders/:id
 PATCH  /api/v1/orders/:id/status
 POST   /api/v1/orders/:id/payments
 
 GET    /api/v1/production/batches
-POST   /api/v1/production/batches
+POST   /api/v1/production/batches               # items: [{variantId, quantityPlanned}]
 PATCH  /api/v1/production/batches/:id           # référence/notes/quantités prévues — PLANNED uniquement
 POST   /api/v1/production/batches/:id/start
 POST   /api/v1/production/batches/:id/complete
 
-GET    /api/v1/inventory
-GET    /api/v1/inventory/:productId/movements
-POST   /api/v1/inventory/adjustments
+GET    /api/v1/inventory                        # par produit : stock total + détail par variante
+GET    /api/v1/inventory/:variantId/movements
+POST   /api/v1/inventory/adjustments            # {variantId, quantity, reason}
 
 GET    /api/v1/shipments
 POST   /api/v1/shipments
