@@ -22,7 +22,20 @@ export class CampaignService {
   async getBySlugOrId(idOrSlug: string) {
     const campaign = await prisma.campaign.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
-      include: { media: { orderBy: { position: "asc" } } },
+      include: {
+        media: { orderBy: { position: "asc" } },
+        // Couleurs proposées sur la page publique : données d'affichage
+        // uniquement (jamais de stock ni de SKU).
+        product: {
+          select: {
+            variants: {
+              where: { active: true },
+              orderBy: { sku: "asc" },
+              select: { id: true, color: { select: { name: true, hex: true } } },
+            },
+          },
+        },
+      },
     });
     if (!campaign) {
       throw new NotFoundException(`Campagne "${idOrSlug}" introuvable`);
@@ -107,6 +120,30 @@ export class CampaignService {
 
     const campaign = await this.getBySlugOrId(campaignSlugOrId);
 
+    // Chaque ligne doit viser une variante active du produit de la campagne,
+    // une seule fois (« 2 rouges + 1 bleu » = 2 lignes, jamais 2 × rouge).
+    const variantIds = dto.items.map((item) => item.variantId);
+    if (new Set(variantIds).size !== variantIds.length) {
+      throw new BadRequestException("Une couleur ne peut apparaître qu'une seule fois");
+    }
+    const variants = await prisma.productVariant.findMany({
+      where: { id: { in: variantIds }, productId: campaign.productId, active: true },
+      include: { color: true },
+    });
+    if (variants.length !== variantIds.length) {
+      throw new BadRequestException("Couleur inconnue pour cette campagne");
+    }
+    const totalQuantity = dto.items.reduce((sum, item) => sum + item.quantity, 0);
+    const hasColors = variants.some((variant) => variant.color);
+    const details = hasColors
+      ? ` (${dto.items
+          .map((item) => {
+            const color = variants.find((v) => v.id === item.variantId)?.color;
+            return `${item.quantity} × ${color?.name ?? "Standard"}`;
+          })
+          .join(", ")})`
+      : "";
+
     const interest = await prisma.$transaction(async (tx) => {
       const customer = await tx.customer.upsert({
         where: { email: dto.email },
@@ -131,9 +168,14 @@ export class CampaignService {
           firstName: dto.firstName,
           lastName: dto.lastName,
           phone: dto.phone,
-          quantity: dto.quantity,
           comment: dto.comment,
           consentToContact: dto.consentToContact,
+          items: {
+            create: dto.items.map((item) => ({
+              variantId: item.variantId,
+              quantity: item.quantity,
+            })),
+          },
         },
       });
     });
@@ -141,7 +183,8 @@ export class CampaignService {
     await this.notificationService.sendEmail(dto.email, "INTEREST_REGISTERED", {
       firstName: dto.firstName,
       campaignName: campaign.name,
-      quantity: dto.quantity,
+      quantity: totalQuantity,
+      details,
     });
 
     return interest;
@@ -151,9 +194,28 @@ export class CampaignService {
     const campaign = await this.getBySlugOrId(campaignSlugOrId);
     const interests = await prisma.campaignInterest.findMany({
       where: { campaignId: campaign.id },
-      select: { quantity: true, createdAt: true },
+      select: {
+        createdAt: true,
+        items: {
+          select: {
+            variantId: true,
+            quantity: true,
+            variant: { select: { color: { select: { name: true } } } },
+          },
+        },
+      },
     });
-    return computeCampaignStatistics(interests);
+    return computeCampaignStatistics(
+      interests.map((interest) => ({
+        createdAt: interest.createdAt,
+        quantity: interest.items.reduce((sum, item) => sum + item.quantity, 0),
+        items: interest.items.map((item) => ({
+          variantId: item.variantId,
+          label: item.variant.color?.name ?? "Standard",
+          quantity: item.quantity,
+        })),
+      })),
+    );
   }
 
   // Ajoute un média (photo ou PDF) à la galerie publique, en respectant la

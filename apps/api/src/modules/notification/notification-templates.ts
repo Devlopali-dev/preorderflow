@@ -6,7 +6,14 @@ export interface RenderedEmail {
 }
 
 export type TemplatePayloads = {
-  INTEREST_REGISTERED: { firstName: string; campaignName: string; quantity: number };
+  // `details` = répartition par couleur, déjà mise en forme (« (2 × Rouge, 1 × Bleu) »),
+  // vide quand le produit n'a pas de couleur.
+  INTEREST_REGISTERED: {
+    firstName: string;
+    campaignName: string;
+    quantity: number;
+    details?: string;
+  };
   ORDERS_OPENED: { campaignName: string; campaignUrl: string };
   ORDER_CREATED: { firstName: string; orderNumber: string; total: string };
   PAYMENT_RECEIVED: { firstName: string; orderNumber: string; amount: string };
@@ -25,7 +32,7 @@ export type TemplatePayloads = {
 export const DEFAULT_TEMPLATES: Record<keyof TemplatePayloads, RenderedEmail> = {
   INTEREST_REGISTERED: {
     subject: "Merci pour votre intérêt — {{campaignName}}",
-    html: '<p>Bonjour {{firstName}},</p><p>Nous avons bien reçu votre demande pour {{quantity}} exemplaire(s) de "{{campaignName}}". Ceci ne constitue pas une commande.</p>',
+    html: '<p>Bonjour {{firstName}},</p><p>Nous avons bien reçu votre demande pour {{quantity}} exemplaire(s){{details}} de "{{campaignName}}". Ceci ne constitue pas une commande.</p>',
   },
   ORDERS_OPENED: {
     subject: "Les commandes sont ouvertes — {{campaignName}}",

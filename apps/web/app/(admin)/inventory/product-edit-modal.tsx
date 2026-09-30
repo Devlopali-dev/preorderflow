@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
-import type { Product } from "@/lib/api";
+import type { Color, Product, ProductVariant } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
 
 export function ProductEditModal({
@@ -23,6 +23,68 @@ export function ProductEditModal({
   const [imageUrl, setImageUrl] = useState(product.imageUrl);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
+  const [colors, setColors] = useState<Color[]>([]);
+  const [newColorId, setNewColorId] = useState("");
+
+  // Palette globale (/settings) : chargée à l'ouverture pour proposer les
+  // couleurs pas encore utilisées par ce produit.
+  useEffect(() => {
+    fetch(`${apiUrl}/api/v1/colors`, { headers: { ...getClientAuthHeaders() } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setColors)
+      .catch(() => setColors([]));
+  }, [apiUrl]);
+
+  const usedColorIds = new Set(variants.map((variant) => variant.colorId));
+  const availableColors = colors.filter((color) => color.active && !usedColorIds.has(color.id));
+
+  // Recharge les variantes depuis l'API : l'ajout d'une première couleur peut
+  // retirer la variante par défaut inutilisée, à ne pas deviner côté client.
+  async function refreshVariants() {
+    const res = await fetch(`${apiUrl}/api/v1/products/${product.id}`);
+    if (res.ok) setVariants((await res.json()).variants);
+    router.refresh();
+  }
+
+  async function variantRequest(
+    url: string,
+    method: "POST" | "PATCH",
+    body: Record<string, unknown>,
+  ) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      await refreshVariants();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAddVariant() {
+    await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", {
+      colorId: newColorId,
+    });
+    setNewColorId("");
+  }
+
+  function handleToggleVariant(variant: ProductVariant) {
+    return variantRequest(
+      `${apiUrl}/api/v1/products/${product.id}/variants/${variant.id}`,
+      "PATCH",
+      {
+        active: !variant.active,
+      },
+    );
+  }
 
   async function patch(body: Record<string, unknown>) {
     setSaving(true);
@@ -144,6 +206,57 @@ export function ProductEditModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
           />
         </label>
+        <div className="flex flex-col gap-2 text-sm">
+          <span>Couleurs</span>
+          <ul className="flex flex-col gap-1">
+            {variants.map((variant) => (
+              <li key={variant.id} className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  {variant.color && (
+                    <span
+                      aria-hidden="true"
+                      className="inline-block h-4 w-4 rounded-full border"
+                      style={{ backgroundColor: variant.color.hex }}
+                    />
+                  )}
+                  {variant.color?.name ?? "Standard (sans couleur)"}
+                  <span className="opacity-60">{variant.sku}</span>
+                  {!variant.active && <span className="badge badge-default">inactive</span>}
+                </span>
+                <Button
+                  variant="secondary"
+                  disabled={saving}
+                  onClick={() => handleToggleVariant(variant)}
+                >
+                  {variant.active ? "Désactiver" : "Activer"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+          <div className="flex gap-2">
+            <select
+              className="select flex-1"
+              aria-label="Ajouter une couleur"
+              value={newColorId}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewColorId(e.target.value)}
+            >
+              <option value="">Ajouter une couleur…</option>
+              {availableColors.map((color) => (
+                <option key={color.id} value={color.id}>
+                  {color.name}
+                </option>
+              ))}
+            </select>
+            <Button variant="secondary" disabled={saving || !newColorId} onClick={handleAddVariant}>
+              Ajouter
+            </Button>
+          </div>
+          {colors.length === 0 && (
+            <p className="text-xs opacity-60">
+              Aucune couleur dans la palette : créez-en dans les paramètres.
+            </p>
+          )}
+        </div>
         <label className="flex flex-col gap-1 text-sm">
           Photo
           {imageUrl && (

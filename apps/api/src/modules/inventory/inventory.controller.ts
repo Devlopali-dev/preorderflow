@@ -18,16 +18,20 @@ export class InventoryController {
     return this.inventoryService.listAll();
   }
 
-  @Get(":productId/movements")
-  listMovements(@Param("productId") productId: string) {
-    return this.inventoryService.listMovements(productId);
+  @Get(":variantId/movements")
+  listMovements(@Param("variantId") variantId: string) {
+    return this.inventoryService.listMovements(variantId);
   }
 
   @Post("adjustments")
   async createAdjustment(@Body() dto: CreateAdjustmentDto, @CurrentAdminId() adminId: string) {
-    const movement = await this.inventoryService.createAdjustment(dto.productId, dto.quantity, dto.reason);
+    const movement = await this.inventoryService.createAdjustment(
+      dto.variantId,
+      dto.quantity,
+      dto.reason,
+    );
     await this.auditService.log(adminId, "INVENTORY_ADJUSTED", "InventoryMovement", movement.id, {
-      productId: dto.productId,
+      variantId: dto.variantId,
       quantity: dto.quantity,
       reason: dto.reason,
     });

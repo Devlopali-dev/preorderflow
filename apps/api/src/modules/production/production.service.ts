@@ -11,19 +11,23 @@ import {
   InvalidProductionTransitionError,
 } from "./production-status";
 
+// Une ligne de production cible une variante (couleur) ; on charge aussi le
+// produit et la couleur pour l'affichage (« Sifflet — Rouge »).
+const PRODUCTION_ITEM_INCLUDE = { variant: { include: { product: true, color: true } } } as const;
+
 @Injectable()
 export class ProductionService {
   async list() {
     return prisma.productionBatch.findMany({
       orderBy: { createdAt: "desc" },
-      include: { items: { include: { product: true } } },
+      include: { items: { include: PRODUCTION_ITEM_INCLUDE } },
     });
   }
 
   async getById(id: string) {
     const batch = await prisma.productionBatch.findUnique({
       where: { id },
-      include: { items: { include: { product: true } } },
+      include: { items: { include: PRODUCTION_ITEM_INCLUDE } },
     });
     if (!batch) {
       throw new NotFoundException(`Lot de production "${id}" introuvable`);
@@ -32,13 +36,22 @@ export class ProductionService {
   }
 
   async create(dto: CreateProductionBatchDto) {
+    const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
+    const variants = await prisma.productVariant.findMany({
+      where: { id: { in: variantIds }, active: true },
+      select: { id: true },
+    });
+    if (variants.length !== variantIds.length) {
+      throw new BadRequestException("Une ou plusieurs variantes sont introuvables ou inactives");
+    }
+
     return prisma.productionBatch.create({
       data: {
         reference: dto.reference,
         notes: dto.notes,
         items: {
           create: dto.items.map((item) => ({
-            productId: item.productId,
+            variantId: item.variantId,
             quantityPlanned: item.quantityPlanned,
           })),
         },
@@ -59,7 +72,9 @@ export class ProductionService {
       const itemIds = new Set(batch.items.map((i) => i.id));
       for (const line of dto.items) {
         if (!itemIds.has(line.productionItemId)) {
-          throw new BadRequestException(`Ligne de production "${line.productionItemId}" introuvable`);
+          throw new BadRequestException(
+            `Ligne de production "${line.productionItemId}" introuvable`,
+          );
         }
       }
     }
@@ -74,7 +89,7 @@ export class ProductionService {
       return tx.productionBatch.update({
         where: { id: batch.id },
         data: { reference: dto.reference, notes: dto.notes },
-        include: { items: { include: { product: true } } },
+        include: { items: { include: PRODUCTION_ITEM_INCLUDE } },
       });
     });
   }
@@ -135,7 +150,7 @@ export class ProductionService {
         if (item.delta > 0) {
           await tx.inventoryMovement.create({
             data: {
-              productId: item.productId,
+              variantId: item.variantId,
               quantity: item.delta,
               type: "PRODUCTION",
               referenceType: "PRODUCTION_BATCH",

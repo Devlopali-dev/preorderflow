@@ -26,7 +26,7 @@ test("scénario 2 : commande, paiement, production, stock", async ({ page, reque
       customerEmail: "scenario2@example.com",
       customerFirstName: "Scenario",
       customerLastName: "Deux",
-      items: [{ productId: product.id, quantity: 2 }],
+      items: [{ variantId: product.variants[0].id, quantity: 2 }],
       shippingAddress: {
         firstName: "Scenario",
         lastName: "Deux",
@@ -59,17 +59,20 @@ test("scénario 2 : commande, paiement, production, stock", async ({ page, reque
     headers: auth,
     data: {
       reference: `SCENARIO2-${Date.now()}`,
-      items: [{ productId: product.id, quantityPlanned: 10 }],
+      items: [{ variantId: product.variants[0].id, quantityPlanned: 10 }],
     },
   });
   const batch = await batchRes.json();
   await request.post(`${apiUrl}/api/v1/production/batches/${batch.id}/start`, { headers: auth });
 
   // 4. Terminer production
-  const completeRes = await request.post(`${apiUrl}/api/v1/production/batches/${batch.id}/complete`, {
-    headers: auth,
-    data: { items: [{ productionItemId: batch.items[0].id, quantityProduced: 10 }] },
-  });
+  const completeRes = await request.post(
+    `${apiUrl}/api/v1/production/batches/${batch.id}/complete`,
+    {
+      headers: auth,
+      data: { items: [{ productionItemId: batch.items[0].id, quantityProduced: 10 }] },
+    },
+  );
   expect((await completeRes.json()).status).toBe("COMPLETED");
 
   // 5. Vérifier le stock (physique augmenté de 10, jamais confondu avec les

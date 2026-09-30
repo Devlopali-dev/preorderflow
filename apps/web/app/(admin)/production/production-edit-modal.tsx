@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { ProductionBatchSummary } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { variantLabel } from "@/lib/variants";
 
 export function ProductionEditModal({
   batch,
@@ -88,7 +89,7 @@ export function ProductionEditModal({
             </label>
             {batch.items.map((item) => (
               <label key={item.id} className="flex items-center justify-between gap-2 text-sm">
-                {item.product.name} (prévu)
+                {variantLabel(item.variant.product.name, item.variant.color)} (prévu)
                 <Input
                   type="number"
                   min={1}
@@ -105,7 +106,8 @@ export function ProductionEditModal({
           <ul className="text-sm">
             {batch.items.map((item) => (
               <li key={item.id}>
-                {item.product.name} : {item.quantityProduced} / {item.quantityPlanned}
+                {variantLabel(item.variant.product.name, item.variant.color)} :{" "}
+                {item.quantityProduced} / {item.quantityPlanned}
               </li>
             ))}
           </ul>

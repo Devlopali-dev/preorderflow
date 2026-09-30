@@ -19,7 +19,7 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
       customerEmail: "scenario3@example.com",
       customerFirstName: "Scenario",
       customerLastName: "Trois",
-      items: [{ productId: product.id, quantity: 1 }],
+      items: [{ variantId: product.variants[0].id, quantity: 1 }],
       shippingAddress: {
         firstName: "Scenario",
         lastName: "Trois",
@@ -61,7 +61,9 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
 
   await page.getByRole("button", { name: "Marquer comme expédiée" }).click();
   await expect(page.getByRole("button", { name: "Marquer en transit" })).toBeVisible();
-  const shippedOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, { headers: auth });
+  const shippedOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, {
+    headers: auth,
+  });
   expect((await shippedOrderRes.json()).status).toBe("SHIPPED");
 
   await page.getByRole("button", { name: "Marquer en transit" }).click();
@@ -71,7 +73,9 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
   await page.getByRole("button", { name: "Marquer livrée" }).click();
   await expect(page.getByText("Statut expédition : DELIVERED")).toBeVisible();
 
-  const deliveredOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, { headers: auth });
+  const deliveredOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, {
+    headers: auth,
+  });
   const deliveredOrder = await deliveredOrderRes.json();
   expect(deliveredOrder.status).toBe("DELIVERED");
   expect(deliveredOrder.fulfillmentStatus).toBe("DELIVERED");

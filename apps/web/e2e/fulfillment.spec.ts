@@ -19,7 +19,7 @@ test("le détail d'une commande permet de la préparer, l'expédier et la livrer
       customerEmail: "playwright-fulfillment@example.com",
       customerFirstName: "Playwright",
       customerLastName: "Fulfillment",
-      items: [{ productId: product.id, quantity: 1 }],
+      items: [{ variantId: product.variants[0].id, quantity: 1 }],
       shippingAddress: {
         firstName: "Playwright",
         lastName: "Fulfillment",

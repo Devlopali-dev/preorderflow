@@ -44,10 +44,27 @@ export class CustomerService {
       where: { id },
       include: {
         addresses: true,
-        interests: { include: { campaign: { select: { name: true, slug: true } } } },
+        interests: {
+          include: {
+            campaign: { select: { name: true, slug: true } },
+            items: {
+              include: { variant: { select: { sku: true, color: { select: { name: true } } } } },
+            },
+          },
+        },
         orders: {
           include: {
-            items: { include: { product: { select: { name: true, sku: true } } } },
+            items: {
+              include: {
+                variant: {
+                  select: {
+                    sku: true,
+                    color: { select: { name: true } },
+                    product: { select: { name: true } },
+                  },
+                },
+              },
+            },
             payments: true,
             shipment: true,
           },

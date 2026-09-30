@@ -32,6 +32,32 @@ export interface CampaignMedia {
   thumbnailUrl?: string | null;
 }
 
+// Palette globale (/settings) — une couleur = un nom + une pastille #rrggbb.
+export interface Color {
+  id: string;
+  name: string;
+  hex: string;
+  active: boolean;
+  _count?: { variants: number };
+}
+
+// Unité vendable et stockable d'un produit. `color` est null pour la variante
+// par défaut d'un produit sans couleur.
+export interface ProductVariant {
+  id: string;
+  sku: string;
+  active: boolean;
+  colorId: string | null;
+  color: Color | null;
+}
+
+// Ce que la page publique d'une campagne reçoit : id + couleur d'affichage,
+// jamais de stock ni de SKU.
+export interface CampaignVariantOption {
+  id: string;
+  color: { name: string; hex: string } | null;
+}
+
 export interface Campaign {
   id: string;
   name: string;
@@ -45,6 +71,7 @@ export interface Campaign {
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];
+  product?: { variants: CampaignVariantOption[] };
 }
 
 export async function getCampaign(slug: string): Promise<Campaign | null> {
@@ -224,7 +251,16 @@ export interface OrderDetail extends OrderSummary {
   subtotal: string;
   shippingAmount: string;
   taxAmount: string;
-  items: Array<{ id: string; quantity: number; unitPrice: string; product: { name: string } }>;
+  items: Array<{
+    id: string;
+    quantity: number;
+    unitPrice: string;
+    variant: {
+      sku: string;
+      product: { name: string };
+      color: { name: string; hex: string } | null;
+    };
+  }>;
   payments: Array<{
     id: string;
     status: string;
@@ -241,9 +277,18 @@ export interface OrderDetail extends OrderSummary {
   } | null;
 }
 
+export interface StockSnapshot {
+  physicalStock: number;
+  reservedStock: number;
+  availableStock: number;
+}
+
+// Un produit fabricable : stock total (somme des variantes) et détail par
+// variante/couleur.
 export interface InventoryRow {
   product: { id: string; name: string; sku: string };
-  stock: { physicalStock: number; reservedStock: number; availableStock: number };
+  stock: StockSnapshot;
+  variants: Array<{ variant: ProductVariant; stock: StockSnapshot }>;
 }
 
 export async function getInventory(): Promise<InventoryRow[]> {
@@ -268,6 +313,16 @@ export interface Product {
   active: boolean;
   imageUrl: string | null;
   documentUrl: string | null;
+  variants: ProductVariant[];
+}
+
+export async function getColors(): Promise<Color[]> {
+  const res = await fetch(`${API_URL}/api/v1/colors`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  return res.json();
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -284,7 +339,12 @@ export interface ProductionBatchSummary {
     id: string;
     quantityPlanned: number;
     quantityProduced: number;
-    product: { id: string; name: string };
+    variant: {
+      id: string;
+      sku: string;
+      product: { id: string; name: string };
+      color: { name: string; hex: string } | null;
+    };
   }>;
 }
 
@@ -351,7 +411,10 @@ export interface CustomerOrderSummary {
   total: string;
   currency: string;
   createdAt: string;
-  items: Array<{ quantity: number; product: { name: string } }>;
+  items: Array<{
+    quantity: number;
+    variant: { product: { name: string }; color: { name: string; hex: string } | null };
+  }>;
   shipment: { status: string; trackingNumber: string | null } | null;
 }
 

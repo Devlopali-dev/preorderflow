@@ -16,6 +16,7 @@ import { randomUUID } from "node:crypto";
 import { extname, join } from "node:path";
 import { ProductService } from "./product.service";
 import { CreateProductDto, UpdateProductDto } from "./dto/create-product.dto";
+import { CreateVariantDto, UpdateVariantDto } from "./dto/variant.dto";
 import { Public } from "../auth/public.decorator";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -48,6 +49,20 @@ export class ProductController {
     return this.productService.update(id, dto);
   }
 
+  @Post(":id/variants")
+  addVariant(@Param("id") id: string, @Body() dto: CreateVariantDto) {
+    return this.productService.addVariant(id, dto.colorId);
+  }
+
+  @Patch(":id/variants/:variantId")
+  updateVariant(
+    @Param("id") id: string,
+    @Param("variantId") variantId: string,
+    @Body() dto: UpdateVariantDto,
+  ) {
+    return this.productService.setVariantActive(id, variantId, dto.active);
+  }
+
   @Patch(":id/archive")
   archive(@Param("id") id: string) {
     return this.productService.archive(id);
@@ -69,7 +84,10 @@ export class ProductController {
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
-          callback(new BadRequestException("Seules les images JPEG, PNG ou WebP sont acceptées"), false);
+          callback(
+            new BadRequestException("Seules les images JPEG, PNG ou WebP sont acceptées"),
+            false,
+          );
           return;
         }
         callback(null, true);

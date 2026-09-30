@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Product } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { variantLabel } from "@/lib/variants";
 
 export function ProductionCreateModal({
   apiUrl,
@@ -17,7 +18,13 @@ export function ProductionCreateModal({
 }) {
   const router = useRouter();
   const [reference, setReference] = useState("");
-  const [productId, setProductId] = useState(products[0]?.id ?? "");
+  // Une ligne de production vise une variante (couleur) : « Sifflet — Rouge ».
+  const variantOptions = products.flatMap((product) =>
+    product.variants
+      .filter((variant) => variant.active)
+      .map((variant) => ({ id: variant.id, label: variantLabel(product.name, variant.color) })),
+  );
+  const [variantId, setVariantId] = useState(variantOptions[0]?.id ?? "");
   const [quantityPlanned, setQuantityPlanned] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +38,7 @@ export function ProductionCreateModal({
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({
           reference,
-          items: [{ productId, quantityPlanned: Number(quantityPlanned) }],
+          items: [{ variantId, quantityPlanned: Number(quantityPlanned) }],
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
@@ -73,12 +80,12 @@ export function ProductionCreateModal({
           Produit
           <select
             className="select"
-            value={productId}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => setProductId(e.target.value)}
+            value={variantId}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => setVariantId(e.target.value)}
           >
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
+            {variantOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
               </option>
             ))}
           </select>

@@ -55,9 +55,9 @@ export class OrderAddressDto {
 }
 
 export class CreateOrderItemDto {
-  @ApiProperty()
+  @ApiProperty({ description: "Variante (couleur) du produit commandé" })
   @IsUUID()
-  productId!: string;
+  variantId!: string;
 
   @ApiProperty()
   @IsNumber()

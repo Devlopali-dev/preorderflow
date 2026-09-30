@@ -21,7 +21,11 @@ export default async function CampaignPage({ params }: { params: { slug: string 
               Prix indicatif : {campaign.indicativePrice} {campaign.currency}
             </p>
           </div>
-          <InterestForm campaignId={campaign.id} apiUrl={apiUrl} />
+          <InterestForm
+            campaignId={campaign.id}
+            apiUrl={apiUrl}
+            variants={campaign.product?.variants ?? []}
+          />
         </div>
 
         <MediaGallery media={campaign.media} />

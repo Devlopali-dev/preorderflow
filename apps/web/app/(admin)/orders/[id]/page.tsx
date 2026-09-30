@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrder } from "@/lib/api";
+import { variantLabel } from "@/lib/variants";
 import { PaymentPanel } from "./payment-panel";
 import { FulfillmentPanel } from "./fulfillment-panel";
 
@@ -23,7 +24,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         <ul className="text-sm">
           {order.items.map((item) => (
             <li key={item.id}>
-              {item.quantity} × {item.product.name} — {item.unitPrice} €
+              {item.quantity} × {variantLabel(item.variant.product.name, item.variant.color)} —{" "}
+              {item.unitPrice} €
             </li>
           ))}
         </ul>
@@ -32,7 +34,10 @@ export default async function OrderDetailPage({ params }: { params: { id: string
 
       <div>
         <h2 className="mb-2 font-medium">Paiement</h2>
-        <PaymentPanel order={order} apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} />
+        <PaymentPanel
+          order={order}
+          apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+        />
       </div>
 
       <div>

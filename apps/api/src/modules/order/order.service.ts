@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { prisma, OrderStatus, OrderPaymentStatus, OrderFulfillmentStatus } from "@preorderflow/database";
+import {
+  prisma,
+  OrderStatus,
+  OrderPaymentStatus,
+  OrderFulfillmentStatus,
+} from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
@@ -9,6 +14,10 @@ import { NotificationService } from "../notification/notification.service";
 // (cf. docs/architecture.md §5.3 : réservation dès qu'un paiement existe).
 const PAYMENT_STATUSES_RESERVING_STOCK: OrderPaymentStatus[] = ["PARTIALLY_PAID", "PAID"];
 
+// Une ligne de commande référence une variante (couleur) ; on charge aussi le
+// produit et la couleur pour l'affichage (« Sifflet — Rouge »).
+const ORDER_ITEM_INCLUDE = { variant: { include: { product: true, color: true } } } as const;
+
 @Injectable()
 export class OrderService {
   constructor(private readonly notificationService: NotificationService) {}
@@ -16,14 +25,19 @@ export class OrderService {
   async list() {
     return prisma.order.findMany({
       orderBy: { createdAt: "desc" },
-      include: { items: { include: { product: true } }, customer: true },
+      include: { items: { include: ORDER_ITEM_INCLUDE }, customer: true },
     });
   }
 
   async getById(id: string) {
     const order = await prisma.order.findUnique({
       where: { id },
-      include: { items: { include: { product: true } }, customer: true, payments: true, shipment: true },
+      include: {
+        items: { include: ORDER_ITEM_INCLUDE },
+        customer: true,
+        payments: true,
+        shipment: true,
+      },
     });
     if (!order) {
       throw new NotFoundException(`Commande "${id}" introuvable`);
@@ -32,20 +46,22 @@ export class OrderService {
   }
 
   async create(dto: CreateOrderDto) {
-    const products = await prisma.product.findMany({
-      where: { id: { in: dto.items.map((i) => i.productId) } },
+    const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
+    const variants = await prisma.productVariant.findMany({
+      where: { id: { in: variantIds }, active: true },
+      include: { product: true },
     });
-    if (products.length !== dto.items.length) {
-      throw new BadRequestException("Un ou plusieurs produits sont introuvables");
+    if (variants.length !== variantIds.length) {
+      throw new BadRequestException("Une ou plusieurs variantes sont introuvables ou inactives");
     }
 
     const lines = dto.items.map((item) => {
-      const product = products.find((p) => p.id === item.productId)!;
+      const variant = variants.find((v) => v.id === item.variantId)!;
       return {
-        productId: product.id,
+        variantId: variant.id,
         quantity: item.quantity,
-        unitPrice: product.price.toNumber(),
-        taxRate: product.taxRate.toNumber(),
+        unitPrice: variant.product.price.toNumber(),
+        taxRate: variant.product.taxRate.toNumber(),
       };
     });
 
@@ -85,7 +101,7 @@ export class OrderService {
           notes: dto.notes,
           items: {
             create: totals.items.map((item, index) => ({
-              productId: lines[index]!.productId,
+              variantId: lines[index]!.variantId,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               taxRate: item.taxRate,
@@ -146,7 +162,10 @@ export class OrderService {
    */
   async markPaid(orderId: string) {
     const order = await this.getById(orderId);
-    if (order.status === "PAID" || ["PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(order.status)) {
+    if (
+      order.status === "PAID" ||
+      ["PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(order.status)
+    ) {
       return order;
     }
     try {

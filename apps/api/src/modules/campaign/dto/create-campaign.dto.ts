@@ -1,13 +1,18 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsEmail,
+  IsInt,
   IsISO8601,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Min,
+  ValidateNested,
 } from "class-validator";
 
 export class CreateCampaignDto {
@@ -120,6 +125,18 @@ export class UpdateCampaignStatusDto {
     | "ANNULEE";
 }
 
+// Une ligne par couleur demandée : « 2 rouges + 1 bleu » = 2 items.
+export class InterestItemDto {
+  @ApiProperty({ description: "Variante (couleur) du produit de la campagne" })
+  @IsUUID()
+  variantId!: string;
+
+  @ApiProperty()
+  @IsInt()
+  @Min(1)
+  quantity!: number;
+}
+
 export class CreateInterestDto {
   @ApiProperty()
   @IsEmail()
@@ -138,10 +155,12 @@ export class CreateInterestDto {
   @IsString()
   phone?: string;
 
-  @ApiProperty()
-  @IsNumber()
-  @Min(1)
-  quantity!: number;
+  @ApiProperty({ type: [InterestItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => InterestItemDto)
+  items!: InterestItemDto[];
 
   @ApiProperty({ required: false })
   @IsOptional()

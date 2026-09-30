@@ -19,7 +19,7 @@ test("l'admin peut choisir Stripe comme mode de paiement (erreur propre si non c
       customerEmail: "playwright-stripe@example.com",
       customerFirstName: "Playwright",
       customerLastName: "Stripe",
-      items: [{ productId: product.id, quantity: 1 }],
+      items: [{ variantId: product.variants[0].id, quantity: 1 }],
       shippingAddress: {
         firstName: "Playwright",
         lastName: "Stripe",

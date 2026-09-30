@@ -1,11 +1,20 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { ArrayMinSize, IsArray, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from "class-validator";
+import {
+  ArrayMinSize,
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from "class-validator";
 
 export class ProductionBatchItemDto {
-  @ApiProperty()
+  @ApiProperty({ description: "Variante (couleur) du produit à fabriquer" })
   @IsUUID()
-  productId!: string;
+  variantId!: string;
 
   @ApiProperty()
   @IsInt()

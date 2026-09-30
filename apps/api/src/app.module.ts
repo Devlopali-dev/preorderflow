@@ -17,6 +17,7 @@ import { AuthModule } from "./modules/auth/auth.module";
 import { CustomerAuthModule } from "./modules/customer-auth/customer-auth.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { SettingsModule } from "./modules/settings/settings.module";
+import { ColorModule } from "./modules/color/color.module";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { SettingsModule } from "./modules/settings/settings.module";
     CustomerAuthModule,
     AuditModule,
     SettingsModule,
+    ColorModule,
   ],
 })
 export class AppModule {}

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
-import { computeStockSnapshot, StockSnapshot } from "./inventory-stock";
+import { computeStockSnapshot, StockSnapshot, sumStockSnapshots } from "./inventory-stock";
 
 // Statuts de commande pour lesquels une ligne réserve du stock : dès qu'un
 // paiement existe et tant que la commande n'est pas expédiée/annulée
@@ -9,11 +9,11 @@ const RESERVING_ORDER_STATUSES = ["PAID", "PROCESSING", "READY_TO_SHIP"] as cons
 
 @Injectable()
 export class InventoryService {
-  async getStockSnapshot(productId: string): Promise<StockSnapshot> {
+  async getStockSnapshot(variantId: string): Promise<StockSnapshot> {
     const [movements, reservedItems] = await Promise.all([
-      prisma.inventoryMovement.findMany({ where: { productId }, select: { quantity: true } }),
+      prisma.inventoryMovement.findMany({ where: { variantId }, select: { quantity: true } }),
       prisma.orderItem.findMany({
-        where: { productId, order: { status: { in: [...RESERVING_ORDER_STATUSES] } } },
+        where: { variantId, order: { status: { in: [...RESERVING_ORDER_STATUSES] } } },
         select: { quantity: true },
       }),
     ]);
@@ -24,27 +24,41 @@ export class InventoryService {
     );
   }
 
+  // Un élément par produit fabricable : stock total (somme des variantes) et
+  // détail par variante/couleur.
   async listAll() {
-    const products = await prisma.product.findMany({ where: { manufacturable: true } });
+    const products = await prisma.product.findMany({
+      where: { manufacturable: true },
+      include: { variants: { include: { color: true }, orderBy: { sku: "asc" } } },
+    });
     return Promise.all(
-      products.map(async (product) => ({
-        product,
-        stock: await this.getStockSnapshot(product.id),
-      })),
+      products.map(async ({ variants, ...product }) => {
+        const variantStocks = await Promise.all(
+          variants.map(async (variant) => ({
+            variant,
+            stock: await this.getStockSnapshot(variant.id),
+          })),
+        );
+        return {
+          product,
+          stock: sumStockSnapshots(variantStocks.map((v) => v.stock)),
+          variants: variantStocks,
+        };
+      }),
     );
   }
 
-  async listMovements(productId: string) {
+  async listMovements(variantId: string) {
     return prisma.inventoryMovement.findMany({
-      where: { productId },
+      where: { variantId },
       orderBy: { createdAt: "desc" },
     });
   }
 
-  async createAdjustment(productId: string, quantity: number, reason: string) {
+  async createAdjustment(variantId: string, quantity: number, reason: string) {
     return prisma.inventoryMovement.create({
       data: {
-        productId,
+        variantId,
         quantity,
         type: quantity >= 0 ? "ADJUSTMENT_IN" : "ADJUSTMENT_OUT",
         referenceType: "MANUAL",

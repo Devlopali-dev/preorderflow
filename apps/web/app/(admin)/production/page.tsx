@@ -1,4 +1,5 @@
 import { getProductionBatches, getProducts } from "@/lib/api";
+import { variantLabel } from "@/lib/variants";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { ProductionReferenceButton } from "./production-reference-button";
 import { CreateProductionButton } from "./create-production-button";
@@ -74,9 +75,13 @@ export default async function ProductionPage() {
                   {group.batches.map((batch) => {
                     const planned = batch.items.reduce((sum, i) => sum + i.quantityPlanned, 0);
                     const produced = batch.items.reduce((sum, i) => sum + i.quantityProduced, 0);
-                    const productNames = [...new Set(batch.items.map((i) => i.product.name))].join(
-                      ", ",
-                    );
+                    const productNames = [
+                      ...new Set(
+                        batch.items.map((i) =>
+                          variantLabel(i.variant.product.name, i.variant.color),
+                        ),
+                      ),
+                    ].join(", ");
                     return (
                       <tr key={batch.id}>
                         <td>

@@ -23,7 +23,10 @@ export class CustomerPortalService {
     return prisma.order.findMany({
       where: { customerId },
       orderBy: { createdAt: "desc" },
-      include: { items: { include: { product: true } }, shipment: true },
+      include: {
+        items: { include: { variant: { include: { product: true, color: true } } } },
+        shipment: true,
+      },
     });
   }
 
@@ -31,7 +34,7 @@ export class CustomerPortalService {
     const order = await prisma.order.findFirst({
       where: { id: orderId, customerId },
       include: {
-        items: { include: { product: true } },
+        items: { include: { variant: { include: { product: true, color: true } } } },
         payments: true,
         shipment: { include: { events: { orderBy: { occurredAt: "asc" } } } },
       },

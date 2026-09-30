@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "@preorderflow/ui";
 import type { OrderDetail } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { variantLabel } from "@/lib/variants";
 import { PaymentPanel } from "./[id]/payment-panel";
 import { FulfillmentPanel } from "./[id]/fulfillment-panel";
 import { OrderActions } from "./order-actions";
@@ -59,7 +60,8 @@ export function OrderDetailModal({
             <ul>
               {order.items.map((item) => (
                 <li key={item.id}>
-                  {item.quantity} × {item.product.name} — {item.unitPrice} €
+                  {item.quantity} × {variantLabel(item.variant.product.name, item.variant.color)} —{" "}
+                  {item.unitPrice} €
                 </li>
               ))}
             </ul>
