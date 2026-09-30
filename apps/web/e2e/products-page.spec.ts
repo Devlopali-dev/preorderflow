@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { authHeader, loginAsAdmin } from "./helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -79,6 +79,39 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
   await expect(page.getByText(name)).toBeVisible();
 });
 
+// La palette se gère depuis la modale d'un produit, pas depuis /settings.
+async function openPaletteFromNewProductModal(page: Page) {
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: "Nouveau produit" }).click();
+  await page.getByRole("checkbox", { name: "Ce produit a des variantes" }).check();
+  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
+}
+
+test("la palette de couleurs n'est plus dans les paramètres", async ({ page, request }) => {
+  await loginAsAdmin(page, request);
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Paramètres" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Couleurs" })).toHaveCount(0);
+  await expect(page.getByText("Palette de base")).toHaveCount(0);
+});
+
+test("la palette se gère aussi depuis la modale d'un produit existant", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const products = await (
+    await request.get(`${apiUrl}/api/v1/products`, { headers: authHeader(token) })
+  ).json();
+  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
+
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: product.name, exact: true }).click();
+  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
+  await expect(page.getByRole("group", { name: "Palette de base" })).toBeVisible();
+  await expect(page.getByPlaceholder("Nom (ex : Rouge)")).toBeVisible();
+});
+
 // Couleur temporaire créée puis supprimée par le test : on ne touche pas aux
 // couleurs partagées du seed, que d'autres specs utilisent en parallèle.
 test("une couleur inactive est en italique avec un badge d'avertissement", async ({
@@ -98,8 +131,7 @@ test("une couleur inactive est en italique avec un badge d'avertissement", async
   });
 
   try {
-    await page.goto("/settings");
-    await page.getByRole("button", { name: /Couleurs/ }).click();
+    await openPaletteFromNewProductModal(page);
     const row = page.locator("li", { hasText: name });
     await expect(row.locator("span.italic", { hasText: name })).toBeVisible();
     await expect(row.locator(".badge-warning", { hasText: "inactive" })).toBeVisible();
@@ -120,8 +152,7 @@ test("la palette de base pré-remplit la couleur et une couleur créée peut êt
   const leftover = colors.find((c: { name: string }) => c.name === "Turquoise");
   if (leftover) await request.delete(`${apiUrl}/api/v1/colors/${leftover.id}`, { headers: auth });
 
-  await page.goto("/settings");
-  await page.getByRole("button", { name: /Couleurs/ }).click();
+  await openPaletteFromNewProductModal(page);
 
   // Des couleurs au-delà de bleu / noir / rouge sont proposées.
   const presets = page.getByRole("group", { name: "Palette de base" });

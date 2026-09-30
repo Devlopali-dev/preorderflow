@@ -9,9 +9,19 @@ import { COLOR_PRESETS } from "@/lib/color-presets";
 import { ColorLabel } from "@/components/color-label";
 import { ConfirmModal } from "@/components/confirm-modal";
 
-// Palette globale. Une couleur se supprime tant qu'aucun produit ne l'utilise ;
-// sinon on la désactive (elle reste listée, marquée inactive).
-export function ColorsManager({ colors, apiUrl }: { colors: Color[]; apiUrl: string }) {
+// Palette globale, gérée depuis les modales de produit (création et édition).
+// Une couleur se supprime tant qu'aucun produit ne l'utilise ; sinon on la
+// désactive (elle reste listée, marquée inactive). `onChanged` prévient la
+// modale pour qu'elle recharge la liste des couleurs.
+export function ColorsManager({
+  colors,
+  apiUrl,
+  onChanged,
+}: {
+  colors: Color[];
+  apiUrl: string;
+  onChanged: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [hex, setHex] = useState("#000000");
@@ -34,6 +44,7 @@ export function ColorsManager({ colors, apiUrl }: { colors: Color[]; apiUrl: str
         body: body ? JSON.stringify(body) : undefined,
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      onChanged();
       router.refresh();
       return true;
     } catch (err) {
@@ -56,7 +67,7 @@ export function ColorsManager({ colors, apiUrl }: { colors: Color[]; apiUrl: str
   }
 
   return (
-    <div className="card card-body flex flex-col gap-4 text-sm">
+    <div className="flex flex-col gap-4 rounded border p-3 text-sm">
       {colors.length === 0 ? (
         <p className="opacity-60">Aucune couleur. Ajoutez-en pour proposer des variantes.</p>
       ) : (

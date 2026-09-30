@@ -15,6 +15,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 let adminTokenPromise: Promise<string> | undefined;
 
 export function getAdminToken(request: APIRequestContext): Promise<string> {
+  // Jeton posé par global-setup.ts (une seule connexion pour toute la suite).
+  if (process.env.E2E_ADMIN_TOKEN) return Promise.resolve(process.env.E2E_ADMIN_TOKEN);
+
   adminTokenPromise ??= (async () => {
     const res = await request.post(`${API_URL}/api/v1/auth/login`, {
       data: { email: "admin@preorderflow.dev", password: "password123" },

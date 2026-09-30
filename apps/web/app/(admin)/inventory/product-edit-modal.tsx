@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color, Product, ProductVariant } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { ColorLabel } from "@/components/color-label";
+import { ColorsManager } from "@/components/colors-manager";
 
 export function ProductEditModal({
   product,
@@ -26,15 +27,24 @@ export function ProductEditModal({
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [colors, setColors] = useState<Color[]>([]);
   const [newColorId, setNewColorId] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // Palette globale (/settings) : chargée à l'ouverture pour proposer les
-  // couleurs pas encore utilisées par ce produit.
-  useEffect(() => {
-    fetch(`${apiUrl}/api/v1/colors`, { headers: { ...getClientAuthHeaders() } })
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setColors)
-      .catch(() => setColors([]));
+  // Palette globale : chargée à l'ouverture pour proposer les couleurs pas
+  // encore utilisées par ce produit, et rechargée quand on la modifie ici.
+  const loadColors = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/colors`, {
+        headers: { ...getClientAuthHeaders() },
+      });
+      setColors(res.ok ? await res.json() : []);
+    } catch {
+      setColors([]);
+    }
   }, [apiUrl]);
+
+  useEffect(() => {
+    void loadColors();
+  }, [loadColors]);
 
   const usedColorIds = new Set(variants.map((variant) => variant.colorId));
   const availableColors = colors.filter((color) => color.active && !usedColorIds.has(color.id));
@@ -253,11 +263,14 @@ export function ProductEditModal({
               Ajouter
             </Button>
           </div>
-          {colors.length === 0 && (
-            <p className="text-xs opacity-60">
-              Aucune couleur dans la palette : créez-en dans les paramètres.
-            </p>
-          )}
+          <Button
+            variant="secondary"
+            aria-expanded={paletteOpen}
+            onClick={() => setPaletteOpen((open) => !open)}
+          >
+            {paletteOpen ? "Masquer la palette de couleurs" : "Gérer la palette de couleurs"}
+          </Button>
+          {paletteOpen && <ColorsManager colors={colors} apiUrl={apiUrl} onChanged={loadColors} />}
         </div>
         <label className="flex flex-col gap-1 text-sm">
           Photo

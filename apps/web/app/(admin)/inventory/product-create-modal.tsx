@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { slugify } from "@/lib/slugify";
 import { ColorLabel } from "@/components/color-label";
+import { ColorsManager } from "@/components/colors-manager";
 
 async function failure(res: Response): Promise<Error> {
   const body = await res.json().catch(() => null);
@@ -36,13 +37,31 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   const [photoUploaded, setPhotoUploaded] = useState(false);
   const [addedColorIds, setAddedColorIds] = useState<string[]>([]);
 
-  // Palette globale (/settings), seulement les couleurs actives.
-  useEffect(() => {
-    fetch(`${apiUrl}/api/v1/colors`, { headers: { ...getClientAuthHeaders() } })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((all: Color[]) => setColors(all.filter((color) => color.active)))
-      .catch(() => setColors([]));
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Palette globale (toutes les couleurs : le gestionnaire voit aussi les
+  // inactives), rechargée quand on la modifie ici. Une couleur cochée puis
+  // désactivée ou supprimée sort de la sélection.
+  const loadColors = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/colors`, {
+        headers: { ...getClientAuthHeaders() },
+      });
+      const all: Color[] = res.ok ? await res.json() : [];
+      setColors(all);
+      setSelectedColorIds((current) =>
+        current.filter((id) => all.some((color) => color.id === id && color.active)),
+      );
+    } catch {
+      setColors([]);
+    }
   }, [apiUrl]);
+
+  useEffect(() => {
+    void loadColors();
+  }, [loadColors]);
+
+  const activeColors = colors.filter((color) => color.active);
 
   function toggleColor(colorId: string) {
     setSelectedColorIds((current) =>
@@ -199,13 +218,13 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
         {hasVariants && (
           <fieldset className="flex flex-col gap-2 text-sm">
             <legend className="mb-1">Couleurs proposées</legend>
-            {colors.length === 0 ? (
+            {activeColors.length === 0 ? (
               <p className="text-xs opacity-60">
-                Aucune couleur dans la palette : créez-en dans les paramètres.
+                Aucune couleur active : ajoutez-en dans la palette ci-dessous.
               </p>
             ) : (
               <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {colors.map((color) => (
+                {activeColors.map((color) => (
                   <label key={color.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
@@ -217,6 +236,16 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
                   </label>
                 ))}
               </div>
+            )}
+            <Button
+              variant="secondary"
+              aria-expanded={paletteOpen}
+              onClick={() => setPaletteOpen((open) => !open)}
+            >
+              {paletteOpen ? "Masquer la palette de couleurs" : "Gérer la palette de couleurs"}
+            </Button>
+            {paletteOpen && (
+              <ColorsManager colors={colors} apiUrl={apiUrl} onChanged={loadColors} />
             )}
           </fieldset>
         )}

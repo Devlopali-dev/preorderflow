@@ -316,15 +316,6 @@ export interface Product {
   variants: ProductVariant[];
 }
 
-export async function getColors(): Promise<Color[]> {
-  const res = await fetch(`${API_URL}/api/v1/colors`, {
-    cache: "no-store",
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-  return res.json();
-}
-
 export async function getProducts(): Promise<Product[]> {
   const res = await fetch(`${API_URL}/api/v1/products`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Erreur API (${res.status})`);
