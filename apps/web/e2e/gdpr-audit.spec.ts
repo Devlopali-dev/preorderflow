@@ -19,7 +19,9 @@ test("l'admin peut exporter et anonymiser un client, chaque action est journalis
       customerEmail: "playwright-gdpr@example.com",
       customerFirstName: "Playwright",
       customerLastName: "Gdpr",
-      items: [{ variantId: product.variants[0].id, quantity: 1 }],
+      items: [
+        { variantId: product.variants.find((v: { active: boolean }) => v.active).id, quantity: 1 },
+      ],
       shippingAddress: {
         firstName: "Playwright",
         lastName: "Gdpr",

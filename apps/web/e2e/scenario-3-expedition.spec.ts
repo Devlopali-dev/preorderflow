@@ -19,7 +19,9 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
       customerEmail: "scenario3@example.com",
       customerFirstName: "Scenario",
       customerLastName: "Trois",
-      items: [{ variantId: product.variants[0].id, quantity: 1 }],
+      items: [
+        { variantId: product.variants.find((v: { active: boolean }) => v.active).id, quantity: 1 },
+      ],
       shippingAddress: {
         firstName: "Scenario",
         lastName: "Trois",

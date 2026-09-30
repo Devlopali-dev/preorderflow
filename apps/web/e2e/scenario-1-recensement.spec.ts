@@ -8,10 +8,35 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   const auth = authHeader(await getAdminToken(request));
 
-  const products = await (await request.get(`${apiUrl}/api/v1/products`)).json();
-  const product = products.find((p: { sku: string }) => p.sku === "SIFFLET-001");
+  // Produit dédié à ce scénario, avec deux couleurs de la palette : le test ne
+  // dépend pas de l'état des variantes du seed (qu'on peut désactiver à la main).
+  const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
+    .filter((c: { active: boolean }) => c.active)
+    .slice(0, 2) as Array<{ id: string; name: string }>;
+  expect(colors).toHaveLength(2);
+  const [first, second] = colors;
 
-  const slug = `scenario1-${Date.now()}`;
+  const stamp = Date.now();
+  const productRes = await request.post(`${apiUrl}/api/v1/products`, {
+    headers: auth,
+    data: {
+      sku: `S1-${stamp}`,
+      name: `Produit scénario 1 ${stamp}`,
+      slug: `s1-${stamp}`,
+      price: 5,
+    },
+  });
+  expect(productRes.ok()).toBe(true);
+  const product = await productRes.json();
+  for (const color of colors) {
+    const variantRes = await request.post(`${apiUrl}/api/v1/products/${product.id}/variants`, {
+      headers: auth,
+      data: { colorId: color.id },
+    });
+    expect(variantRes.ok()).toBe(true);
+  }
+
+  const slug = `scenario1-${stamp}`;
 
   // 1. Créer campagne (DRAFT) — action admin
   const createRes = await request.post(`${apiUrl}/api/v1/campaigns`, {
@@ -41,12 +66,11 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
   await page.goto(`/campaigns/${slug}`);
   await expect(page.getByRole("heading", { name: "Scénario 1 — Campagne de test" })).toBeVisible();
 
-  // 2 rouges + 1 bleu : une personne, deux couleurs (le sifflet du seed a
-  // les variantes Rouge / Bleu / Noir).
-  const addRed = page.getByRole("button", { name: "Ajouter un exemplaire : Rouge" });
-  await addRed.click();
-  await addRed.click();
-  await page.getByRole("button", { name: "Ajouter un exemplaire : Bleu" }).click();
+  // 2 de la première couleur + 1 de la seconde : une personne, deux couleurs.
+  const addFirst = page.getByRole("button", { name: `Ajouter un exemplaire : ${first.name}` });
+  await addFirst.click();
+  await addFirst.click();
+  await page.getByRole("button", { name: `Ajouter un exemplaire : ${second.name}` }).click();
   await page.getByLabel("Email").fill("scenario1@example.com");
   await page.getByLabel("Prénom").fill("Scenario");
   await page.getByLabel("Nom", { exact: true }).fill("Un");
@@ -66,5 +90,8 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
   const quantityByColor = Object.fromEntries(
     stats.byVariant.map((v: { label: string; quantity: number }) => [v.label, v.quantity]),
   );
-  expect(quantityByColor).toEqual({ Rouge: 2, Bleu: 1 });
+  expect(quantityByColor).toEqual({ [first.name]: 2, [second.name]: 1 });
+
+  // Nettoyage : le produit de test sort de la liste des produits actifs.
+  await request.patch(`${apiUrl}/api/v1/products/${product.id}/archive`, { headers: auth });
 });

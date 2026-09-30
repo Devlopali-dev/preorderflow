@@ -26,7 +26,9 @@ test("scénario 2 : commande, paiement, production, stock", async ({ page, reque
       customerEmail: "scenario2@example.com",
       customerFirstName: "Scenario",
       customerLastName: "Deux",
-      items: [{ variantId: product.variants[0].id, quantity: 2 }],
+      items: [
+        { variantId: product.variants.find((v: { active: boolean }) => v.active).id, quantity: 2 },
+      ],
       shippingAddress: {
         firstName: "Scenario",
         lastName: "Deux",
@@ -59,7 +61,12 @@ test("scénario 2 : commande, paiement, production, stock", async ({ page, reque
     headers: auth,
     data: {
       reference: `SCENARIO2-${Date.now()}`,
-      items: [{ variantId: product.variants[0].id, quantityPlanned: 10 }],
+      items: [
+        {
+          variantId: product.variants.find((v: { active: boolean }) => v.active).id,
+          quantityPlanned: 10,
+        },
+      ],
     },
   });
   const batch = await batchRes.json();

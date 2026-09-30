@@ -19,7 +19,9 @@ test("le détail d'une commande permet de générer un paiement Revolut (QR + li
       customerEmail: "playwright-payment@example.com",
       customerFirstName: "Playwright",
       customerLastName: "Test",
-      items: [{ variantId: product.variants[0].id, quantity: 1 }],
+      items: [
+        { variantId: product.variants.find((v: { active: boolean }) => v.active).id, quantity: 1 },
+      ],
       shippingAddress: {
         firstName: "Playwright",
         lastName: "Test",
