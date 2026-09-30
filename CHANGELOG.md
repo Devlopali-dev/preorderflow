@@ -7,6 +7,20 @@ correctifs.
 
 ## [Non publié]
 
+## [0.6.0] — 2026-09-30
+
+### Ajouté
+
+- **Décrémenter la production** : bouton −1 dans les actions d'un lot en cours et route
+  `POST /production/batches/:id/decrement`. La correction retire des unités déjà déclarées produites
+  par un mouvement de stock négatif (l'historique n'est jamais réécrit), tracée dans l'audit.
+
+### Sécurité du stock
+
+- La correction est refusée sur un lot planifié, terminé ou annulé, au-delà de la quantité produite,
+  et si elle ferait passer le stock physique sous zéro. La baisse est atomique : des corrections
+  simultanées ne peuvent pas retirer plus que la production.
+
 ## [0.5.0] — 2026-09-30
 
 ### Ajouté
