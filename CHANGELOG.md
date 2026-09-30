@@ -7,6 +7,33 @@ correctifs.
 
 ## [Non publié]
 
+## [0.4.0] — 2026-09-30
+
+### Ajouté
+
+- **Archives de campagnes** (terminées et annulées) : section repliée sur `/campaigns`, campagnes en
+  lecture seule, **réactivation** (retour en brouillon) et **suppression définitive** avec leurs
+  demandes de recensement et leurs fichiers (ADMIN, journalisée : `CAMPAIGN_REACTIVATED`,
+  `CAMPAIGN_DELETED`).
+- Nouvelle campagne : envoi des images et du PDF comme à l'édition, produits archivés signalés
+  « archivé » et placés en fin de liste, réactivation du produit après confirmation.
+- Palette de couleurs gérée depuis les modales de création et d'édition d'un produit.
+
+### Modifié
+
+- **Migration** `add_campaign_audit_actions` : deux nouvelles valeurs de l'enum `AuditAction`.
+- La palette de couleurs quitte `/settings`.
+- Les transitions `TERMINEE → DRAFT` et `ANNULEE → DRAFT` sont autorisées (réactivation).
+- `DELETE /campaigns/:id` est réservée aux ADMIN. Sur une archive, elle supprime aussi les demandes de
+  recensement ; sur une campagne en cours, elle reste refusée tant qu'il y en a.
+- Modifier, ajouter ou retirer un aperçu, ou enregistrer un intérêt sur une campagne archivée est
+  refusé (400).
+
+### Corrigé
+
+- La suite E2E ne se connecte qu'une fois par lancement : le login est limité à 10 par minute et la
+  suite s'en approchait, ce qui la rendait instable.
+
 ## [0.3.0] — 2026-09-30
 
 ### Ajouté
