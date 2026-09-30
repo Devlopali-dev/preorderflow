@@ -68,7 +68,9 @@ export default async function ProductionPage() {
                     <th>Produit</th>
                     <th style={{ textAlign: "center" }}>Prévu</th>
                     <th style={{ textAlign: "center" }}>Fabriqué</th>
-                    <th style={{ textAlign: "center" }}>Actions</th>
+                    {group.status !== "COMPLETED" && (
+                      <th style={{ textAlign: "center" }}>Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -90,14 +92,16 @@ export default async function ProductionPage() {
                         <td>{productNames}</td>
                         <td className="text-center">{planned}</td>
                         <td className="text-center">{produced}</td>
-                        <td className="text-center">
-                          <div className="table-cell-actions justify-center">
-                            {batch.status === "PLANNED" && (
-                              <ProductionStartButton batchId={batch.id} apiUrl={apiUrl} />
-                            )}
-                            <ProductionIncrementButtons batch={batch} apiUrl={apiUrl} />
-                          </div>
-                        </td>
+                        {group.status !== "COMPLETED" && (
+                          <td className="text-center">
+                            <div className="table-cell-actions justify-center">
+                              {batch.status === "PLANNED" && (
+                                <ProductionStartButton batchId={batch.id} apiUrl={apiUrl} />
+                              )}
+                              <ProductionIncrementButtons batch={batch} apiUrl={apiUrl} />
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}

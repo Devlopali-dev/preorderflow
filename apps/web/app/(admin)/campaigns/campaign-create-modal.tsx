@@ -23,6 +23,8 @@ export function CampaignCreateModal({
   const [slugEdited, setSlugEdited] = useState(false);
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [indicativePrice, setIndicativePrice] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
   const [saving, setSaving] = useState(false);
@@ -40,6 +42,8 @@ export function CampaignCreateModal({
           slug,
           productId,
           indicativePrice: Number(indicativePrice),
+          startDate: startDate ? new Date(startDate).toISOString() : undefined,
+          endDate: endDate ? new Date(endDate).toISOString() : undefined,
           imageUrl: imageUrl || undefined,
           documentUrl: documentUrl || undefined,
         }),
@@ -115,6 +119,22 @@ export function CampaignCreateModal({
             placeholder="Prix indicatif"
             value={indicativePrice}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          Début
+          <Input
+            type="date"
+            value={startDate}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
+          />
+        </label>
+        <label className="text-sm">
+          Fin (deadline)
+          <Input
+            type="date"
+            value={endDate}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">

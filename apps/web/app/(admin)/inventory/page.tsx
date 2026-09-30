@@ -51,9 +51,6 @@ function ProductsTable({
                     <tr key={variant.id} className="text-sm opacity-90">
                       {/* Retrait : la ligne d'une couleur se lit comme un détail du produit. */}
                       <td className="pl-10">
-                        <span aria-hidden="true" className="mr-2 opacity-50">
-                          ↳
-                        </span>
                         <ColorLabel
                           name={variant.color?.name ?? "Standard"}
                           hex={variant.color?.hex}

@@ -218,13 +218,16 @@ export function ProductEditModal({
                   />
                   <span className="opacity-60">{variant.sku}</span>
                 </span>
-                <Button
-                  variant="secondary"
-                  disabled={saving}
-                  onClick={() => handleToggleVariant(variant)}
-                >
-                  {variant.active ? "Désactiver" : "Activer"}
-                </Button>
+                {/* Standard (sans couleur) : la variante de repli, jamais désactivable. */}
+                {variant.color !== null && (
+                  <Button
+                    variant="secondary"
+                    disabled={saving}
+                    onClick={() => handleToggleVariant(variant)}
+                  >
+                    {variant.active ? "Désactiver" : "Activer"}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

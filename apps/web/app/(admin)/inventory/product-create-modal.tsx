@@ -21,6 +21,7 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   // Tant que le slug n'a pas été modifié à la main, il suit le nom.
   const [slugEdited, setSlugEdited] = useState(false);
   const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [hasVariants, setHasVariants] = useState(false);
   const [colors, setColors] = useState<Color[]>([]);
@@ -63,7 +64,13 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
         const res = await fetch(`${apiUrl}/api/v1/products`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-          body: JSON.stringify({ sku, name, slug, price: Number(price) }),
+          body: JSON.stringify({
+            sku,
+            name,
+            slug,
+            price: Number(price),
+            description: description.trim() || undefined,
+          }),
         });
         if (!res.ok) throw await failure(res);
         productId = (await res.json()).id as string;
@@ -170,6 +177,15 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
             value={price}
             disabled={Boolean(createdProductId)}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Description (optionnel)
+          <Input
+            placeholder="Description"
+            value={description}
+            disabled={Boolean(createdProductId)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
