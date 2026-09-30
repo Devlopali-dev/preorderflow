@@ -145,15 +145,23 @@ export async function getCustomers(): Promise<CustomerSummary[]> {
   return res.json();
 }
 
+export interface CustomerAddress {
+  id: string;
+  type: "BILLING" | "SHIPPING";
+  firstName: string;
+  lastName: string;
+  company: string | null;
+  address1: string;
+  address2: string | null;
+  postalCode: string;
+  city: string;
+  country: string;
+  phone: string | null;
+}
+
 export interface CustomerDetail extends CustomerSummary {
   phone: string | null;
-  addresses: Array<{
-    id: string;
-    address1: string;
-    city: string;
-    postalCode: string;
-    country: string;
-  }>;
+  addresses: CustomerAddress[];
   orders: Array<{ id: string; number: string; status: string; total: string; currency: string }>;
 }
 

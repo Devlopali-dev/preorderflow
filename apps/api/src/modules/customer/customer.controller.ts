@@ -37,7 +37,14 @@ export class CustomerController {
     @CurrentAdminId() adminId: string,
   ) {
     const customer = await this.customerService.update(id, dto);
-    await this.auditService.log(adminId, "CUSTOMER_UPDATED", "Customer", customer.id, dto);
+    // Jamais les valeurs dans l'audit : ce sont des données personnelles (nom,
+    // email, adresses) qui survivraient à une anonymisation du client.
+    const fieldsChanged = Object.entries(dto)
+      .filter(([, value]) => value !== undefined)
+      .map(([key]) => key);
+    await this.auditService.log(adminId, "CUSTOMER_UPDATED", "Customer", customer.id, {
+      fieldsChanged,
+    });
     return customer;
   }
 

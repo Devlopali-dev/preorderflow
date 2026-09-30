@@ -286,9 +286,9 @@ DELETE /api/v1/colors/:id                       # ADMIN uniquement — refusé (
 POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8)
 
 GET    /api/v1/customers
-POST   /api/v1/customers
+POST   /api/v1/customers                        # identité + addresses[] (jusqu'à 10)
 GET    /api/v1/customers/:id
-PATCH  /api/v1/customers/:id
+PATCH  /api/v1/customers/:id                    # email, identité, téléphone, addresses[] : carnet synchronisé (avec id = mise à jour, sans id = création, absente = suppression) ; refusé (400) si le client est anonymisé ; audité sans valeurs (fieldsChanged)
 POST   /api/v1/customers/:id/gdpr-export        # ADMIN uniquement
 POST   /api/v1/customers/:id/gdpr-anonymize     # ADMIN uniquement
 
