@@ -12,7 +12,7 @@ import {
 } from "./production-status";
 
 // Une ligne de production cible une variante (couleur) ; on charge aussi le
-// produit et la couleur pour l'affichage (« Sifflet — Rouge »).
+// produit et la couleur pour l'affichage (« Stylo — Rouge »).
 const PRODUCTION_ITEM_INCLUDE = { variant: { include: { product: true, color: true } } } as const;
 
 @Injectable()

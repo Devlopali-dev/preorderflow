@@ -58,7 +58,7 @@ export class ProductService {
 
   // Ajoute une couleur de la palette au produit. La variante par défaut
   // (sans couleur) est retirée si rien ne la référence encore : un produit
-  // « Sifflet » devient « Sifflet Rouge / Bleu », pas « Sifflet + Rouge ».
+  // « Stylo » devient « Stylo Rouge / Bleu », pas « Stylo + Rouge ».
   async addVariant(productId: string, colorId: string) {
     const product = await this.getById(productId);
     const color = await prisma.color.findUnique({ where: { id: colorId } });

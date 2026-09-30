@@ -10,7 +10,7 @@ test("l'admin peut exporter et anonymiser un client, chaque action est journalis
   const auth = authHeader(token);
 
   const products = await (await request.get(`${apiUrl}/api/v1/products`, { headers: auth })).json();
-  const product = products.find((p: { sku: string }) => p.sku === "SIFFLET-001");
+  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
 
   // Commande = déclenche ORDER_CREATED dans l'audit log
   const orderRes = await request.post(`${apiUrl}/api/v1/orders`, {

@@ -24,12 +24,10 @@ describe("DEFAULT_TEMPLATES", () => {
     const email = DEFAULT_TEMPLATES.INTEREST_REGISTERED;
     const rendered = substitute(email.html, {
       firstName: "Alice",
-      campaignName: "Sifflet anti-agression #1",
+      campaignName: "Stylo #1",
       quantity: 3,
     });
-    expect(substitute(email.subject, { campaignName: "Sifflet anti-agression #1" })).toContain(
-      "Sifflet anti-agression #1",
-    );
+    expect(substitute(email.subject, { campaignName: "Stylo #1" })).toContain("Stylo #1");
     expect(rendered).toContain("Alice");
     expect(rendered).toContain("3");
     expect(rendered).toMatch(/ne constitue pas une commande/);

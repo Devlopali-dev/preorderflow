@@ -8,7 +8,7 @@ PreOrderFlow est une application web légère permettant à un fabricant/créate
 
 **Recensement → Commandes → Paiements → Production → Stock → Préparation → Expédition → Livraison**
 
-Le premier cas d'utilisation est la fabrication et la vente de **sifflets anti-agression**, mais l'application doit être générique et permettre de gérer n'importe quel produit fabriqué en petites séries.
+Le premier cas d'utilisation est la fabrication et la vente de **stylos**, mais l'application doit être générique et permettre de gérer n'importe quel produit fabriqué en petites séries.
 
 L'application ne doit PAS être conçue comme un ERP généraliste.
 
@@ -146,7 +146,7 @@ Une campagne représente une opération commerciale.
 Exemple :
 
 ```text
-Sifflet anti-agression #1
+Stylo #1
 ```
 
 Une campagne possède :
@@ -186,7 +186,7 @@ Une personne peut indiquer son intérêt pour un produit.
 Exemple :
 
 ```text
-Je souhaite 3 sifflets.
+Je souhaite 3 stylos.
 ```
 
 Cela ne crée PAS une commande.
@@ -232,7 +232,7 @@ Exemple :
 
 ```text
 184 personnes intéressées
-327 sifflets demandés
+327 stylos demandés
 
 1 exemplaire : 96
 2 exemplaires : 54
@@ -412,7 +412,7 @@ Exemple :
 Production #2026-001
 
 Produit :
-Sifflet anti-agression
+Stylo
 
 Prévu :
 350
@@ -546,7 +546,7 @@ Commande #2026-0042
 
 Jean Dupont
 
-3 × Sifflet anti-agression
+3 × Stylo
 
 Adresse de livraison
 
@@ -672,7 +672,7 @@ Créer une interface publique moderne et responsive.
 Page campagne :
 
 ```text
-Sifflet anti-agression
+Stylo
 
 Description
 
@@ -1140,7 +1140,7 @@ get_shipments_status
 
 Exemples d'utilisation futurs :
 
-> Combien de sifflets sont actuellement commandés ?
+> Combien de stylos sont actuellement commandés ?
 
 > Combien dois-je encore fabriquer ?
 

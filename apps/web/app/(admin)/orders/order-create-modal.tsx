@@ -25,7 +25,7 @@ export function OrderCreateModal({
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
-  // Une ligne de commande vise une variante (couleur) : « Sifflet — Rouge ».
+  // Une ligne de commande vise une variante (couleur) : « Stylo — Rouge ».
   const variantOptions = products.flatMap((product) =>
     product.variants
       .filter((variant) => variant.active)

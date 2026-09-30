@@ -19,7 +19,7 @@ function order(overrides: Partial<Order>): Order {
     currency: "EUR",
     createdAt: "2026-01-01T00:00:00.000Z",
     customer: { firstName: "A", lastName: "B", email: "a@b.com" },
-    items: [{ quantity: 2, product: { name: "Sifflet", sku: "SIFFLET-001" } }],
+    items: [{ quantity: 2, product: { name: "Stylo", sku: "STYLO-001" } }],
     ...overrides,
   };
 }
@@ -37,17 +37,23 @@ describe("computeOrderStatistics", () => {
 
   it("agrège les unités par SKU produit", () => {
     const stats = computeOrderStatistics([
-      order({ items: [{ quantity: 3, product: { name: "Sifflet", sku: "SIFFLET-001" } }] }),
-      order({ items: [{ quantity: 1, product: { name: "Sifflet", sku: "SIFFLET-001" } }] }),
+      order({ items: [{ quantity: 3, product: { name: "Stylo", sku: "STYLO-001" } }] }),
+      order({ items: [{ quantity: 1, product: { name: "Stylo", sku: "STYLO-001" } }] }),
     ]);
-    expect(stats.unitsOrderedByProductSku["SIFFLET-001"]).toBe(4);
+    expect(stats.unitsOrderedByProductSku["STYLO-001"]).toBe(4);
   });
 });
 
 describe("filterLowStockProducts", () => {
   const rows: InventoryRow[] = [
-    { product: { id: "1", name: "A", sku: "A" }, stock: { physicalStock: 5, reservedStock: 0, availableStock: 5 } },
-    { product: { id: "2", name: "B", sku: "B" }, stock: { physicalStock: 50, reservedStock: 0, availableStock: 50 } },
+    {
+      product: { id: "1", name: "A", sku: "A" },
+      stock: { physicalStock: 5, reservedStock: 0, availableStock: 5 },
+    },
+    {
+      product: { id: "2", name: "B", sku: "B" },
+      stock: { physicalStock: 50, reservedStock: 0, availableStock: 50 },
+    },
   ];
 
   it("ne retient que les produits sous le seuil", () => {
@@ -76,7 +82,13 @@ describe("summarizeProductionStatus", () => {
       id: "1",
       reference: "2026-001",
       status: "IN_PROGRESS",
-      items: [{ quantityPlanned: 100, quantityProduced: 40, product: { name: "Sifflet", sku: "SIFFLET-001" } }],
+      items: [
+        {
+          quantityPlanned: 100,
+          quantityProduced: 40,
+          product: { name: "Stylo", sku: "STYLO-001" },
+        },
+      ],
       ...overrides,
     };
   }
@@ -84,9 +96,12 @@ describe("summarizeProductionStatus", () => {
   it("calcule le reste à produire seulement pour les lots actifs", () => {
     const summary = summarizeProductionStatus([
       batch({ status: "IN_PROGRESS" }),
-      batch({ status: "COMPLETED", items: [{ quantityPlanned: 50, quantityProduced: 50, product: { name: "X", sku: "X" } }] }),
+      batch({
+        status: "COMPLETED",
+        items: [{ quantityPlanned: 50, quantityProduced: 50, product: { name: "X", sku: "X" } }],
+      }),
     ]);
-    expect(summary.remainingToProduceByProductSku["SIFFLET-001"]).toBe(60);
+    expect(summary.remainingToProduceByProductSku["STYLO-001"]).toBe(60);
     expect(summary.remainingToProduceByProductSku["X"]).toBeUndefined();
     expect(summary.activeBatches).toHaveLength(1);
   });

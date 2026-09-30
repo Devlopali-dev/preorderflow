@@ -3,7 +3,7 @@
 Application open source pour gérer le cycle complet d'une petite production :
 **Recensement → Commandes → Paiements → Production → Stock → Préparation → Expédition → Livraison**.
 
-Premier cas d'usage : fabrication et vente de sifflets anti-agression — mais l'application est
+Premier cas d'usage : fabrication et vente de stylos — mais l'application est
 générique et peut gérer n'importe quel produit fabriqué en petites séries.
 
 ## Démarrage rapide

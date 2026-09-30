@@ -27,7 +27,7 @@ test("une couleur inutilisée se supprime", async ({ request }) => {
 test("une couleur utilisée par une variante ne peut pas être supprimée", async ({ request }) => {
   const auth = authHeader(await getAdminToken(request));
 
-  // « Rouge » porte des variantes de sifflet dans le seed.
+  // « Rouge » porte des variantes de stylo dans le seed.
   const list = await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json();
   const rouge = list.find((c: { name: string }) => c.name === "Rouge");
 

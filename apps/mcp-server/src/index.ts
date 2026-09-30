@@ -51,7 +51,7 @@ server.registerTool(
   {
     title: "Statistiques de commandes",
     description:
-      "Nombre total de commandes, répartition par statut, et total d'unités commandées par produit (répond à des questions comme « combien de sifflets sont actuellement commandés ? »). Exclut les commandes annulées/remboursées du total d'unités.",
+      "Nombre total de commandes, répartition par statut, et total d'unités commandées par produit (répond à des questions comme « combien de stylos sont actuellement commandés ? »). Exclut les commandes annulées/remboursées du total d'unités.",
     inputSchema: {},
   },
   async () => {
@@ -66,7 +66,9 @@ server.registerTool(
     title: "Produits en rupture ou stock faible",
     description:
       "Liste les produits dont le stock disponible (physique moins réservé) est sous un seuil donné (répond à « quels produits sont en rupture ? »).",
-    inputSchema: { threshold: z.number().int().min(0).default(10).describe("Seuil de stock disponible") },
+    inputSchema: {
+      threshold: z.number().int().min(0).default(10).describe("Seuil de stock disponible"),
+    },
   },
   async ({ threshold }) => {
     const rows = await apiGet<InventoryRow[]>("/api/v1/inventory");

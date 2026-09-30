@@ -18,7 +18,7 @@ export function ProductionCreateModal({
 }) {
   const router = useRouter();
   const [reference, setReference] = useState("");
-  // Une ligne de production vise une variante (couleur) : « Sifflet — Rouge ».
+  // Une ligne de production vise une variante (couleur) : « Stylo — Rouge ».
   const variantOptions = products.flatMap((product) =>
     product.variants
       .filter((variant) => variant.active)

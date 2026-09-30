@@ -10,7 +10,7 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
   const auth = authHeader(token);
 
   const products = await (await request.get(`${apiUrl}/api/v1/products`, { headers: auth })).json();
-  const product = products.find((p: { sku: string }) => p.sku === "SIFFLET-001");
+  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
 
   // Commande payée (setup direct par API — pas l'objet du scénario)
   const orderRes = await request.post(`${apiUrl}/api/v1/orders`, {

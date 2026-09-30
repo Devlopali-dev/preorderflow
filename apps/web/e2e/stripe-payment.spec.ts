@@ -11,7 +11,7 @@ test("l'admin peut choisir Stripe comme mode de paiement (erreur propre si non c
   const products = await (
     await request.get(`${apiUrl}/api/v1/products`, { headers: authHeader(token) })
   ).json();
-  const product = products.find((p: { sku: string }) => p.sku === "SIFFLET-001");
+  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
 
   const orderRes = await request.post(`${apiUrl}/api/v1/orders`, {
     headers: authHeader(token),

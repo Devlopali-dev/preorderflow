@@ -16,7 +16,7 @@ import { NotificationService } from "../notification/notification.service";
 const PAYMENT_STATUSES_RESERVING_STOCK: OrderPaymentStatus[] = ["PARTIALLY_PAID", "PAID"];
 
 // Une ligne de commande référence une variante (couleur) ; on charge aussi le
-// produit et la couleur pour l'affichage (« Sifflet — Rouge »).
+// produit et la couleur pour l'affichage (« Stylo — Rouge »).
 const ORDER_ITEM_INCLUDE = { variant: { include: { product: true, color: true } } } as const;
 
 @Injectable()
