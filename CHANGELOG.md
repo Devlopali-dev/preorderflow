@@ -7,6 +7,30 @@ correctifs.
 
 ## [Non publié]
 
+## [0.3.0] — 2026-09-30
+
+### Ajouté
+
+- Expéditions groupées par statut, avec une colonne Actions pour passer au statut suivant (absente
+  sur Delivered et Returned) et « Signaler un incident ».
+- Référence de production automatique `nom-AAAAMMJJ`, suffixée `#1`, `#2`… en cas de doublon.
+- Nouveau produit : champ description ; nouvelle campagne : dates de début et de fin.
+
+### Modifié
+
+- **Désactiver une couleur la retire** si elle ne porte aucun historique ; sinon elle reste inactive.
+  La règle « au moins une variante active » disparaît : sans couleur, le produit retombe sur la
+  variante Standard, qui ne se désactive jamais.
+- Le slug d'un produit est généré depuis le nom (plus de champ Slug) ; le SKU se propose depuis le nom.
+- Production : colonne Actions masquée sur les lots terminés. Produits : lignes de couleurs en retrait.
+- `POST /production/batches` : `reference` devient facultative. `POST /products` : `slug` devient
+  facultatif. `PATCH /products/:id/variants/:variantId` renvoie `{ removed, variant? }`.
+
+### Corrigé
+
+- Test E2E du portail client : il attend désormais le nouveau lien magique dans les logs au lieu de
+  lire un ancien lien.
+
 ## [0.2.0] — 2026-09-30
 
 ### Ajouté
