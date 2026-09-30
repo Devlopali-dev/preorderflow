@@ -25,10 +25,20 @@ import {
   UpdateCampaignDto,
   UpdateCampaignStatusDto,
 } from "./dto/create-campaign.dto";
+import { isArchivedStatus } from "./campaign-status";
+import { AuditService } from "../audit/audit.service";
+import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Public } from "../auth/public.decorator";
+import { Roles } from "../auth/roles.decorator";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
+
+// Retire du disque local des fichiers uploadés (PDF, images, vignettes).
+async function deleteUploadedFiles(urls: string[]): Promise<void> {
+  const files = urls.map((url) => join(process.cwd(), "uploads", url.replace(/^\/uploads\//, "")));
+  await Promise.all(files.map((file) => unlink(file).catch(() => undefined)));
+}
 
 @ApiTags("campaigns")
 @Controller("campaigns")
@@ -36,6 +46,7 @@ export class CampaignController {
   constructor(
     private readonly campaignService: CampaignService,
     private readonly pdfThumbnailService: PdfThumbnailService,
+    private readonly auditService: AuditService,
   ) {}
 
   // Lecture publique : page vitrine de campagne (§19) + dashboard admin.
@@ -61,9 +72,18 @@ export class CampaignController {
     return this.campaignService.update(id, dto);
   }
 
+  // Suppression définitive, y compris d'une campagne archivée avec ses demandes
+  // de recensement : action destructive, réservée aux ADMIN et journalisée.
+  @Roles("ADMIN")
   @Delete(":id")
-  remove(@Param("id") id: string) {
-    return this.campaignService.remove(id);
+  async remove(@Param("id") id: string, @CurrentAdminId() adminId: string) {
+    const removed = await this.campaignService.remove(id);
+    await deleteUploadedFiles(removed.files);
+    await this.auditService.log(adminId, "CAMPAIGN_DELETED", "Campaign", removed.id, {
+      name: removed.name,
+      deletedInterests: removed.deletedInterests,
+    });
+    return { id: removed.id };
   }
 
   // Même pattern que ProductController (stockage disque local, nom de
@@ -161,17 +181,29 @@ export class CampaignController {
     const { campaign, removed } = await this.campaignService.removeMedia(id, mediaId);
 
     // Nettoie les fichiers associés (PDF + vignette) du disque local.
-    const files = [removed.url, removed.thumbnailUrl]
-      .filter((url): url is string => Boolean(url))
-      .map((url) => join(process.cwd(), "uploads", url.replace(/^\/uploads\//, "")));
-    await Promise.all(files.map((file) => unlink(file).catch(() => undefined)));
+    await deleteUploadedFiles(
+      [removed.url, removed.thumbnailUrl].filter((url): url is string => Boolean(url)),
+    );
 
     return campaign;
   }
 
   @Patch(":id/status")
-  updateStatus(@Param("id") id: string, @Body() dto: UpdateCampaignStatusDto) {
-    return this.campaignService.updateStatus(id, dto.status as never);
+  async updateStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateCampaignStatusDto,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const before = await this.campaignService.getBySlugOrId(id);
+    const updated = await this.campaignService.updateStatus(id, dto.status as never);
+    // Réactiver une campagne archivée (retour en brouillon) est tracé.
+    if (isArchivedStatus(before.status) && updated.status === "DRAFT") {
+      await this.auditService.log(adminId, "CAMPAIGN_REACTIVATED", "Campaign", updated.id, {
+        name: updated.name,
+        from: before.status,
+      });
+    }
+    return updated;
   }
 
   @Public()

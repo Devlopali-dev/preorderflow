@@ -184,10 +184,21 @@ Tout statut non terminal → ANNULEE (jusqu'à EXPÉDITION inclus)
 Transitions interdites : retour arrière (ex. `COMMANDES_FERMÉES → RECENSEMENT`), saut direct `DRAFT → PRODUCTION`.
 
 ANNULEE est volontairement atteignable depuis n'importe quel statut non terminal (pas seulement
-avant l'ouverture des commandes) : une campagne dont le recensement a des inscrits ne peut jamais
-être supprimée (`DELETE /campaigns/:id` refuse s'il existe un `CampaignInterest`, cf. §8), donc si
-ANNULEE n'était pas atteignable au-delà de `COMMANDES_OUVERTES`, une campagne avancée resterait
-bloquée définitivement sans aucune sortie.
+avant l'ouverture des commandes) : une campagne en cours dont le recensement a des inscrits ne peut
+pas être supprimée (`DELETE /campaigns/:id` refuse s'il existe un `CampaignInterest`, cf. §8), donc
+si ANNULEE n'était pas atteignable au-delà de `COMMANDES_OUVERTES`, une campagne avancée resterait
+bloquée sans aucune sortie.
+
+**Archives.** `TERMINEE` et `ANNULEE` sont les statuts _archivés_ :
+
+- **lecture seule** : l'API refuse la modification, l'ajout ou le retrait d'aperçus et le
+  recensement (400) tant que la campagne est archivée ;
+- **réactivation** : seule transition possible depuis une archive, `TERMINEE|ANNULEE → DRAFT`. La
+  campagne repart du début du cycle. Action tracée (`CAMPAIGN_REACTIVATED`) ;
+- **suppression définitive** : `DELETE /campaigns/:id` sur une archive supprime la campagne, ses
+  demandes de recensement (et leurs lignes par couleur) et ses fichiers. Réservée aux `ADMIN`, tracée
+  (`CAMPAIGN_DELETED`, avec le nombre de demandes supprimées). Les clients restent : ils peuvent avoir
+  des commandes. Les données de recensement se suppriment indépendamment des commandes (§24).
 
 ### 4.2 Order.status
 
@@ -256,7 +267,7 @@ POST   /api/v1/campaigns
 GET    /api/v1/campaigns/:id
 PATCH  /api/v1/campaigns/:id                    # nom/prix/dates — pas le statut
 PATCH  /api/v1/campaigns/:id/status
-DELETE /api/v1/campaigns/:id                    # bloqué (400) si des CampaignInterest existent
+DELETE /api/v1/campaigns/:id                    # ADMIN — en cours : refusé (400) si des CampaignInterest existent ; archive : suppression définitive avec ses demandes
 POST   /api/v1/campaigns/:id/interests          # public, rate-limited — items: [{variantId, quantity}]
 GET    /api/v1/campaigns/:id/statistics         # + ventilation par couleur (byVariant)
 

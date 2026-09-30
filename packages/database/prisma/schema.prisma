@@ -557,6 +557,8 @@ enum AuditAction {
   CUSTOMER_DATA_EXPORTED
   CUSTOMER_ANONYMIZED
   SETTINGS_UPDATED
+  CAMPAIGN_DELETED
+  CAMPAIGN_REACTIVATED
 }
 
 // Config email/ntfy éditable depuis /settings — une seule ligne (id fixe),

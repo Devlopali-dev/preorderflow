@@ -6,6 +6,7 @@ import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Campaign } from "@/lib/api";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { isArchivedCampaign } from "@/lib/campaign-status";
 
 function toDateInputValue(iso: string | null): string {
   if (!iso) return "";
@@ -15,10 +16,12 @@ function toDateInputValue(iso: string | null): string {
 export function CampaignEditModal({
   campaign,
   apiUrl,
+  isAdmin,
   onClose,
 }: {
   campaign: Campaign;
   apiUrl: string;
+  isAdmin: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -31,6 +34,10 @@ export function CampaignEditModal({
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+
+  // Une campagne archivée (terminée ou annulée) est en lecture seule : on la
+  // réactive ou on la supprime, on ne la modifie pas.
+  const readOnly = isArchivedCampaign(campaign.status);
 
   async function handleSave() {
     setSaving(true);
@@ -45,6 +52,25 @@ export function CampaignEditModal({
           startDate: startDate ? new Date(startDate).toISOString() : undefined,
           endDate: endDate ? new Date(endDate).toISOString() : undefined,
         }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      onClose();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReactivate() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify({ status: "DRAFT" }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       onClose();
@@ -145,28 +171,51 @@ export function CampaignEditModal({
     <Modal
       isOpen
       onClose={onClose}
-      title="Paramétrer la campagne"
+      title={readOnly ? "Campagne archivée (lecture seule)" : "Paramétrer la campagne"}
       size="lg"
       footer={
-        <>
-          <Button variant="danger" onClick={() => setConfirmDeleteOpen(true)}>
-            Supprimer
-          </Button>
-          <Button variant="secondary" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button variant="primary" loading={saving} onClick={handleSave}>
-            Enregistrer
-          </Button>
-        </>
+        readOnly ? (
+          <>
+            {isAdmin && (
+              <Button variant="danger" onClick={() => setConfirmDeleteOpen(true)}>
+                Supprimer définitivement
+              </Button>
+            )}
+            <Button variant="secondary" onClick={onClose}>
+              Fermer
+            </Button>
+            <Button variant="primary" loading={saving} onClick={handleReactivate}>
+              Réactiver
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="danger" onClick={() => setConfirmDeleteOpen(true)}>
+              Supprimer
+            </Button>
+            <Button variant="secondary" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button variant="primary" loading={saving} onClick={handleSave}>
+              Enregistrer
+            </Button>
+          </>
+        )
       }
     >
       <div className="flex flex-col gap-3">
+        {readOnly && (
+          <p className="text-sm opacity-70">
+            Cette campagne est archivée ({campaign.status}). Réactivez-la pour la modifier : elle
+            repart en brouillon.
+          </p>
+        )}
         <label className="flex flex-col gap-1 text-sm">
           Nom
           <Input
             placeholder="Nom"
             value={name}
+            disabled={readOnly}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
           />
         </label>
@@ -177,6 +226,7 @@ export function CampaignEditModal({
             step="0.01"
             placeholder="Prix indicatif"
             value={indicativePrice}
+            disabled={readOnly}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
           />
         </label>
@@ -185,6 +235,7 @@ export function CampaignEditModal({
           <Input
             type="date"
             value={startDate}
+            disabled={readOnly}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
           />
         </label>
@@ -193,6 +244,7 @@ export function CampaignEditModal({
           <Input
             type="date"
             value={endDate}
+            disabled={readOnly}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
           />
         </label>
@@ -229,40 +281,48 @@ export function CampaignEditModal({
                       className="aspect-[3/4] w-full object-cover"
                     />
                   )}
-                  <button
-                    type="button"
-                    aria-label="Supprimer l'aperçu"
-                    onClick={() => handleDeleteMedia(item.id)}
-                    className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900/70 text-xs text-white hover:bg-neutral-900"
-                  >
-                    ×
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      aria-label="Supprimer l'aperçu"
+                      onClick={() => handleDeleteMedia(item.id)}
+                      className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900/70 text-xs text-white hover:bg-neutral-900"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           )}
-          <div className="flex flex-wrap gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="form-label">Ajouter une image</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleUploadPhoto}
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="form-label">Ajouter un PDF</span>
-              <input type="file" accept="application/pdf" onChange={handleUploadDocument} />
-            </label>
-          </div>
+          {!readOnly && (
+            <div className="flex flex-wrap gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="form-label">Ajouter une image</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleUploadPhoto}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="form-label">Ajouter un PDF</span>
+                <input type="file" accept="application/pdf" onChange={handleUploadDocument} />
+              </label>
+            </div>
+          )}
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
       {confirmDeleteOpen && (
         <ConfirmModal
-          title="Supprimer la campagne"
-          message={`Supprimer la campagne "${campaign.name}" ? Cette action est irréversible.`}
-          confirmLabel="Supprimer"
+          title={readOnly ? "Supprimer définitivement la campagne" : "Supprimer la campagne"}
+          message={
+            readOnly
+              ? `Supprimer définitivement la campagne "${campaign.name}" ? Ses demandes de recensement et ses fichiers seront supprimés aussi. Cette action est irréversible.`
+              : `Supprimer la campagne "${campaign.name}" ? Cette action est irréversible.`
+          }
+          confirmLabel={readOnly ? "Supprimer définitivement" : "Supprimer"}
           danger
           loading={saving}
           onConfirm={handleDelete}

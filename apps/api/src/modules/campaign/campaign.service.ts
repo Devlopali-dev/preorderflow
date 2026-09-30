@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma, CampaignStatus } from "@preorderflow/database";
 import { CreateCampaignDto, CreateInterestDto, UpdateCampaignDto } from "./dto/create-campaign.dto";
-import { assertValidCampaignTransition, InvalidCampaignTransitionError } from "./campaign-status";
+import {
+  assertValidCampaignTransition,
+  InvalidCampaignTransitionError,
+  isArchivedStatus,
+} from "./campaign-status";
 import { computeCampaignStatistics } from "./campaign-statistics";
 import { NotificationService } from "../notification/notification.service";
 
@@ -59,8 +63,19 @@ export class CampaignService {
     });
   }
 
+  // Une campagne archivée (terminée ou annulée) est en lecture seule : il faut
+  // la réactiver (retour en brouillon) avant de la modifier.
+  private assertEditable(campaign: { status: CampaignStatus }) {
+    if (isArchivedStatus(campaign.status)) {
+      throw new BadRequestException(
+        "Cette campagne est archivée et en lecture seule : réactivez-la pour la modifier",
+      );
+    }
+  }
+
   async update(id: string, dto: UpdateCampaignDto) {
     const campaign = await this.getBySlugOrId(id);
+    this.assertEditable(campaign);
     return prisma.campaign.update({
       where: { id: campaign.id },
       data: {
@@ -75,23 +90,39 @@ export class CampaignService {
     });
   }
 
-  // Une campagne n'a qu'une relation entrante (CampaignInterest) — les
-  // commandes sont indépendantes des campagnes par conception (§10).
-  // Un vrai recensement ne doit jamais disparaître silencieusement : on
-  // bloque la suppression s'il existe des intérêts, l'admin doit passer par
-  // ANNULEE à la place.
+  // Les commandes sont indépendantes des campagnes par conception (§10) : seules
+  // les demandes de recensement (CampaignInterest) et les médias en dépendent.
+  //
+  // Un vrai recensement ne doit jamais disparaître par accident :
+  // - une campagne en cours qui a des demandes ne se supprime pas, il faut
+  //   d'abord l'annuler ;
+  // - une campagne archivée (terminée ou annulée) se supprime définitivement,
+  //   avec ses demandes de recensement (les clients, eux, restent : ils peuvent
+  //   avoir des commandes). Les données de recensement se suppriment
+  //   indépendamment des commandes (§24).
+  // Renvoie les fichiers à retirer du disque : l'appelant s'en charge.
   async remove(id: string) {
     const campaign = await this.getBySlugOrId(id);
     const interestCount = await prisma.campaignInterest.count({
       where: { campaignId: campaign.id },
     });
-    if (interestCount > 0) {
+    if (interestCount > 0 && !isArchivedStatus(campaign.status)) {
       throw new BadRequestException(
-        `Impossible de supprimer : ${interestCount} personne(s) ont déjà manifesté un intérêt. Utilisez le statut ANNULEE à la place.`,
+        `Impossible de supprimer : ${interestCount} personne(s) ont déjà manifesté un intérêt. Annulez la campagne, puis supprimez-la depuis les archives.`,
       );
     }
-    await prisma.campaign.delete({ where: { id: campaign.id } });
-    return { id: campaign.id };
+
+    const files = campaign.media
+      .flatMap((media) => [media.url, media.thumbnailUrl])
+      .filter((url): url is string => Boolean(url));
+
+    await prisma.$transaction([
+      // Les lignes de chaque demande (CampaignInterestItem) suivent en cascade.
+      prisma.campaignInterest.deleteMany({ where: { campaignId: campaign.id } }),
+      prisma.campaignMedia.deleteMany({ where: { campaignId: campaign.id } }),
+      prisma.campaign.delete({ where: { id: campaign.id } }),
+    ]);
+    return { id: campaign.id, name: campaign.name, deletedInterests: interestCount, files };
   }
 
   async updateStatus(id: string, status: CampaignStatus) {
@@ -119,6 +150,9 @@ export class CampaignService {
     }
 
     const campaign = await this.getBySlugOrId(campaignSlugOrId);
+    if (isArchivedStatus(campaign.status)) {
+      throw new BadRequestException("Cette campagne est archivée : le recensement est fermé");
+    }
 
     // Chaque ligne doit viser une variante active du produit de la campagne,
     // une seule fois (« 2 rouges + 1 bleu » = 2 lignes, jamais 2 × rouge).
@@ -227,6 +261,7 @@ export class CampaignService {
     thumbnailUrl?: string,
   ) {
     const campaign = await this.getBySlugOrId(campaignSlugOrId);
+    this.assertEditable(campaign);
     const count = await prisma.campaignMedia.count({ where: { campaignId: campaign.id } });
     if (count >= CampaignService.MAX_MEDIA) {
       throw new BadRequestException(
@@ -255,6 +290,7 @@ export class CampaignService {
   // Retourne la campagne à jour et le média supprimé (pour nettoyage disque).
   async removeMedia(campaignSlugOrId: string, mediaId: string) {
     const campaign = await this.getBySlugOrId(campaignSlugOrId);
+    this.assertEditable(campaign);
     const removed = await prisma.campaignMedia.findFirst({
       where: { id: mediaId, campaignId: campaign.id },
     });
