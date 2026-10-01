@@ -174,3 +174,87 @@ test("la palette de base pré-remplit la couleur et une couleur créée peut êt
   // Une couleur utilisée ne peut pas être supprimée.
   await expect(page.getByRole("button", { name: "Supprimer la couleur Rouge" })).toBeDisabled();
 });
+
+test("les lignes de variantes sont réellement décalées par rapport à celle du produit", async ({
+  page,
+  request,
+}) => {
+  await loginAsAdmin(page, request);
+  await page.goto("/inventory");
+
+  // Le décalage se mesure sur le CSS calculé : une classe peut être présente sans
+  // effet si une règle plus spécifique écrase son padding (régression réelle).
+  const paddingLeft = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((cell) => parseFloat(getComputedStyle(cell).paddingLeft));
+  const productCell = await paddingLeft("tbody tr:not(:has(td.table-indent)) td:first-child");
+  const variantCell = await paddingLeft("td.table-indent");
+
+  expect(variantCell).toBeGreaterThan(productCell);
+  expect(variantCell).toBeGreaterThanOrEqual(productCell + 16);
+});
+
+test("une couleur créée via la palette est sélectionnée d'office à la création d'un produit", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const auth = authHeader(token);
+  const colorName = `Auto-${Date.now()}`;
+
+  await openPaletteFromNewProductModal(page);
+  await page.getByPlaceholder("Nom (ex : Rouge)").fill(colorName);
+  await page.getByRole("button", { name: "Ajouter", exact: true }).click();
+
+  // Cochée sans autre geste ; les couleurs existantes, elles, restent décochées.
+  await expect(page.getByRole("checkbox", { name: colorName, exact: true })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Noir", exact: true })).not.toBeChecked();
+
+  // Nettoyage : la couleur n'est utilisée par aucun produit.
+  const colors = await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json();
+  const created = colors.find((c: { name: string }) => c.name === colorName);
+  await request.delete(`${apiUrl}/api/v1/colors/${created.id}`, { headers: auth });
+});
+
+test("choisir une couleur dans la modale d'un produit l'ajoute aussitôt, sans bouton Ajouter", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const auth = authHeader(token);
+  const stamp = Date.now();
+  const name = `Select ${stamp}`;
+
+  const product = await (
+    await request.post(`${apiUrl}/api/v1/products`, {
+      headers: auth,
+      data: { sku: `SEL-${stamp}`, name, price: 1 },
+    })
+  ).json();
+  const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
+    .filter((c: { active: boolean }) => c.active)
+    .slice(0, 1) as Array<{ id: string; name: string }>;
+  const [color] = colors;
+
+  await page.goto("/inventory");
+  await page.getByRole("button", { name, exact: true }).click();
+  const dialog = page.getByRole("dialog");
+
+  await expect(dialog.getByRole("button", { name: "Ajouter", exact: true })).toHaveCount(0);
+  await dialog.getByLabel("Ajouter une couleur").selectOption({ label: color.name });
+
+  // La couleur apparaît dans la liste du produit et disparaît de la liste déroulante.
+  await expect(dialog.locator("li", { hasText: color.name })).toBeVisible();
+  await expect(
+    dialog.getByLabel("Ajouter une couleur").locator("option", { hasText: color.name }),
+  ).toHaveCount(0);
+
+  const variants = (
+    await (await request.get(`${apiUrl}/api/v1/products/${product.id}`, { headers: auth })).json()
+  ).variants as Array<{ color: { name: string } | null }>;
+  expect(variants.map((v) => v.color?.name)).toEqual([color.name]);
+
+  await request.patch(`${apiUrl}/api/v1/products/${product.id}/archive`, { headers: auth });
+});

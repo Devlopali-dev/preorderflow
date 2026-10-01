@@ -318,6 +318,10 @@
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
+/* Retrait d'une ligne de détail (ex. une couleur sous son produit). Même
+   spécificité que `.table tbody td` et déclarée après : sans cette classe, le
+   padding de la cellule écraserait un `pl-*` de Tailwind (spécificité plus basse). */
+.table tbody td.table-indent { padding-left: var(--space-10); }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr {
   transition: background var(--duration-fast) var(--ease-default);

@@ -26,7 +26,6 @@ export function ProductEditModal({
   const [error, setError] = useState<string | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [colors, setColors] = useState<Color[]>([]);
-  const [newColorId, setNewColorId] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Palette globale : chargée à l'ouverture pour proposer les couleurs pas
@@ -79,11 +78,9 @@ export function ProductEditModal({
     }
   }
 
-  async function handleAddVariant() {
-    await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", {
-      colorId: newColorId,
-    });
-    setNewColorId("");
+  // Choisir une couleur dans la liste l'ajoute aussitôt : pas de second geste.
+  async function handleAddVariant(colorId: string) {
+    await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", { colorId });
   }
 
   function handleToggleVariant(variant: ProductVariant) {
@@ -245,24 +242,23 @@ export function ProductEditModal({
               </li>
             ))}
           </ul>
-          <div className="flex gap-2">
-            <select
-              className="select flex-1"
-              aria-label="Ajouter une couleur"
-              value={newColorId}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewColorId(e.target.value)}
-            >
-              <option value="">Ajouter une couleur…</option>
-              {availableColors.map((color) => (
-                <option key={color.id} value={color.id}>
-                  {color.name}
-                </option>
-              ))}
-            </select>
-            <Button variant="secondary" disabled={saving || !newColorId} onClick={handleAddVariant}>
-              Ajouter
-            </Button>
-          </div>
+          {/* Toujours sur l'invite : la couleur choisie est ajoutée puis disparaît de la liste. */}
+          <select
+            className="select"
+            aria-label="Ajouter une couleur"
+            value=""
+            disabled={saving}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              if (e.target.value) void handleAddVariant(e.target.value);
+            }}
+          >
+            <option value="">Ajouter une couleur…</option>
+            {availableColors.map((color) => (
+              <option key={color.id} value={color.id}>
+                {color.name}
+              </option>
+            ))}
+          </select>
           <Button
             variant="secondary"
             aria-expanded={paletteOpen}

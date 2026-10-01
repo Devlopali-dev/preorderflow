@@ -50,7 +50,7 @@ function ProductsTable({
                   row.variants.map(({ variant, stock }) => (
                     <tr key={variant.id} className="text-sm opacity-90">
                       {/* Retrait : la ligne d'une couleur se lit comme un détail du produit. */}
-                      <td className="pl-10">
+                      <td className="table-indent">
                         <ColorLabel
                           name={variant.color?.name ?? "Standard"}
                           hex={variant.color?.hex}

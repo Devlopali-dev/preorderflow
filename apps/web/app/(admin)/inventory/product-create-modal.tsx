@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color } from "@/lib/api";
@@ -41,7 +41,10 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
 
   // Palette globale (toutes les couleurs : le gestionnaire voit aussi les
   // inactives), rechargée quand on la modifie ici. Une couleur cochée puis
-  // désactivée ou supprimée sort de la sélection.
+  // désactivée ou supprimée sort de la sélection ; une couleur qu'on vient de
+  // créer est sélectionnée d'office (on l'a ajoutée pour ce produit : pas
+  // besoin de la cocher ensuite).
+  const knownColorIds = useRef<Set<string> | null>(null);
   const loadColors = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/v1/colors`, {
@@ -49,9 +52,19 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
       });
       const all: Color[] = res.ok ? await res.json() : [];
       setColors(all);
-      setSelectedColorIds((current) =>
-        current.filter((id) => all.some((color) => color.id === id && color.active)),
-      );
+
+      // Le premier chargement ne sélectionne rien : seules les couleurs
+      // apparues depuis comptent comme « créées ici ».
+      const known = knownColorIds.current;
+      const created = known
+        ? all.filter((color) => color.active && !known.has(color.id)).map((color) => color.id)
+        : [];
+      knownColorIds.current = new Set(all.map((color) => color.id));
+
+      setSelectedColorIds((current) => [
+        ...current.filter((id) => all.some((color) => color.id === id && color.active)),
+        ...created.filter((id) => !current.includes(id)),
+      ]);
     } catch {
       setColors([]);
     }
