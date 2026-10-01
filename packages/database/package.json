@@ -9,6 +9,7 @@
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
     "seed": "tsx prisma/seed.ts",
+    "clean:e2e": "tsx prisma/clean-e2e.ts",
     "studio": "prisma studio",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
