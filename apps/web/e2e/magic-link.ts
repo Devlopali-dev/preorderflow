@@ -89,3 +89,41 @@ export async function loginAsCustomer(page: Page, email: string): Promise<void> 
   await page.goto(`/mon-compte/verifier?token=${token}`);
   await expect(page).toHaveURL(/\/mon-compte$/);
 }
+
+// Tous les e-mails journalisés par le fournisseur « console » (un bloc par message :
+// `to=<destinataire> subject="…"` puis le HTML), depuis la première source de journal disponible.
+export function readConsoleEmails(): string[] {
+  for (const readLog of apiLogSources()) {
+    try {
+      const blocks = readLog().split("[email:console]").slice(1);
+      if (blocks.length > 0) return blocks;
+    } catch {
+      // Source indisponible : essayer la suivante.
+    }
+  }
+  return [];
+}
+
+// Attend un e-mail adressé à `to` dont le sujet contient `subjectPart`, et le renvoie.
+export async function waitForEmail(
+  to: string,
+  subjectPart: string,
+  timeoutMs = 15_000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const found = readConsoleEmails().find(
+      (block) => block.trimStart().startsWith(`to=${to} `) && block.includes(subjectPart),
+    );
+    if (found) return found;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  }
+  throw new Error(`Aucun e-mail « ${subjectPart} » pour ${to} dans les logs de l'API`);
+}
+
+// Vrai si un e-mail adressé à `to` (sujet contenant `subjectPart`) figure dans les logs.
+export function hasEmail(to: string, subjectPart: string): boolean {
+  return readConsoleEmails().some(
+    (block) => block.trimStart().startsWith(`to=${to} `) && block.includes(subjectPart),
+  );
+}

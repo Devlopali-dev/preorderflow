@@ -6,9 +6,35 @@ import {
   InvalidCampaignTransitionError,
   isArchivedStatus,
 } from "./campaign-status";
+import { campaignPublicUrl, groupInterestsByEmail } from "./campaign-opening";
 import { automaticTargetStatus, SCHEDULED_STATUSES } from "./campaign-schedule";
 import { computeCampaignStatistics } from "./campaign-statistics";
 import { NotificationService } from "../notification/notification.service";
+
+const SCHEDULE_FIELDS = {
+  id: true,
+  name: true,
+  slug: true,
+  status: true,
+  startDate: true,
+  endDate: true,
+} as const;
+
+interface ScheduleCandidate {
+  id: string;
+  name: string;
+  slug: string;
+  status: CampaignStatus;
+  startDate: Date | null;
+  endDate: Date | null;
+}
+
+interface ScheduleChange {
+  id: string;
+  name: string;
+  from: CampaignStatus;
+  to: CampaignStatus;
+}
 
 @Injectable()
 export class CampaignService {
@@ -16,6 +42,7 @@ export class CampaignService {
   static readonly MAX_MEDIA = 5;
 
   private readonly logger = new Logger(CampaignService.name);
+  private readonly pendingMailings = new Set<Promise<void>>();
 
   constructor(private readonly notificationService: NotificationService) {}
 
@@ -65,7 +92,7 @@ export class CampaignService {
   }
 
   async create(dto: CreateCampaignDto) {
-    return prisma.campaign.create({
+    const created = await prisma.campaign.create({
       data: {
         name: dto.name,
         slug: dto.slug,
@@ -78,6 +105,9 @@ export class CampaignService {
         documentUrl: dto.documentUrl,
       },
     });
+    // Dates déjà dépassées dès la création : le statut colle tout de suite à la règle des dates.
+    await this.applyScheduleFor(created.id);
+    return prisma.campaign.findUniqueOrThrow({ where: { id: created.id } });
   }
 
   // Une campagne archivée (terminée ou annulée) est en lecture seule : il faut
@@ -93,7 +123,7 @@ export class CampaignService {
   async update(id: string, dto: UpdateCampaignDto) {
     const campaign = await this.getBySlugOrId(id);
     this.assertEditable(campaign);
-    return prisma.campaign.update({
+    const updated = await prisma.campaign.update({
       where: { id: campaign.id },
       data: {
         name: dto.name,
@@ -106,6 +136,9 @@ export class CampaignService {
         documentUrl: dto.documentUrl,
       },
     });
+    // Dates modifiées : on vérifie tout de suite que le statut colle toujours à la règle des dates.
+    await this.applyScheduleFor(updated.id);
+    return prisma.campaign.findUniqueOrThrow({ where: { id: updated.id } });
   }
 
   // Les commandes sont indépendantes des campagnes par conception (§10) : seules
@@ -153,30 +186,105 @@ export class CampaignService {
         status: { in: SCHEDULED_STATUSES },
         OR: [{ startDate: { not: null } }, { endDate: { not: null } }],
       },
-      select: { id: true, name: true, status: true, startDate: true, endDate: true },
+      select: SCHEDULE_FIELDS,
     });
 
-    const changed: Array<{ id: string; name: string; from: CampaignStatus; to: CampaignStatus }> =
-      [];
+    const changed: ScheduleChange[] = [];
     for (const campaign of candidates) {
-      const target = automaticTargetStatus(campaign, now);
-      if (!target) continue;
-      const result = await prisma.campaign.updateMany({
-        where: { id: campaign.id, status: campaign.status },
-        data: { status: target },
-      });
-      if (result.count !== 1) continue;
-      changed.push({ id: campaign.id, name: campaign.name, from: campaign.status, to: target });
-      this.logger.log(`Campagne « ${campaign.name} » : ${campaign.status} → ${target} (dates)`);
-      await this.notificationService
-        .notifyAdmin(
-          target === "COMMANDES_OUVERTES" ? "Commandes ouvertes" : "Commandes fermées",
-          `${campaign.name} — passage automatique selon les dates`,
-          [target === "COMMANDES_OUVERTES" ? "unlock" : "lock"],
-        )
-        .catch(() => undefined);
+      const change = await this.scheduleOne(campaign, now);
+      if (change) changed.push(change);
     }
     return changed;
+  }
+
+  // Même règle pour UNE campagne, appliquée dès l'enregistrement de ses dates (création ou
+  // modification) : le statut colle aux dates sans attendre le passage du planificateur.
+  async applyScheduleFor(id: string, now: Date = new Date()) {
+    const campaign = await prisma.campaign.findUnique({ where: { id }, select: SCHEDULE_FIELDS });
+    return campaign ? this.scheduleOne(campaign, now) : null;
+  }
+
+  private async scheduleOne(
+    campaign: ScheduleCandidate,
+    now: Date,
+  ): Promise<ScheduleChange | null> {
+    const target = automaticTargetStatus(campaign, now);
+    if (!target) return null;
+    const result = await prisma.campaign.updateMany({
+      where: { id: campaign.id, status: campaign.status },
+      data: { status: target },
+    });
+    if (result.count !== 1) return null;
+
+    this.logger.log(`Campagne « ${campaign.name} » : ${campaign.status} → ${target} (dates)`);
+    await this.notificationService
+      .notifyAdmin(
+        target === "COMMANDES_OUVERTES" ? "Commandes ouvertes" : "Commandes fermées",
+        `${campaign.name} — passage automatique selon les dates`,
+        [target === "COMMANDES_OUVERTES" ? "unlock" : "lock"],
+      )
+      .catch(() => undefined);
+    this.afterStatusChange(campaign, target);
+    return { id: campaign.id, name: campaign.name, from: campaign.status, to: target };
+  }
+
+  // Point unique après un changement de statut (bouton manuel, planificateur, dates modifiées) :
+  // à l'ouverture des commandes, les personnes intéressées sont prévenues. En arrière-plan : la
+  // requête n'attend pas l'envoi d'une centaine de mails.
+  private afterStatusChange(
+    campaign: { id: string; name: string; slug: string },
+    to: CampaignStatus,
+  ) {
+    if (to !== "COMMANDES_OUVERTES") return;
+    const sending = this.notifyInterestedOfOpening(campaign)
+      .catch((error) =>
+        this.logger.warn(
+          `Mails d'ouverture impossibles (${campaign.name}) : ${(error as Error).message}`,
+        ),
+      )
+      .finally(() => this.pendingMailings.delete(sending));
+    this.pendingMailings.add(sending);
+  }
+
+  // Attend la fin des envois en cours (tests, arrêt propre).
+  async settleMailings(): Promise<void> {
+    await Promise.all([...this.pendingMailings]);
+  }
+
+  // Un mail par adresse distincte, uniquement pour les personnes qui ont consenti à être
+  // recontactées. `ordersOpenedMailedAt` est posé AVANT l'envoi, de façon conditionnelle : un seul
+  // appelant l'emporte, et une campagne qui repasserait par cet état n'envoie jamais deux fois.
+  private async notifyInterestedOfOpening(campaign: { id: string; name: string; slug: string }) {
+    const claimed = await prisma.campaign.updateMany({
+      where: { id: campaign.id, ordersOpenedMailedAt: null },
+      data: { ordersOpenedMailedAt: new Date() },
+    });
+    if (claimed.count !== 1) return;
+
+    const interests = await prisma.campaignInterest.findMany({
+      where: { campaignId: campaign.id, consentToContact: true },
+      select: {
+        email: true,
+        firstName: true,
+        items: {
+          select: { quantity: true, variant: { select: { color: { select: { name: true } } } } },
+        },
+      },
+    });
+    const recipients = groupInterestsByEmail(interests);
+    const campaignUrl = campaignPublicUrl(campaign.slug);
+    for (const recipient of recipients) {
+      await this.notificationService.sendEmail(recipient.email, "ORDERS_OPENED", {
+        firstName: recipient.firstName,
+        campaignName: campaign.name,
+        campaignUrl,
+        quantity: recipient.quantity,
+        details: recipient.details,
+      });
+    }
+    this.logger.log(
+      `Campagne « ${campaign.name} » : ${recipients.length} mail(s) d'ouverture des commandes`,
+    );
   }
 
   async updateStatus(id: string, status: CampaignStatus) {
@@ -189,7 +297,9 @@ export class CampaignService {
       }
       throw error;
     }
-    return prisma.campaign.update({ where: { id: campaign.id }, data: { status } });
+    const updated = await prisma.campaign.update({ where: { id: campaign.id }, data: { status } });
+    this.afterStatusChange(updated, status);
+    return updated;
   }
 
   /**

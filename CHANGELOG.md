@@ -7,6 +7,25 @@ correctifs.
 
 ## [Non publié]
 
+## [0.17.0] — 2026-10-02
+
+### Ajouté
+
+- **Mail d'ouverture des commandes.** Quand une campagne passe en « commandes ouvertes » (bouton, planificateur
+  ou dates modifiées), les personnes intéressées par le recensement reçoivent un mail pour valider leur
+  commande et payer : prénom, quantités et couleurs demandées, lien vers la page d'achat (modèle
+  `ORDERS_OPENED`, modifiable depuis `/settings`). Un seul mail par adresse, seulement pour celles qui ont
+  consenti à être recontactées, envoyé en arrière-plan, et jamais deux fois pour une même campagne
+  (`Campaign.ordersOpenedMailedAt`, migration `campaign_orders_opened_mailed_at`).
+- La modale d'une campagne fermée prévient que de nouvelles dates ne la rouvrent pas.
+
+### Modifié
+
+- **La règle des dates s'applique dès l'enregistrement** d'une campagne (création et modification des dates) :
+  le statut colle tout de suite aux dates, sans attendre le planificateur (qui rattrape le passage du temps).
+  Elle ne va que vers l'avant : repousser la fin d'une campagne déjà fermée ne la rouvre pas.
+- Un point unique de passage de statut sert au bouton, au planificateur et à l'enregistrement des dates.
+
 ## [0.16.0] — 2026-10-01
 
 ### Ajouté

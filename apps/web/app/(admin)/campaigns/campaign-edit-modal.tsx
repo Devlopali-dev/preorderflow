@@ -14,6 +14,13 @@ function toDateInputValue(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
+// Début de la journée en cours (heure locale), pour comparer à une date saisie sans heure.
+function startOfToday(): Date {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
 export function CampaignEditModal({
   campaign,
   apiUrl,
@@ -226,6 +233,13 @@ export function CampaignEditModal({
           Le statut passe automatiquement à « commandes ouvertes » à la date de début, et à «
           commandes fermées » après la date de fin (incluse).
         </p>
+        {campaign.status === "COMMANDES_FERMEES" &&
+          endDate &&
+          new Date(endDate) >= startOfToday() && (
+            <p className="form-hint" role="note">
+              Cette campagne est déjà fermée : de nouvelles dates ne la rouvrent pas.
+            </p>
+          )}
         <CampaignPaymentLinkField
           value={paymentLink}
           onChange={setPaymentLink}

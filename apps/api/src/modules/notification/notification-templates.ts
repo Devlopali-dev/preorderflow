@@ -14,7 +14,15 @@ export type TemplatePayloads = {
     quantity: number;
     details?: string;
   };
-  ORDERS_OPENED: { campaignName: string; campaignUrl: string };
+  // Mail aux personnes intéressées quand les commandes s'ouvrent. `quantity` et `details` reprennent
+  // ce qu'elles avaient demandé au recensement (même format que INTEREST_REGISTERED).
+  ORDERS_OPENED: {
+    firstName: string;
+    campaignName: string;
+    campaignUrl: string;
+    quantity: number;
+    details?: string;
+  };
   ORDER_CREATED: { firstName: string; orderNumber: string; total: string };
   PAYMENT_RECEIVED: { firstName: string; orderNumber: string; amount: string };
   ORDER_READY: { firstName: string; orderNumber: string };
@@ -36,7 +44,7 @@ export const DEFAULT_TEMPLATES: Record<keyof TemplatePayloads, RenderedEmail> = 
   },
   ORDERS_OPENED: {
     subject: "Les commandes sont ouvertes — {{campaignName}}",
-    html: '<p>Bonne nouvelle, vous pouvez maintenant commander "{{campaignName}}" : <a href="{{campaignUrl}}">{{campaignUrl}}</a></p>',
+    html: '<p>Bonjour {{firstName}},</p><p>Bonne nouvelle : les commandes de "{{campaignName}}" sont ouvertes. Vous aviez demandé {{quantity}} exemplaire(s){{details}}.</p><p>Pour valider votre commande et la payer, rendez-vous ici : <a href="{{campaignUrl}}">{{campaignUrl}}</a></p>',
   },
   ORDER_CREATED: {
     subject: "Commande {{orderNumber}} confirmée",

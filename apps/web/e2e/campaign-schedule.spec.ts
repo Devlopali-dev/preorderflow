@@ -4,13 +4,13 @@ import { authHeader, getAdminToken, loginAsAdmin } from "./helpers";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const DAY = 24 * 60 * 60 * 1000;
 
-// Campagne dédiée avec ses dates (ISO) et son statut de départ.
+// Les dates d'une campagne font passer son statut (commandes ouvertes dès le début, fermées après la
+// fin) dès l'enregistrement, sans attendre le planificateur, qui rattrape ensuite le passage du temps.
 async function campaign(
   request: APIRequestContext,
   token: string,
   label: string,
-  dates: { startDate?: Date; endDate?: Date },
-  status?: "RECENSEMENT" | "COMMANDES_OUVERTES",
+  dates: { startDate?: Date; endDate?: Date } = {},
 ) {
   const auth = authHeader(token);
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -37,48 +37,44 @@ async function campaign(
       headers: auth,
       data: { status: to },
     });
-  if (status === "RECENSEMENT" || status === "COMMANDES_OUVERTES") await setStatus("RECENSEMENT");
-  if (status === "COMMANDES_OUVERTES") await setStatus("COMMANDES_OUVERTES");
-
+  const patch = async (data: Record<string, unknown>) =>
+    (
+      await request.patch(`${apiUrl}/api/v1/campaigns/${created.id}`, { headers: auth, data })
+    ).json();
   const read = async () =>
     (await request.get(`${apiUrl}/api/v1/campaigns/${created.id}`, { headers: auth })).json();
   const cleanup = async () => {
     await setStatus("ANNULEE");
     await request.patch(`${apiUrl}/api/v1/products/${product.id}/archive`, { headers: auth });
   };
-  return { id: created.id as string, name: created.name as string, read, cleanup };
+  return { created, setStatus, patch, read, cleanup };
 }
 
 const sweep = (request: APIRequestContext, token: string) =>
   request.post(`${apiUrl}/api/v1/campaigns/apply-schedule`, { headers: authHeader(token) });
 
-test("à la date de début, un brouillon ou un recensement passe en commandes ouvertes", async ({
+test("à l'enregistrement des dates, un brouillon ou un recensement passe en commandes ouvertes dès le début", async ({
   request,
 }) => {
   const token = await getAdminToken(request);
   const now = Date.now();
+
+  // Début déjà passé dès la création : ouverte tout de suite.
   const draft = await campaign(request, token, "A", { startDate: new Date(now - DAY) });
-  const census = await campaign(
-    request,
-    token,
-    "B",
-    { startDate: new Date(now - DAY) },
-    "RECENSEMENT",
-  );
-  const future = await campaign(request, token, "C", { startDate: new Date(now + 5 * DAY) });
-  const noDates = await campaign(request, token, "D", {});
+  expect(draft.created.status).toBe("COMMANDES_OUVERTES");
 
-  const res = await sweep(request, token);
-  expect(res.ok()).toBe(true);
-  // Le passage peut déjà avoir été fait par le planificateur ou un autre test : on ne
-  // vérifie que l'état final des campagnes.
-  expect(Array.isArray(await res.json())).toBe(true);
-
-  expect((await draft.read()).status).toBe("COMMANDES_OUVERTES");
+  // En recensement avec un début à venir, puis la date est avancée : le statut suit dans la réponse.
+  const census = await campaign(request, token, "B", { startDate: new Date(now + 5 * DAY) });
+  await census.setStatus("RECENSEMENT");
+  const moved = await census.patch({ startDate: new Date(now - DAY).toISOString() });
+  expect(moved.status).toBe("COMMANDES_OUVERTES");
   expect((await census.read()).status).toBe("COMMANDES_OUVERTES");
-  // Début dans le futur, ou aucune date : rien ne bouge.
-  expect((await future.read()).status).toBe("DRAFT");
-  expect((await noDates.read()).status).toBe("DRAFT");
+
+  // Début à venir, ou aucune date : rien ne bouge.
+  const future = await campaign(request, token, "C", { startDate: new Date(now + 5 * DAY) });
+  const noDates = await campaign(request, token, "D");
+  expect(future.created.status).toBe("DRAFT");
+  expect(noDates.created.status).toBe("DRAFT");
 
   for (const c of [draft, census, future, noDates]) await c.cleanup();
 });
@@ -88,38 +84,54 @@ test("après la date de fin, la campagne passe en commandes fermées, la fermetu
 }) => {
   const token = await getAdminToken(request);
   const now = Date.now();
-  const open = await campaign(
-    request,
-    token,
-    "E",
-    { startDate: new Date(now - 10 * DAY), endDate: new Date(now - 2 * DAY) },
-    "COMMANDES_OUVERTES",
-  );
-  // Début et fin dépassés dès le brouillon : directement fermée.
+
+  // Aux commandes ouvertes, puis la fin est ramenée dans le passé.
+  const open = await campaign(request, token, "E", { startDate: new Date(now + 3 * DAY) });
+  await open.setStatus("RECENSEMENT");
+  await open.setStatus("COMMANDES_OUVERTES");
+  expect((await open.read()).status).toBe("COMMANDES_OUVERTES");
+  const closed = await open.patch({
+    startDate: new Date(now - 10 * DAY).toISOString(),
+    endDate: new Date(now - 2 * DAY).toISOString(),
+  });
+  expect(closed.status).toBe("COMMANDES_FERMEES");
+
+  // Début et fin dépassés dès la création : directement fermée.
   const both = await campaign(request, token, "F", {
     startDate: new Date(now - 10 * DAY),
     endDate: new Date(now - 2 * DAY),
   });
-  // Fin dans le futur : reste ouverte.
-  const running = await campaign(
-    request,
-    token,
-    "G",
-    { startDate: new Date(now - 10 * DAY), endDate: new Date(now + 5 * DAY) },
-    "COMMANDES_OUVERTES",
-  );
+  expect(both.created.status).toBe("COMMANDES_FERMEES");
 
-  await sweep(request, token);
+  // Fin à venir : reste ouverte.
+  const running = await campaign(request, token, "G", {
+    startDate: new Date(now - 10 * DAY),
+    endDate: new Date(now + 5 * DAY),
+  });
+  expect(running.created.status).toBe("COMMANDES_OUVERTES");
 
-  expect((await open.read()).status).toBe("COMMANDES_FERMEES");
-  expect((await both.read()).status).toBe("COMMANDES_FERMEES");
-  expect((await running.read()).status).toBe("COMMANDES_OUVERTES");
-
-  // Une campagne fermée n'est plus retouchée par un second passage.
+  // Un second passage ne retouche pas une campagne déjà fermée.
   const again = (await (await sweep(request, token)).json()) as Array<{ id: string }>;
-  expect(again.find((c) => c.id === open.id)).toBeUndefined();
+  expect(again.find((c) => c.id === open.created.id)).toBeUndefined();
 
   for (const c of [open, both, running]) await c.cleanup();
+});
+
+test("repousser la fin d'une campagne déjà fermée ne la rouvre pas", async ({ request }) => {
+  const token = await getAdminToken(request);
+  const now = Date.now();
+  const closed = await campaign(request, token, "R", {
+    startDate: new Date(now - 10 * DAY),
+    endDate: new Date(now - 2 * DAY),
+  });
+  expect(closed.created.status).toBe("COMMANDES_FERMEES");
+
+  // La machine d'états interdit le retour en arrière : les nouvelles dates ne rouvrent rien.
+  const moved = await closed.patch({ endDate: new Date(now + 10 * DAY).toISOString() });
+  expect(moved.status).toBe("COMMANDES_FERMEES");
+  expect((await closed.read()).status).toBe("COMMANDES_FERMEES");
+
+  await closed.cleanup();
 });
 
 test("la date de fin saisie sans heure est incluse : une campagne finissant aujourd'hui reste ouverte", async ({
@@ -128,18 +140,37 @@ test("la date de fin saisie sans heure est incluse : une campagne finissant aujo
   const token = await getAdminToken(request);
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0); // « aujourd'hui » tel que l'interface l'enregistre
-  const endsToday = await campaign(
-    request,
-    token,
-    "H",
-    { startDate: new Date(today.getTime() - 3 * DAY), endDate: today },
-    "COMMANDES_OUVERTES",
-  );
+  const endsToday = await campaign(request, token, "H", {
+    startDate: new Date(today.getTime() + 5 * DAY),
+  });
+  await endsToday.setStatus("RECENSEMENT");
+  await endsToday.setStatus("COMMANDES_OUVERTES");
 
+  const updated = await endsToday.patch({
+    startDate: new Date(today.getTime() - 3 * DAY).toISOString(),
+    endDate: today.toISOString(),
+  });
+  expect(updated.status).toBe("COMMANDES_OUVERTES");
   await sweep(request, token);
   expect((await endsToday.read()).status).toBe("COMMANDES_OUVERTES");
 
   await endsToday.cleanup();
+});
+
+test("le planificateur rattrape le passage du temps : une date de début qui arrive fait ouvrir la campagne", async ({
+  request,
+}) => {
+  const token = await getAdminToken(request);
+  // Début dans 3 secondes : au moment de l'enregistrement la campagne reste en brouillon.
+  const soon = await campaign(request, token, "T", { startDate: new Date(Date.now() + 3000) });
+  expect(soon.created.status).toBe("DRAFT");
+
+  await new Promise((resolve) => setTimeout(resolve, 3500));
+  const res = await sweep(request, token);
+  expect(res.ok()).toBe(true);
+  expect((await soon.read()).status).toBe("COMMANDES_OUVERTES");
+
+  await soon.cleanup();
 });
 
 test("le passage automatique est réservé aux administrateurs", async ({ request }) => {
@@ -159,4 +190,29 @@ test("la modale d'une campagne indique le passage automatique selon les dates", 
       .getByRole("dialog")
       .getByText(/passe automatiquement à « commandes ouvertes » à la date de début/),
   ).toBeVisible();
+});
+
+test("la modale d'une campagne fermée prévient que de nouvelles dates ne la rouvrent pas", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const now = Date.now();
+  const closed = await campaign(request, token, "W", {
+    startDate: new Date(now - 10 * DAY),
+    endDate: new Date(now - 2 * DAY),
+  });
+  expect(closed.created.status).toBe("COMMANDES_FERMEES");
+
+  await page.goto("/campaigns");
+  await page.getByRole("button", { name: closed.created.name, exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  // Fin dans le passé : pas d'avertissement. Fin dans le futur : on prévient.
+  await expect(dialog.getByText(/ne la rouvrent pas/)).toHaveCount(0);
+  await dialog
+    .getByLabel("Fin (deadline)")
+    .fill(new Date(now + 10 * DAY).toISOString().slice(0, 10));
+  await expect(dialog.getByText(/de nouvelles dates ne la rouvrent pas/)).toBeVisible();
+
+  await closed.cleanup();
 });

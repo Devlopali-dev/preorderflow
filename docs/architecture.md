@@ -205,6 +205,16 @@ les minutes ; `POST /campaigns/apply-schedule`, `ADMIN`, le déclenche à la dem
 - après la date de fin (`now > endDate`), `DRAFT`, `RECENSEMENT` ou `COMMANDES_OUVERTES` →
   `COMMANDES_FERMÉES` (la fermeture l'emporte quand les deux dates sont dépassées).
 
+La règle s'applique aussi **dès l'enregistrement** des dates (création et modification d'une campagne) : le
+statut colle tout de suite aux dates, sans attendre le planificateur. Elle ne va que vers l'avant : repousser
+la fin d'une campagne déjà fermée ne la rouvre pas (la machine d'états interdit le retour en arrière).
+
+**Mail d'ouverture.** Quand une campagne passe en `COMMANDES_OUVERTES` (bouton, planificateur ou dates
+modifiées : un point unique, `afterStatusChange`), les personnes intéressées reçoivent le modèle `ORDERS_OPENED`
+(prénom, quantités et couleurs demandées, lien vers la page d'achat). Un mail par adresse distincte, seulement
+pour celles qui ont consenti à être recontactées (RGPD), en arrière-plan. `Campaign.ordersOpenedMailedAt` est
+posé avant l'envoi, de façon conditionnelle : aucun doublon si la campagne repasse par cet état.
+
 Une date saisie sans heure (minuit UTC) est **inclusive** pour la fin : la campagne se ferme à la fin de
 ce jour-là. `PRODUCTION`, `EXPÉDITION` et les archives ne sont jamais touchés, ni une campagne sans
 date. Chaque changement est conditionné à l'ancien statut (une action manuelle concurrente n'est pas
