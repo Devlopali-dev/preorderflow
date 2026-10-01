@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { MAX_PRODUCT_PHOTOS } from "@/lib/product-photos";
 import { slugify } from "@/lib/slugify";
-import { ColorLabel } from "@/components/color-label";
+import { ProductColorPicker } from "@/components/product-color-picker";
 
 async function failure(res: Response): Promise<Error> {
   const body = await res.json().catch(() => null);
@@ -17,13 +18,15 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   const router = useRouter();
   const [sku, setSku] = useState("");
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  // Tant que le slug n'a pas été modifié à la main, il suit le nom.
-  const [slugEdited, setSlugEdited] = useState(false);
+  // Tant que le SKU n'a pas été modifié à la main, il se propose depuis le nom.
+  // Le slug n'est plus saisi : l'API le génère depuis le nom.
+  const [skuEdited, setSkuEdited] = useState(false);
   const [price, setPrice] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [description, setDescription] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
   const [colors, setColors] = useState<Color[]>([]);
+  const [colorsLoaded, setColorsLoaded] = useState(false);
   const [selectedColorIds, setSelectedColorIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,20 +35,70 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   // couleur). On garde ce qui est déjà fait : un nouvel essai après un échec
   // partiel reprend où il s'est arrêté au lieu de créer un doublon.
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
-  const [photoUploaded, setPhotoUploaded] = useState(false);
+  const [uploadedPhotos, setUploadedPhotos] = useState(0);
   const [addedColorIds, setAddedColorIds] = useState<string[]>([]);
 
-  // Palette globale (/settings), seulement les couleurs actives.
-  useEffect(() => {
-    fetch(`${apiUrl}/api/v1/colors`, { headers: { ...getClientAuthHeaders() } })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((all: Color[]) => setColors(all.filter((color) => color.active)))
-      .catch(() => setColors([]));
+  // Palette globale (toutes les couleurs : le gestionnaire voit aussi les
+  // inactives), rechargée quand on la modifie ici. Une couleur cochée puis
+  // désactivée ou supprimée sort de la sélection ; une couleur qu'on vient de
+  // créer est sélectionnée d'office (on l'a ajoutée pour ce produit : pas
+  // besoin de la cocher ensuite).
+  const knownColorIds = useRef<Set<string> | null>(null);
+  const loadColors = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/colors`, {
+        headers: { ...getClientAuthHeaders() },
+      });
+      const all: Color[] = res.ok ? await res.json() : [];
+      setColors(all);
+
+      // Le premier chargement ne sélectionne rien : seules les couleurs
+      // apparues depuis comptent comme « créées ici ».
+      const known = knownColorIds.current;
+      const created = known
+        ? all.filter((color) => color.active && !known.has(color.id)).map((color) => color.id)
+        : [];
+      knownColorIds.current = new Set(all.map((color) => color.id));
+
+      setSelectedColorIds((current) => [
+        ...current.filter((id) => all.some((color) => color.id === id && color.active)),
+        ...created.filter((id) => !current.includes(id)),
+      ]);
+    } catch {
+      setColors([]);
+    } finally {
+      setColorsLoaded(true);
+    }
   }, [apiUrl]);
+
+  useEffect(() => {
+    void loadColors();
+  }, [loadColors]);
 
   function toggleColor(colorId: string) {
     setSelectedColorIds((current) =>
       current.includes(colorId) ? current.filter((id) => id !== colorId) : [...current, colorId],
+    );
+  }
+
+  // Aperçus des fichiers choisis : des URL locales, libérées dès que la liste change.
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = photos.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [photos]);
+
+  // Au plus 3 photos : les fichiers en trop sont écartés, avec un message.
+  function handlePickPhotos(e: ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const room = MAX_PRODUCT_PHOTOS - photos.length;
+    setPhotos((current) => [...current, ...picked.slice(0, room)]);
+    setError(
+      picked.length > room
+        ? `Un produit accepte ${MAX_PRODUCT_PHOTOS} photos au maximum : les fichiers en trop ont été écartés.`
+        : null,
     );
   }
 
@@ -63,23 +116,28 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
         const res = await fetch(`${apiUrl}/api/v1/products`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-          body: JSON.stringify({ sku, name, slug, price: Number(price) }),
+          body: JSON.stringify({
+            sku,
+            name,
+            price: Number(price),
+            description: description.trim() || undefined,
+          }),
         });
         if (!res.ok) throw await failure(res);
         productId = (await res.json()).id as string;
         setCreatedProductId(productId);
       }
 
-      if (photo && !photoUploaded) {
+      for (let index = uploadedPhotos; index < photos.length; index += 1) {
         const formData = new FormData();
-        formData.append("file", photo);
+        formData.append("file", photos[index]!);
         const res = await fetch(`${apiUrl}/api/v1/products/${productId}/photo`, {
           method: "POST",
           headers: { ...getClientAuthHeaders() },
           body: formData,
         });
         if (!res.ok) throw await failure(res);
-        setPhotoUploaded(true);
+        setUploadedPhotos(index + 1);
       }
 
       if (hasVariants) {
@@ -116,6 +174,7 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
       isOpen
       onClose={onClose}
       title="Nouveau produit"
+      size="xl"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -129,15 +188,6 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
     >
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          SKU
-          <Input
-            placeholder="SKU"
-            value={sku}
-            disabled={Boolean(createdProductId)}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSku(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
           Nom
           <Input
             placeholder="Nom"
@@ -145,19 +195,19 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
             disabled={Boolean(createdProductId)}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               setName(e.target.value);
-              if (!slugEdited) setSlug(slugify(e.target.value));
+              if (!skuEdited) setSku(slugify(e.target.value).toUpperCase());
             }}
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Slug
+          SKU
           <Input
-            placeholder="Slug"
-            value={slug}
+            placeholder="SKU"
+            value={sku}
             disabled={Boolean(createdProductId)}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
-              setSlugEdited(true);
-              setSlug(e.target.value);
+              setSkuEdited(true);
+              setSku(e.target.value);
             }}
           />
         </label>
@@ -173,14 +223,48 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Photo (optionnel)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={photoUploaded}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPhoto(e.target.files?.[0] ?? null)}
+          Description (optionnel)
+          <Input
+            placeholder="Description"
+            value={description}
+            disabled={Boolean(createdProductId)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
           />
         </label>
+        <div className="flex flex-col gap-2 text-sm">
+          <label className="flex flex-col gap-1">
+            Photos (optionnel, {photos.length}/{MAX_PRODUCT_PHOTOS})
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              disabled={Boolean(createdProductId) || photos.length >= MAX_PRODUCT_PHOTOS}
+              onChange={handlePickPhotos}
+            />
+          </label>
+          {photos.length > 0 && (
+            // Petits aperçus sur une seule ligne (3 au plus), bouton Retirer dessous.
+            <ul className="flex flex-nowrap gap-3">
+              {photos.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="flex flex-col items-center gap-1">
+                  <img
+                    src={previewUrls[index]}
+                    alt={`Aperçu ${file.name}`}
+                    className="h-20 w-20 rounded object-cover"
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={index < uploadedPhotos}
+                    aria-label={`Retirer la photo ${file.name}`}
+                    onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))}
+                  >
+                    Retirer
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -191,28 +275,21 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
           Ce produit a des variantes (couleurs)
         </label>
         {hasVariants && (
-          <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1">Couleurs proposées</legend>
-            {colors.length === 0 ? (
-              <p className="text-xs opacity-60">
-                Aucune couleur dans la palette : créez-en dans les paramètres.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {colors.map((color) => (
-                  <label key={color.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedColorIds.includes(color.id)}
-                      disabled={addedColorIds.includes(color.id)}
-                      onChange={() => toggleColor(color.id)}
-                    />
-                    <ColorLabel name={color.name} hex={color.hex} />
-                  </label>
-                ))}
-              </div>
-            )}
-          </fieldset>
+          <ProductColorPicker
+            colors={colors}
+            selectedColorIds={selectedColorIds}
+            lockedColorIds={addedColorIds}
+            apiUrl={apiUrl}
+            loaded={colorsLoaded}
+            disabled={saving}
+            onToggle={toggleColor}
+            onSelect={(colorId) =>
+              setSelectedColorIds((current) =>
+                current.includes(colorId) ? current : [...current, colorId],
+              )
+            }
+            onChanged={loadColors}
+          />
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -13,8 +14,10 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { diskStorage } from "multer";
 import { randomUUID } from "node:crypto";
+import { unlink } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { ProductService } from "./product.service";
+import { deleteUploadedFiles } from "../../common/uploaded-files";
 import { CreateProductDto, UpdateProductDto } from "./dto/create-product.dto";
 import { CreateVariantDto, UpdateVariantDto } from "./dto/variant.dto";
 import { Public } from "../auth/public.decorator";
@@ -98,6 +101,19 @@ export class ProductController {
     if (!file) {
       throw new BadRequestException("Aucun fichier reçu");
     }
-    return this.productService.update(id, { imageUrl: `/uploads/products/${file.filename}` });
+    try {
+      return await this.productService.addPhoto(id, `/uploads/products/${file.filename}`);
+    } catch (error) {
+      // Limite atteinte ou produit introuvable : pas d'image orpheline sur le disque.
+      await unlink(file.path).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  @Delete(":id/photos/:photoId")
+  async removePhoto(@Param("id") id: string, @Param("photoId") photoId: string) {
+    const { product, removedUrl } = await this.productService.removePhoto(id, photoId);
+    await deleteUploadedFiles([removedUrl]);
+    return product;
   }
 }

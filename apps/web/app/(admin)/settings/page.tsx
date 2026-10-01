@@ -1,26 +1,18 @@
-import {
-  getAdminProfile,
-  getAuditLogs,
-  getColors,
-  getNotificationTemplates,
-  getSettings,
-} from "@/lib/api";
+import { getAdminProfile, getAuditLogs, getNotificationTemplates, getSettings } from "@/lib/api";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { AdminProfileForm } from "./admin-profile-form";
 import { BusinessInfoForm } from "./business-info-form";
-import { ColorsManager } from "./colors-manager";
 import { EmailSettingsForm } from "./email-settings-form";
 import { NtfySettingsForm } from "./ntfy-settings-form";
 import { TemplateButton } from "./template-button";
 
 export default async function SettingsPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-  const [profile, settings, logs, templates, colors] = await Promise.all([
+  const [profile, settings, logs, templates] = await Promise.all([
     getAdminProfile(),
     getSettings(),
     getAuditLogs(),
     getNotificationTemplates(),
-    getColors(),
   ]);
 
   return (
@@ -56,16 +48,6 @@ export default async function SettingsPage() {
         </div>
         <NtfySettingsForm settings={settings} apiUrl={apiUrl} />
       </section>
-
-      <CollapsibleSection
-        defaultOpen={false}
-        header={<h2 className="text-lg font-semibold">Couleurs</h2>}
-      >
-        <p className="mb-3 text-xs opacity-70">
-          Palette partagée : chaque produit choisit ses couleurs parmi celles-ci.
-        </p>
-        <ColorsManager colors={colors} apiUrl={apiUrl} />
-      </CollapsibleSection>
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Templates de notification</h2>

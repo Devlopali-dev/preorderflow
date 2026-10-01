@@ -64,16 +64,20 @@ model Campaign {
   endDate           DateTime?
   productId         String
   product           Product        @relation(fields: [productId], references: [id])
-  indicativePrice   Decimal        @db.Decimal(10, 2)
-  currency          String         @default("EUR")
   imageUrl          String?
   documentUrl       String?
+  // Lien de paiement propre à la campagne (ex : revolut.me/…) ; à défaut, celui du .env.
+  paymentLink       String?
+  // Rempli quand le mail « les commandes sont ouvertes » a été envoyé aux personnes intéressées :
+  // empêche tout doublon si la campagne repasse par cet état.
+  ordersOpenedMailedAt DateTime?
   interestSettings  Json?          // ex: quantités max, message légal, seuils d'affichage
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
   interests CampaignInterest[]
   media     CampaignMedia[]
+  orders    Order[]
 
   @@map("campaigns")
 }
@@ -159,17 +163,30 @@ model Product {
   weight         Decimal? @db.Decimal(10, 3) // kg
   active         Boolean  @default(true)
   manufacturable Boolean  @default(true)
-  // Simple champ URL, même pattern que Campaign.imageUrl — pas d'infra
-  // d'upload de fichier dans le projet (§32, aucune dépendance obligatoire).
-  imageUrl       String?
   documentUrl    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   campaigns Campaign[]
   variants  ProductVariant[]
+  photos    ProductPhoto[]
 
   @@map("products")
+}
+
+// Photos d'un produit, 3 au maximum (limite d'écriture côté backend, comme les
+// aperçus d'une campagne). `position` ordonne la galerie : la première est la
+// photo principale.
+model ProductPhoto {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([productId, position])
+  @@map("product_photos")
 }
 
 // Palette globale de couleurs, gérée depuis /settings et réutilisable par
@@ -294,6 +311,9 @@ model Order {
   number             String                  @unique // ex: 2026-0042
   customerId         String
   customer           Customer                @relation(fields: [customerId], references: [id])
+  // Campagne d'origine, facultative : la commande reste indépendante du recensement.
+  campaignId         String?
+  campaign           Campaign?               @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   status             OrderStatus             @default(DRAFT)
   paymentStatus      OrderPaymentStatus      @default(UNPAID)
   fulfillmentStatus  OrderFulfillmentStatus  @default(UNFULFILLED)
@@ -313,6 +333,7 @@ model Order {
   shipment  Shipment?
 
   @@index([customerId])
+  @@index([campaignId])
   @@map("orders")
 }
 
@@ -341,6 +362,7 @@ model OrderItem {
 enum PaymentProvider {
   MANUAL
   BANK_TRANSFER
+  CASH
   STRIPE
 }
 
@@ -557,6 +579,8 @@ enum AuditAction {
   CUSTOMER_DATA_EXPORTED
   CUSTOMER_ANONYMIZED
   SETTINGS_UPDATED
+  CAMPAIGN_DELETED
+  CAMPAIGN_REACTIVATED
 }
 
 // Config email/ntfy éditable depuis /settings — une seule ligne (id fixe),

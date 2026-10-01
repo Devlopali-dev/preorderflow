@@ -92,8 +92,11 @@ Règle de dépendance : `Order` référence `ProductVariant`/`Customer` par id u
 
 Une campagne vend un produit ; un produit peut se décliner en couleurs. L'unité vendable et stockable est la **variante** (`ProductVariant`), pas le produit : stock, lignes de commande, lots de production et intérêts référencent tous la variante.
 
-- `Color` est une palette globale gérée dans `/settings` (nom + pastille `#rrggbb`), réutilisable par tous les produits. Une couleur se supprime tant qu'aucune variante ne l'utilise (l'API refuse sinon, il faut alors la désactiver) ; une couleur inactive reste listée, en italique avec un badge d'avertissement.
-- Tout produit a au moins une variante. Un produit sans couleur a une variante par défaut (`colorId = null`, SKU du produit), créée avec lui. Ajouter une première couleur retire cette variante par défaut si rien ne la référence encore.
+- `Color` est une palette globale gérée depuis les modales de création et d'édition d'un produit (nom + pastille `#rrggbb`, palette de base de 16 couleurs proposée), réutilisable par tous les produits. Une couleur se supprime tant qu'aucune variante ne l'utilise (l'API refuse sinon, il faut alors la désactiver) ; une couleur inactive reste listée, en italique avec un badge d'avertissement.
+- Un produit sans couleur a une variante **Standard** (`colorId = null`, SKU du produit), créée avec lui. Ajouter une première couleur retire le Standard si rien ne le référence encore.
+- **Désactiver une couleur la retire** : la variante est supprimée si elle ne porte aucun historique (stock, réservé et disponible nuls, et aucun mouvement, commande, lot de production ni intérêt). Sinon elle reste, marquée inactive, et peut être réactivée. Ce critère s'appuie sur les références plutôt que sur le seul stock : une variante à stock nul peut avoir des commandes passées, et la base interdit de la supprimer.
+- **Pas de couleur = Standard** : quand un produit n'a plus de variante active, la variante Standard est créée ou réactivée. Elle ne se désactive jamais (l'API refuse). Un produit garde donc toujours une variante active, sans que ce soit une contrainte pour l'admin.
+- Le **slug** d'un produit n'est pas saisi : il est généré depuis le nom (`nom-du-produit`, suffixe `-2`, `-3`… en cas de doublon). Le **SKU** se propose depuis le nom dans l'interface et reste modifiable.
 - Une campagne propose toutes les variantes **actives** de son produit. La page publique reçoit id + couleur, jamais de SKU ni de stock.
 - Une personne peut demander plusieurs couleurs avec un seul consentement : `CampaignInterest` porte une ligne `CampaignInterestItem` par couleur. Sa quantité totale est dérivée (somme des lignes), jamais stockée.
 - `@@unique([productId, colorId])` ne protège pas la variante par défaut (PostgreSQL traite deux `NULL` comme distincts) : l'unicité de la variante sans couleur est garantie par le service produit.
@@ -170,6 +173,15 @@ Il n'existe pas de champ qui fusionnerait ces valeurs. Le dashboard campagne cal
 
 ## 4. Machines à états
 
+### 4.0 Formulaire public selon le statut
+
+La page publique d'une campagne suit son statut : `RECENSEMENT` → formulaire de **recensement**
+(inchangé, ne constitue pas une commande) ; `DRAFT` → **invisible du public** : la fiche, les statistiques et la
+liste l'excluent, et la page, le recensement et la commande renvoient 404 à un visiteur (jamais 403 : on ne
+confirme pas son existence). Un administrateur connecté le voit toujours (aperçu, sans formulaire) ; `COMMANDES_OUVERTES` → formulaire d'**achat** (couleurs et
+quantités, adresse de livraison) qui crée une vraie commande puis affiche le lien pour payer ; au-delà
+(commandes fermées, production, expédition, archives) → plus de formulaire, un message.
+
 ### 4.1 Campaign.status
 
 ```text
@@ -181,10 +193,44 @@ Tout statut non terminal → ANNULEE (jusqu'à EXPÉDITION inclus)
 Transitions interdites : retour arrière (ex. `COMMANDES_FERMÉES → RECENSEMENT`), saut direct `DRAFT → PRODUCTION`.
 
 ANNULEE est volontairement atteignable depuis n'importe quel statut non terminal (pas seulement
-avant l'ouverture des commandes) : une campagne dont le recensement a des inscrits ne peut jamais
-être supprimée (`DELETE /campaigns/:id` refuse s'il existe un `CampaignInterest`, cf. §8), donc si
-ANNULEE n'était pas atteignable au-delà de `COMMANDES_OUVERTES`, une campagne avancée resterait
-bloquée définitivement sans aucune sortie.
+avant l'ouverture des commandes) : une campagne en cours dont le recensement a des inscrits ne peut
+pas être supprimée (`DELETE /campaigns/:id` refuse s'il existe un `CampaignInterest`, cf. §8), donc
+si ANNULEE n'était pas atteignable au-delà de `COMMANDES_OUVERTES`, une campagne avancée resterait
+bloquée sans aucune sortie.
+
+**Passage automatique selon les dates.** Un planificateur (`CampaignScheduler`, au démarrage puis toutes
+les minutes ; `POST /campaigns/apply-schedule`, `ADMIN`, le déclenche à la demande) applique :
+
+- à partir de la date de début (`now >= startDate`), `DRAFT` ou `RECENSEMENT` → `COMMANDES_OUVERTES` ;
+- après la date de fin (`now > endDate`), `DRAFT`, `RECENSEMENT` ou `COMMANDES_OUVERTES` →
+  `COMMANDES_FERMÉES` (la fermeture l'emporte quand les deux dates sont dépassées).
+
+La règle s'applique aussi **dès l'enregistrement** des dates (création et modification d'une campagne) : le
+statut colle tout de suite aux dates, sans attendre le planificateur. Elle ne va que vers l'avant : repousser
+la fin d'une campagne déjà fermée ne la rouvre pas (la machine d'états interdit le retour en arrière).
+
+**Mail d'ouverture.** Quand une campagne passe en `COMMANDES_OUVERTES` (bouton, planificateur ou dates
+modifiées : un point unique, `afterStatusChange`), les personnes intéressées reçoivent le modèle `ORDERS_OPENED`
+(prénom, quantités et couleurs demandées, lien vers la page d'achat). Un mail par adresse distincte, seulement
+pour celles qui ont consenti à être recontactées (RGPD), en arrière-plan. `Campaign.ordersOpenedMailedAt` est
+posé avant l'envoi, de façon conditionnelle : aucun doublon si la campagne repasse par cet état.
+
+Une date saisie sans heure (minuit UTC) est **inclusive** pour la fin : la campagne se ferme à la fin de
+ce jour-là. `PRODUCTION`, `EXPÉDITION` et les archives ne sont jamais touchés, ni une campagne sans
+date. Chaque changement est conditionné à l'ancien statut (une action manuelle concurrente n'est pas
+écrasée), journalisé et notifié à l'admin. `CAMPAIGN_SCHEDULE_DISABLED=true` coupe le planificateur,
+`CAMPAIGN_SCHEDULE_INTERVAL_MS` règle sa période.
+
+**Archives.** `TERMINEE` et `ANNULEE` sont les statuts _archivés_ :
+
+- **lecture seule** : l'API refuse la modification, l'ajout ou le retrait d'aperçus et le
+  recensement (400) tant que la campagne est archivée ;
+- **réactivation** : seule transition possible depuis une archive, `TERMINEE|ANNULEE → DRAFT`. La
+  campagne repart du début du cycle. Action tracée (`CAMPAIGN_REACTIVATED`) ;
+- **suppression définitive** : `DELETE /campaigns/:id` sur une archive supprime la campagne, ses
+  demandes de recensement (et leurs lignes par couleur) et ses fichiers. Réservée aux `ADMIN`, tracée
+  (`CAMPAIGN_DELETED`, avec le nombre de demandes supprimées). Les clients restent : ils peuvent avoir
+  des commandes. Les données de recensement se suppriment indépendamment des commandes (§24).
 
 ### 4.2 Order.status
 
@@ -192,8 +238,11 @@ bloquée définitivement sans aucune sortie.
 DRAFT → PENDING_PAYMENT → PAID → PROCESSING → READY_TO_SHIP → SHIPPED → DELIVERED
               │
               ├──→ CANCELLED (depuis DRAFT, PENDING_PAYMENT, PAID)
-              └──→ REFUNDED (depuis PAID, PROCESSING, READY_TO_SHIP, SHIPPED, DELIVERED)
+              └──→ REFUNDED (depuis PAID, PROCESSING, READY_TO_SHIP, SHIPPED)
 ```
+
+`DELIVERED` est un état final : une commande livrée est en lecture seule. Une commande ne peut être
+livrée que si `paymentStatus = PAID` (refus 400 sinon, y compris via l'expédition).
 
 `Order.paymentStatus` et `Order.fulfillmentStatus` sont des sous-machines indépendantes qui contraignent (sans dupliquer) `Order.status` :
 
@@ -223,6 +272,16 @@ PLANNED/IN_PROGRESS → CANCELLED
 
 Passage à `COMPLETED` ou `PARTIALLY_COMPLETED` : déclenche dans une transaction SQL la création des `InventoryMovement` (type `PRODUCTION`) pour chaque `ProductionItem.quantityProduced > 0`.
 
+**Référence.** Facultative à la création : à défaut, `nom-AAAAMMJJ` (nom du premier produit, date UTC), suffixée `#1`, `#2`… en cas de doublon. Générée sous verrou consultatif ; une référence saisie déjà prise est refusée (400).
+
+**Correction (`POST /production/batches/:id/decrement`).** Retire des unités déjà déclarées produites (erreur de saisie, casse). Le stock étant dérivé des mouvements, l'historique n'est jamais réécrit : la baisse de `quantityProduced` et un mouvement négatif (`ADJUSTMENT_OUT`, référencé sur le lot) sont écrits dans la même transaction. Règles, vérifiées côté API :
+
+- uniquement sur un lot `IN_PROGRESS` ou `PARTIALLY_COMPLETED` (un lot terminé est clos) ;
+- pas plus que la quantité déjà produite sur la ligne (baisse atomique : deux corrections simultanées ne peuvent pas la dépasser) ;
+- le stock physique de la variante ne doit jamais passer sous zéro (unités déjà sorties du stock : refus).
+
+Le statut du lot ne change pas (la machine à états ne prévoit pas de retour en arrière). L'action est tracée (`INVENTORY_ADJUSTED`).
+
 ### 4.5 Shipment.status
 
 ```text
@@ -251,30 +310,34 @@ Chaque changement de statut crée un `ShipmentEvent` (append-only).
 GET    /api/v1/campaigns
 POST   /api/v1/campaigns
 GET    /api/v1/campaigns/:id
-PATCH  /api/v1/campaigns/:id                    # nom/prix/dates — pas le statut
+PATCH  /api/v1/campaigns/:id                    # nom/dates — pas le statut (le prix vient du produit)
 PATCH  /api/v1/campaigns/:id/status
-DELETE /api/v1/campaigns/:id                    # bloqué (400) si des CampaignInterest existent
+DELETE /api/v1/campaigns/:id                    # ADMIN — en cours : refusé (400) si des CampaignInterest existent ; archive : suppression définitive avec ses demandes
 POST   /api/v1/campaigns/:id/interests          # public, rate-limited — items: [{variantId, quantity}]
+POST   /api/v1/campaigns/:id/orders             # public, rate-limited (5/min) + honeypot — commandes ouvertes seulement (400 sinon) :
+                                                #   crée la commande (campaignId), génère le règlement manuel (lien avec le montant),
+                                                #   renvoie { orderNumber, total, currency, paymentLink } ; un client existant n'est jamais réécrit
 GET    /api/v1/campaigns/:id/statistics         # + ventilation par couleur (byVariant)
 
 GET    /api/v1/products                         # public — inclut les variantes
-POST   /api/v1/products                         # crée aussi la variante par défaut
+POST   /api/v1/products                         # crée aussi la variante Standard ; slug facultatif (généré)
 GET    /api/v1/products/:id                     # public
 PATCH  /api/v1/products/:id
 PATCH  /api/v1/products/:id/archive             # active=false, jamais de suppression réelle
 POST   /api/v1/products/:id/variants            # {colorId} — ajoute une couleur de la palette
-PATCH  /api/v1/products/:id/variants/:variantId # {active} — jamais de suppression, garde ≥ 1 variante active
+PATCH  /api/v1/products/:id/variants/:variantId # {active} — false retire la couleur (ou la laisse inactive si historique) ; Standard jamais désactivable
 
 GET    /api/v1/colors                           # palette globale
 POST   /api/v1/colors                           # ADMIN uniquement — {name, hex}
 PATCH  /api/v1/colors/:id                       # ADMIN uniquement — nom/pastille/actif
 DELETE /api/v1/colors/:id                       # ADMIN uniquement — refusé (400) si une variante l'utilise
-POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8)
+POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8) — 3 photos max (400 au-delà)
+DELETE /api/v1/products/:id/photos/:photoId      # retire la photo (et son fichier), renumérote les suivantes
 
 GET    /api/v1/customers
-POST   /api/v1/customers
+POST   /api/v1/customers                        # identité + addresses[] (jusqu'à 10)
 GET    /api/v1/customers/:id
-PATCH  /api/v1/customers/:id
+PATCH  /api/v1/customers/:id                    # email, identité, téléphone, addresses[] : carnet synchronisé (avec id = mise à jour, sans id = création, absente = suppression) ; refusé (400) si le client est anonymisé ; audité sans valeurs (fieldsChanged)
 POST   /api/v1/customers/:id/gdpr-export        # ADMIN uniquement
 POST   /api/v1/customers/:id/gdpr-anonymize     # ADMIN uniquement
 
@@ -285,10 +348,11 @@ PATCH  /api/v1/orders/:id/status
 POST   /api/v1/orders/:id/payments
 
 GET    /api/v1/production/batches
-POST   /api/v1/production/batches               # items: [{variantId, quantityPlanned}]
+POST   /api/v1/production/batches               # items: [{variantId, quantityPlanned}] ; reference facultative (défaut : nom-AAAAMMJJ, #1, #2… si doublon)
 PATCH  /api/v1/production/batches/:id           # référence/notes/quantités prévues — PLANNED uniquement
 POST   /api/v1/production/batches/:id/start
 POST   /api/v1/production/batches/:id/complete
+POST   /api/v1/production/batches/:id/decrement # {productionItemId, quantity?=1} — corrige un lot en cours (mouvement négatif)
 
 GET    /api/v1/inventory                        # par produit : stock total + détail par variante
 GET    /api/v1/inventory/:variantId/movements
@@ -373,7 +437,8 @@ ntfy, pas un email, elle ne passe jamais par `renderTemplate()`), avec sujet/cor
 `customized` et les placeholders détectés automatiquement. `PATCH`/`DELETE .../:template` sont
 `ADMIN` uniquement et audités (`SETTINGS_UPDATED`).
 
-**Photo produit uploadée** — `Product.imageUrl`/`Product.documentUrl` (`String?`). L'image passe
+**Photos produit uploadées** — `ProductPhoto` (jusqu'à 3 par produit, ordonnées par `position`, la
+première est la principale) et `Product.documentUrl` (`String?`). Les images passent
 par un vrai upload (`POST /products/:id/photo`, multipart via `multer`, stockage disque local sous
 `apps/api/uploads/products/`, servi en statique par `app.useStaticAssets`) ; le PDF de présentation
 reste un simple champ URL texte (seule la photo a été demandée en upload). Pas de S3/Cloudinary —

@@ -1,15 +1,43 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
-import { UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
+import { CustomerAddressInputDto, UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
+import { saveShippingAddress } from "../customer/address-book";
+import { assertPaymentChoiceOpen, PaymentChoiceClosedError } from "./payment-choice-rules";
+import { NotificationService } from "../notification/notification.service";
+import { PaymentService } from "../payment/payment.service";
 
 @Injectable()
 export class CustomerPortalService {
+  constructor(
+    private readonly paymentService: PaymentService,
+    private readonly notificationService: NotificationService,
+  ) {}
+
   async getProfile(customerId: string) {
-    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      include: { addresses: { orderBy: { type: "desc" } } },
+    });
     if (!customer) {
       throw new NotFoundException("Client introuvable");
     }
     return customer;
+  }
+
+  // Adresse de livraison du client connecté : toujours celle de son propre compte (identifiant du
+  // jeton), jamais un identifiant d'adresse fourni. Elle remonte dans l'administration.
+  async saveAddress(customerId: string, dto: CustomerAddressInputDto) {
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) {
+      throw new NotFoundException("Client introuvable");
+    }
+    await saveShippingAddress(customer.id, {
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      phone: customer.phone,
+      ...dto,
+    });
+    return this.getProfile(customerId);
   }
 
   async updateProfile(customerId: string, dto: UpdateCustomerProfileDto) {
@@ -45,5 +73,50 @@ export class CustomerPortalService {
       throw new NotFoundException("Commande introuvable");
     }
     return order;
+  }
+
+  private assertChoiceOpen(orderStatus: string) {
+    try {
+      assertPaymentChoiceOpen(orderStatus);
+    } catch (error) {
+      if (error instanceof PaymentChoiceClosedError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  // « Payer maintenant » : génère le règlement manuel (lien Revolut avec le montant
+  // attendu) et met la commande en attente de paiement. L'admin vérifie ensuite le
+  // virement à la main. Rejouable : un règlement en attente déjà généré est renvoyé tel quel.
+  async payNow(customerId: string, orderId: string) {
+    const order = await this.getOrder(customerId, orderId);
+    this.assertChoiceOpen(order.status);
+
+    const existing = order.payments.find((p) => p.provider === "MANUAL" && p.status === "PENDING");
+    const payment =
+      existing ?? (await this.paymentService.createForOrder(order.id, { provider: "MANUAL" }));
+    if (!existing) {
+      await this.notificationService.notifyAdmin(
+        "Paiement annoncé",
+        `${order.number} — ${order.total.toFixed(2)} € — à vérifier`,
+        ["hourglass"],
+      );
+    }
+
+    const metadata = payment.metadata as { paymentLink?: string } | null;
+    return { amount: payment.amount, paymentLink: metadata?.paymentLink ?? null };
+  }
+
+  // « Plus tard » : rien n'est généré, l'admin est prévenu pour envoyer le mail de validation.
+  async payLater(customerId: string, orderId: string) {
+    const order = await this.getOrder(customerId, orderId);
+    this.assertChoiceOpen(order.status);
+    await this.notificationService.notifyAdmin(
+      "Paiement différé",
+      `${order.number} — le client paiera plus tard : un mail de validation est à envoyer`,
+      ["alarm_clock"],
+    );
+    return { ok: true };
   }
 }

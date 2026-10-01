@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CustomerPortalService } from "./customer-portal.service";
-import { UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
+import { CustomerAddressInputDto, UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
 import { CustomerAuthGuard } from "./customer-auth.guard";
 import { CurrentCustomerId } from "./current-customer.decorator";
 import { Public } from "../auth/public.decorator";
@@ -27,6 +27,11 @@ export class CustomerPortalController {
     return this.customerPortalService.updateProfile(customerId, dto);
   }
 
+  @Put("address")
+  saveAddress(@CurrentCustomerId() customerId: string, @Body() dto: CustomerAddressInputDto) {
+    return this.customerPortalService.saveAddress(customerId, dto);
+  }
+
   @Get("orders")
   listOrders(@CurrentCustomerId() customerId: string) {
     return this.customerPortalService.listOrders(customerId);
@@ -35,5 +40,15 @@ export class CustomerPortalController {
   @Get("orders/:id")
   getOrder(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
     return this.customerPortalService.getOrder(customerId, orderId);
+  }
+
+  @Post("orders/:id/pay-now")
+  payNow(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
+    return this.customerPortalService.payNow(customerId, orderId);
+  }
+
+  @Post("orders/:id/pay-later")
+  payLater(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
+    return this.customerPortalService.payLater(customerId, orderId);
   }
 }

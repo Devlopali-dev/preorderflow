@@ -1,7 +1,7 @@
 {
   "name": "preorderflow",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.18.1",
   "license": "AGPL-3.0",
   "engines": {
     "node": ">=20"
@@ -19,6 +19,7 @@
     "db:generate": "pnpm --filter @preorderflow/database generate",
     "db:migrate": "pnpm --filter @preorderflow/database migrate",
     "db:seed": "pnpm --filter @preorderflow/database seed",
+    "db:clean-e2e": "pnpm --filter @preorderflow/database clean:e2e",
     "prepare": "husky"
   },
   "devDependencies": {

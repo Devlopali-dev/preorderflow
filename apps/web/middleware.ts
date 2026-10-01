@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardedForHeader } from "@/lib/forwarded-ip";
 import { AUTH_COOKIE_NAME } from "@/lib/auth";
 import { CUSTOMER_AUTH_COOKIE_NAME } from "@/lib/customer-auth";
 
@@ -36,7 +37,10 @@ export function middleware(request: NextRequest) {
 async function redirectToLoginOrSetup(request: NextRequest, pathname: string) {
   const apiUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   try {
-    const res = await fetch(`${apiUrl}/api/v1/auth/setup-status`, { cache: "no-store" });
+    const res = await fetch(`${apiUrl}/api/v1/auth/setup-status`, {
+      cache: "no-store",
+      headers: forwardedForHeader(request.headers),
+    });
     const { needsSetup } = await res.json();
     if (needsSetup) {
       return NextResponse.redirect(new URL("/setup", request.url));

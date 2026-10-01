@@ -17,6 +17,9 @@ services:
       - /app/node_modules
     environment:
       NODE_ENV: development
+      # Pas de limites de débit en développement : la suite E2E locale dépasserait vite les seuils.
+      # Jamais en production (docker-compose.yml ne la pose pas).
+      RATE_LIMIT_DISABLED: "true"
 
   web:
     build:

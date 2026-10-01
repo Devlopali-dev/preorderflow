@@ -37,6 +37,10 @@ jobs:
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
       TZ: UTC
+      # La suite E2E enchaîne bien plus d'appels que les seuils (login, recensement, commande publique…) :
+      # les limites de débit sont coupées pour elle. Elles sont vérifiées à part, sur une seconde API
+      # démarrée SANS cette variable (cf. rate-limit.spec.ts).
+      RATE_LIMIT_DISABLED: "true"
       # Secrets applicatifs : valeurs de test uniquement, jamais celles de
       # production (cf. .env.example). Nécessaires pour que login admin,
       # magic link client, et les sessions signées fonctionnent réellement
@@ -114,7 +118,10 @@ jobs:
         run: |
           node apps/api/dist/main.js > api.log 2>&1 &
           API_PID=$!
-          trap "kill $API_PID 2>/dev/null" EXIT
+          # Seconde API, limites de débit ACTIVES, pour rate-limit.spec.ts uniquement.
+          RATE_LIMIT_DISABLED=false API_PORT=3102 node apps/api/dist/main.js > api-limited.log 2>&1 &
+          LIMITED_PID=$!
+          trap "kill $API_PID $LIMITED_PID 2>/dev/null" EXIT
 
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3001/health > /dev/null; then
@@ -129,11 +136,80 @@ jobs:
             sleep 1
           done
 
-          pnpm test:e2e
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3102/health > /dev/null; then
+              echo "API (limites actives) prête"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "API (limites actives) n'a pas démarré à temps"
+              cat api-limited.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          RATE_LIMIT_API_URL=http://localhost:3102 pnpm test:e2e
 
       - name: Upload API logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: api-logs
-          path: api.log
+          path: |
+            api.log
+            api-limited.log
+
+  # Image de PRODUCTION : construit et démarre la stack du déploiement Coolify
+  # (docker-compose.coolify.yml) puis vérifie qu'elle répond. Les tests ci-dessus ne passent jamais par
+  # ces Dockerfiles : une image qui ne démarre pas (moteur Prisma introuvable, build web qui échoue,
+  # migrations non appliquées…) n'était détectée qu'au déploiement.
+  docker-production:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the production stack
+        run: |
+          cat > ci.env <<'EOF'
+          POSTGRES_USER=pof
+          POSTGRES_PASSWORD=ci-test-password
+          POSTGRES_DB=pof
+          JWT_SECRET=ci-test-jwt-secret
+          MAGIC_LINK_SECRET=ci-test-magic-link-secret
+          SESSION_COOKIE_SECRET=ci-test-session-cookie-secret
+          WEB_URL=http://localhost:3200
+          CORS_ORIGIN=http://localhost:3200
+          NEXT_PUBLIC_API_URL=http://localhost:3201
+          EOF
+          cat > ci-ports.yml <<'EOF'
+          services:
+            api:
+              ports: ["3201:3001"]
+            web:
+              ports: ["3200:3000"]
+          EOF
+          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300
+
+      - name: Smoke test
+        run: |
+          set -e
+          curl -sf http://localhost:3201/health
+          # Migrations appliquées au démarrage, moteur Prisma chargé : une requête base répond 200.
+          curl -sf http://localhost:3201/api/v1/campaigns
+          # Rendu serveur de l'accueil (le serveur web appelle l'API par le réseau interne).
+          curl -sf http://localhost:3200/ > /dev/null
+          # L'URL publique de l'API est figée dans le JavaScript du navigateur au build.
+          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env exec -T web \
+            sh -c 'grep -rlq "localhost:3201" apps/web/.next/static'
+          # Les limites de débit sont actives en production (10 tentatives par minute sur le login).
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3201/api/v1/auth/login \
+              -H 'Content-Type: application/json' -d '{"email":"x@example.com","password":"mauvais"}')
+          done
+          test "$code" = "429"
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
+

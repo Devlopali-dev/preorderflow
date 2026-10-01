@@ -81,7 +81,7 @@ export function CardFooter({ children }) {
 }
 
 // Stat card prêt à l'emploi
-export function StatCard({ label, value, delta, deltaLabel, icon = null }) {
+export function StatCard({ label, value, caption, delta, deltaLabel, icon = null }) {
   const isPositive = typeof delta === 'number' ? delta >= 0 : delta?.startsWith('+')
   return (
     <div className="card card-stat card-body">
@@ -90,6 +90,7 @@ export function StatCard({ label, value, delta, deltaLabel, icon = null }) {
         {icon && <span style={{ fontSize:'20px', opacity:0.6 }}>{icon}</span>}
       </div>
       <p className="stat-value">{value}</p>
+      {caption && <p className="stat-caption">{caption}</p>}
       {delta !== undefined && (
         <p className={`stat-delta ${!isPositive ? 'down' : ''}`}>
           <span>{isPositive ? '↑' : '↓'}</span>

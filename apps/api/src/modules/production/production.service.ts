@@ -3,13 +3,16 @@ import { prisma } from "@preorderflow/database";
 import {
   CompleteProductionBatchDto,
   CreateProductionBatchDto,
+  DecrementProductionDto,
   UpdateProductionBatchDto,
 } from "./dto/create-production-batch.dto";
+import { assertCanDecrement, InvalidDecrementError } from "./production-decrement";
 import {
   assertValidProductionTransition,
   computeCompletionStatus,
   InvalidProductionTransitionError,
 } from "./production-status";
+import { nextAvailableReference, productionReferenceBase } from "./production-reference";
 
 // Une ligne de production cible une variante (couleur) ; on charge aussi le
 // produit et la couleur pour l'affichage (« Stylo — Rouge »).
@@ -39,24 +42,54 @@ export class ProductionService {
     const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
     const variants = await prisma.productVariant.findMany({
       where: { id: { in: variantIds }, active: true },
-      select: { id: true },
+      select: { id: true, product: { select: { name: true } } },
     });
     if (variants.length !== variantIds.length) {
       throw new BadRequestException("Une ou plusieurs variantes sont introuvables ou inactives");
     }
 
-    return prisma.productionBatch.create({
-      data: {
-        reference: dto.reference,
-        notes: dto.notes,
-        items: {
-          create: dto.items.map((item) => ({
-            variantId: item.variantId,
-            quantityPlanned: item.quantityPlanned,
-          })),
+    const explicitReference = dto.reference?.trim() || undefined;
+    if (
+      explicitReference &&
+      (await prisma.productionBatch.findUnique({
+        where: { reference: explicitReference },
+        select: { id: true },
+      }))
+    ) {
+      throw new BadRequestException(`La référence "${explicitReference}" existe déjà`);
+    }
+    const firstVariant = variants.find((v) => v.id === dto.items[0]!.variantId)!;
+
+    return prisma.$transaction(async (tx) => {
+      let reference = explicitReference;
+      if (!reference) {
+        // Référence automatique nom-AAAAMMJJ (+ #1, #2… en cas de doublon).
+        // Sous verrou : deux lots créés en même temps ne prennent pas la même.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('production_reference'))`;
+        const base = productionReferenceBase(firstVariant.product.name, new Date());
+        const existing = await tx.productionBatch.findMany({
+          where: { reference: { startsWith: base } },
+          select: { reference: true },
+        });
+        reference = nextAvailableReference(
+          base,
+          existing.map((batch) => batch.reference),
+        );
+      }
+
+      return tx.productionBatch.create({
+        data: {
+          reference,
+          notes: dto.notes,
+          items: {
+            create: dto.items.map((item) => ({
+              variantId: item.variantId,
+              quantityPlanned: item.quantityPlanned,
+            })),
+          },
         },
-      },
-      include: { items: true },
+        include: { items: true },
+      });
     });
   }
 
@@ -166,6 +199,69 @@ export class ProductionService {
         data: { status: finalStatus, completedAt: new Date() },
         include: { items: true },
       });
+    });
+  }
+
+  /**
+   * Corrige une production : retire des unités déjà déclarées produites (erreur
+   * de saisie, casse). Le stock étant dérivé des mouvements, l'historique n'est
+   * jamais réécrit : la correction ajoute un mouvement négatif, dans la même
+   * transaction que la baisse de quantité (jamais l'un sans l'autre, comme à
+   * la fin d'un lot). Le statut du lot ne change pas.
+   */
+  async decrement(id: string, dto: DecrementProductionDto) {
+    const batch = await this.getById(id);
+    const item = batch.items.find((i) => i.id === dto.productionItemId);
+    if (!item) {
+      throw new BadRequestException(`Ligne de production "${dto.productionItemId}" introuvable`);
+    }
+    const quantity = dto.quantity ?? 1;
+
+    return prisma.$transaction(async (tx) => {
+      const stock = await tx.inventoryMovement.aggregate({
+        where: { variantId: item.variantId },
+        _sum: { quantity: true },
+      });
+      try {
+        assertCanDecrement({
+          status: batch.status,
+          quantityProduced: item.quantityProduced,
+          quantity,
+          physicalStock: stock._sum.quantity ?? 0,
+        });
+      } catch (error) {
+        if (error instanceof InvalidDecrementError) {
+          throw new BadRequestException(error.message);
+        }
+        throw error;
+      }
+
+      // Atomique : deux corrections simultanées ne retirent jamais plus que ce
+      // qui a été produit.
+      const updated = await tx.productionItem.updateMany({
+        where: { id: item.id, quantityProduced: { gte: quantity } },
+        data: { quantityProduced: { decrement: quantity } },
+      });
+      if (updated.count === 0) {
+        throw new BadRequestException("La quantité produite a changé : réessayez");
+      }
+
+      const movement = await tx.inventoryMovement.create({
+        data: {
+          variantId: item.variantId,
+          quantity: -quantity,
+          type: "ADJUSTMENT_OUT",
+          referenceType: "PRODUCTION_BATCH",
+          referenceId: batch.id,
+          reason: `Correction production ${batch.reference}`,
+        },
+      });
+
+      const updatedBatch = await tx.productionBatch.findUniqueOrThrow({
+        where: { id: batch.id },
+        include: { items: { include: PRODUCTION_ITEM_INCLUDE } },
+      });
+      return { batch: updatedBatch, movement };
     });
   }
 

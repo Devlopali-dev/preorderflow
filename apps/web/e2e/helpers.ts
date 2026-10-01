@@ -15,6 +15,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 let adminTokenPromise: Promise<string> | undefined;
 
 export function getAdminToken(request: APIRequestContext): Promise<string> {
+  // Jeton posé par global-setup.ts (une seule connexion pour toute la suite).
+  if (process.env.E2E_ADMIN_TOKEN) return Promise.resolve(process.env.E2E_ADMIN_TOKEN);
+
   adminTokenPromise ??= (async () => {
     const res = await request.post(`${API_URL}/api/v1/auth/login`, {
       data: { email: "admin@preorderflow.dev", password: "password123" },
@@ -52,4 +55,37 @@ export async function loginAsAdmin(page: Page, request: APIRequestContext): Prom
   ]);
 
   return accessToken;
+}
+
+// Paie réellement une commande : génère le paiement puis le confirme, ce qui
+// renseigne aussi `paymentStatus`. Passer le statut à « payée » à la main laisse
+// la commande non payée (donc non livrable).
+export async function payOrder(
+  request: APIRequestContext,
+  token: string,
+  orderId: string,
+): Promise<void> {
+  const auth = authHeader(token);
+  const created = await request.post(`${API_URL}/api/v1/orders/${orderId}/payments`, {
+    headers: auth,
+    data: { provider: "BANK_TRANSFER" },
+  });
+  if (!created.ok()) throw new Error(`Paiement impossible (${created.status()})`);
+  const payment = await created.json();
+  const confirmed = await request.post(`${API_URL}/api/v1/payments/${payment.id}/confirm`, {
+    headers: auth,
+  });
+  if (!confirmed.ok()) throw new Error(`Confirmation impossible (${confirmed.status()})`);
+}
+
+// Couleurs créées puis supprimées par des tests qui tournent en parallèle
+// (palette, couleur inactive ou « d'office ») : les autres tests ne doivent pas
+// les choisir, elles peuvent disparaître en cours de route.
+const TEMPORARY_COLORS = /^(Auto|Inactive)-\d+/;
+export const VOLATILE_COLORS = ["Turquoise", "Bordeaux"];
+
+export function isStableColor(color: { active: boolean; name: string }): boolean {
+  return (
+    color.active && !VOLATILE_COLORS.includes(color.name) && !TEMPORARY_COLORS.test(color.name)
+  );
 }

@@ -29,8 +29,16 @@ describe("assertValidOrderTransition", () => {
   });
 
   it("autorise le remboursement depuis n'importe quel statut payé", () => {
-    for (const from of ["PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"] as const) {
+    for (const from of ["PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED"] as const) {
       expect(() => assertValidOrderTransition(from, "REFUNDED")).not.toThrow();
+    }
+  });
+
+  it("refuse toute transition depuis une commande livrée (lecture seule)", () => {
+    for (const to of ["REFUNDED", "CANCELLED", "SHIPPED"] as const) {
+      expect(() => assertValidOrderTransition("DELIVERED", to)).toThrow(
+        InvalidOrderTransitionError,
+      );
     }
   });
 

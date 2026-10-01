@@ -3,13 +3,13 @@ import { IsIn, IsNumber, IsOptional, Min } from "class-validator";
 
 export class CreatePaymentDto {
   @ApiProperty({
-    enum: ["MANUAL", "BANK_TRANSFER", "STRIPE"],
+    enum: ["MANUAL", "BANK_TRANSFER", "CASH", "STRIPE"],
     default: "MANUAL",
     description: "Choisi par l'admin/opérateur au moment de générer le paiement de la commande.",
   })
   @IsOptional()
-  @IsIn(["MANUAL", "BANK_TRANSFER", "STRIPE"])
-  provider?: "MANUAL" | "BANK_TRANSFER" | "STRIPE";
+  @IsIn(["MANUAL", "BANK_TRANSFER", "CASH", "STRIPE"])
+  provider?: "MANUAL" | "BANK_TRANSFER" | "CASH" | "STRIPE";
 
   @ApiProperty({ required: false, description: "Par défaut, le total de la commande" })
   @IsOptional()

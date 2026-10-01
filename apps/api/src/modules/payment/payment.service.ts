@@ -1,7 +1,14 @@
-import { BadRequestException, forwardRef, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
 import { CreatePaymentDto } from "./dto/create-payment.dto";
 import { buildRevolutPaymentLink } from "./revolut-link";
+import { assertOrderAcceptsPayment, OrderNotPayableError } from "./payment-rules";
 import { getStripeClient, isStripeConfigured } from "./stripe-client";
 import { OrderService } from "../order/order.service";
 import { NotificationService } from "../notification/notification.service";
@@ -18,8 +25,21 @@ export class PaymentService {
     return prisma.payment.findMany({ orderBy: { createdAt: "desc" }, include: { order: true } });
   }
 
+  // Convertit le refus métier en 400 (une commande annulée n'a plus de paiement à gérer).
+  private assertPayable(orderStatus: string) {
+    try {
+      assertOrderAcceptsPayment(orderStatus);
+    } catch (error) {
+      if (error instanceof OrderNotPayableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   async createForOrder(orderId: string, dto: CreatePaymentDto) {
     const order = await this.orderService.getById(orderId);
+    this.assertPayable(order.status);
     const amount = dto.amount ?? order.total.toNumber();
     const provider = dto.provider ?? "MANUAL";
 
@@ -32,13 +52,19 @@ export class PaymentService {
           "Stripe n'est pas configuré (STRIPE_SECRET_KEY manquante) — choisissez un autre mode de paiement.",
         );
       }
-      const session = await createStripeCheckoutSession(order.id, order.number, amount, order.currency);
+      const session = await createStripeCheckoutSession(
+        order.id,
+        order.number,
+        amount,
+        order.currency,
+      );
       providerReference = session.id;
       metadata = { stripeCheckoutUrl: session.url };
     } else if (provider === "MANUAL") {
-      const revolutBaseLink = process.env.REVOLUT_PAYMENT_LINK;
-      if (revolutBaseLink) {
-        metadata = { revolutLink: buildRevolutPaymentLink(revolutBaseLink, amount) };
+      // Lien de la campagne d'origine, à défaut celui du .env.
+      const baseLink = order.campaign?.paymentLink ?? process.env.REVOLUT_PAYMENT_LINK;
+      if (baseLink) {
+        metadata = { paymentLink: buildRevolutPaymentLink(baseLink, amount, order.currency) };
       }
     }
 
@@ -66,6 +92,18 @@ export class PaymentService {
     if (!payment) {
       throw new NotFoundException(`Paiement "${paymentId}" introuvable`);
     }
+    // Confirmation manuelle par un admin : refusée sur une commande annulée ou
+    // remboursée, AVANT toute écriture (sinon le paiement passerait à « payé »
+    // puis le passage de la commande à « payée » échouerait). Le webhook d'un
+    // provider (confirmByProviderReference) garde son comportement : un
+    // encaissement réel ne doit pas être ignoré en silence.
+    if (payment.status === "PENDING" || payment.status === "AUTHORIZED") {
+      const order = await prisma.order.findUniqueOrThrow({
+        where: { id: payment.orderId },
+        select: { status: true },
+      });
+      this.assertPayable(order.status);
+    }
     return this.confirmPayment(payment);
   }
 
@@ -82,7 +120,12 @@ export class PaymentService {
     return this.confirmPayment(payment);
   }
 
-  private async confirmPayment(payment: { id: string; status: string; orderId: string; amount: unknown }) {
+  private async confirmPayment(payment: {
+    id: string;
+    status: string;
+    orderId: string;
+    amount: unknown;
+  }) {
     if (payment.status === "PAID") {
       return payment;
     }

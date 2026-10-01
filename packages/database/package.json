@@ -1,6 +1,6 @@
 {
   "name": "@preorderflow/database",
-  "version": "0.1.0",
+  "version": "0.18.1",
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -9,6 +9,7 @@
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
     "seed": "tsx prisma/seed.ts",
+    "clean:e2e": "tsx prisma/clean-e2e.ts",
     "studio": "prisma studio",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"

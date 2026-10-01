@@ -48,6 +48,9 @@ services:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
+      args:
+        # Figé dans le JavaScript du navigateur au build (cf. web.Dockerfile).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     restart: unless-stopped
     env_file: .env
     environment:

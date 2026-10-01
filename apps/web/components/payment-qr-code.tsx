@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 
-export function PaymentQrCode({ link }: { link: string }) {
+export function PaymentQrCode({
+  link,
+  label = "QR code de paiement",
+}: {
+  link: string;
+  label?: string;
+}) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -18,5 +24,5 @@ export function PaymentQrCode({ link }: { link: string }) {
 
   if (!dataUrl) return null;
 
-  return <img src={dataUrl} alt="QR code de paiement Revolut" width={200} height={200} />;
+  return <img src={dataUrl} alt={label} width={200} height={200} />;
 }

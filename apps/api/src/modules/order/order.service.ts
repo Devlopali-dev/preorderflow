@@ -8,6 +8,7 @@ import {
 } from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
+import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { NotificationService } from "../notification/notification.service";
 
@@ -38,6 +39,7 @@ export class OrderService {
         customer: true,
         payments: true,
         shipment: true,
+        campaign: { select: { id: true, name: true, paymentLink: true } },
       },
     });
     if (!order) {
@@ -46,7 +48,9 @@ export class OrderService {
     return order;
   }
 
-  async create(dto: CreateOrderDto) {
+  // `keepExistingCustomer` : pour une commande passée anonymement, un client déjà connu (même
+  // email) est réutilisé tel quel, sans réécrire son nom ni son téléphone.
+  async create(dto: CreateOrderDto, options: { keepExistingCustomer?: boolean } = {}) {
     const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
     const variants = await prisma.productVariant.findMany({
       where: { id: { in: variantIds }, active: true },
@@ -66,6 +70,13 @@ export class OrderService {
       };
     });
 
+    if (dto.campaignId) {
+      const campaign = await prisma.campaign.findUnique({ where: { id: dto.campaignId } });
+      if (!campaign) {
+        throw new BadRequestException("Campagne introuvable");
+      }
+    }
+
     const totals = computeOrderTotals(lines, dto.shippingAmount ?? 0);
     const billingAddress = dto.billingAddress ?? dto.shippingAddress;
 
@@ -76,11 +87,13 @@ export class OrderService {
 
       const customer = await tx.customer.upsert({
         where: { email: dto.customerEmail },
-        update: {
-          firstName: dto.customerFirstName,
-          lastName: dto.customerLastName,
-          phone: dto.customerPhone ?? undefined,
-        },
+        update: options.keepExistingCustomer
+          ? {}
+          : {
+              firstName: dto.customerFirstName,
+              lastName: dto.customerLastName,
+              phone: dto.customerPhone ?? undefined,
+            },
         create: {
           email: dto.customerEmail,
           firstName: dto.customerFirstName,
@@ -93,6 +106,7 @@ export class OrderService {
         data: {
           number: orderNumber,
           customerId: customer.id,
+          campaignId: dto.campaignId,
           status: "DRAFT",
           paymentStatus: "UNPAID",
           fulfillmentStatus: "UNFULFILLED",
@@ -131,6 +145,19 @@ export class OrderService {
     return order;
   }
 
+  // Refus métier converti en 400 ; utilisé aussi par les expéditions, qui doivent
+  // refuser AVANT d'écrire quoi que ce soit.
+  assertPaidForDelivery(paymentStatus: string) {
+    try {
+      assertOrderPaidForDelivery(paymentStatus);
+    } catch (error) {
+      if (error instanceof OrderNotPaidError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   async updateStatus(id: string, status: OrderStatus) {
     const order = await this.getById(id);
     try {
@@ -140,6 +167,10 @@ export class OrderService {
         throw new BadRequestException(error.message);
       }
       throw error;
+    }
+
+    if (status === "DELIVERED") {
+      this.assertPaidForDelivery(order.paymentStatus);
     }
 
     const fulfillmentStatus = mapOrderStatusToFulfillment(status) ?? order.fulfillmentStatus;

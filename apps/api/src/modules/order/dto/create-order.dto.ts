@@ -111,6 +111,14 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({
+    required: false,
+    description: "Campagne d'origine (facultative) : son lien de paiement sert au règlement",
+  })
+  @IsOptional()
+  @IsUUID()
+  campaignId?: string;
 }
 
 export class UpdateOrderStatusDto {

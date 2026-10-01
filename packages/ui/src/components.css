@@ -159,6 +159,7 @@
 /* Stat card */
 .card-stat .stat-label { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: var(--font-medium); }
 .card-stat .stat-value { font-size: var(--text-3xl); font-weight: var(--font-bold); color: var(--color-text); line-height: 1.1; margin: var(--space-1) 0; }
+.card-stat .stat-caption { font-size: var(--text-sm); color: var(--color-text-muted); }
 .card-stat .stat-delta { font-size: var(--text-sm); color: var(--color-success); display: flex; align-items: center; gap: var(--space-1); }
 .card-stat .stat-delta.down { color: var(--color-danger); }
 
@@ -318,6 +319,10 @@
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
 }
+/* Retrait d'une ligne de détail (ex. une couleur sous son produit). Même
+   spécificité que `.table tbody td` et déclarée après : sans cette classe, le
+   padding de la cellule écraserait un `pl-*` de Tailwind (spécificité plus basse). */
+.table tbody td.table-indent { padding-left: var(--space-10); }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr {
   transition: background var(--duration-fast) var(--ease-default);

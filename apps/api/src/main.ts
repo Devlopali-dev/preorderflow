@@ -6,6 +6,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
+import { parseTrustProxy } from "./common/rate-limit";
 
 async function bootstrap() {
   // rawBody: true — le webhook Stripe doit vérifier la signature sur le
@@ -17,6 +18,9 @@ async function bootstrap() {
   // (§32 : aucune dépendance propriétaire obligatoire, pas de S3). En prod,
   // ce dossier doit être un volume Docker persistant (sinon perdu au rebuild).
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
+
+  // Derrière Traefik/Coolify : lire l'IP réelle du visiteur (limites de débit par IP). Voir TRUST_PROXY.
+  app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 
   app.use(helmet());
   app.enableCors({
@@ -44,6 +48,14 @@ async function bootstrap() {
   SwaggerModule.setup("api/docs", app, document);
 
   const port = process.env.API_PORT ?? 3001;
+  // Délai de keep-alive supérieur à celui d'un reverse proxy (Traefik : 90 s par
+  // défaut côté client inactif, le proxy réutilise ses connexions) et à l'inactivité
+  // d'un client HTTP : avec les 5 s de Node par défaut, une connexion réutilisée au
+  // moment où le serveur la ferme échoue en « socket hang up » / 502.
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+
   await app.listen(port);
   console.log(`API démarrée sur http://localhost:${port}/api/v1 (docs: /api/docs)`);
 }

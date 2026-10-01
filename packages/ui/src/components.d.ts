@@ -32,13 +32,22 @@ export function Badge(props: {
   className?: string;
 }): JSX.Element;
 
-export function Card(props: { children?: ReactNode; hoverable?: boolean; className?: string }): JSX.Element;
-export function CardHeader(props: { title?: ReactNode; subtitle?: ReactNode; actions?: ReactNode }): JSX.Element;
+export function Card(props: {
+  children?: ReactNode;
+  hoverable?: boolean;
+  className?: string;
+}): JSX.Element;
+export function CardHeader(props: {
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  actions?: ReactNode;
+}): JSX.Element;
 export function CardBody(props: { children?: ReactNode; className?: string }): JSX.Element;
 export function CardFooter(props: { children?: ReactNode }): JSX.Element;
 export function StatCard(props: {
   label?: ReactNode;
   value?: ReactNode;
+  caption?: ReactNode;
   delta?: ReactNode;
   deltaLabel?: ReactNode;
   icon?: ReactNode;
@@ -82,7 +91,12 @@ export function Select(props: {
   [key: string]: unknown;
 }): JSX.Element;
 
-export function Avatar(props: { src?: string; name?: string; size?: string; className?: string }): JSX.Element;
+export function Avatar(props: {
+  src?: string;
+  name?: string;
+  size?: string;
+  className?: string;
+}): JSX.Element;
 
 export function Table(props: {
   columns?: Array<{ key: string; label: string }>;
@@ -106,7 +120,10 @@ export function useToast(duration?: number): {
   push: (toast: unknown) => void;
   dismiss: (id: unknown) => void;
 };
-export function ToastContainer(props: { toasts?: unknown[]; onDismiss?: (id: unknown) => void }): JSX.Element;
+export function ToastContainer(props: {
+  toasts?: unknown[];
+  onDismiss?: (id: unknown) => void;
+}): JSX.Element;
 
 export function Tabs(props: {
   tabs?: Array<{ value: string; label: string }>;
@@ -114,8 +131,16 @@ export function Tabs(props: {
   onChange?: (value: string) => void;
 }): JSX.Element;
 
-export function AppLayout(props: { sidebar?: ReactNode; topbar?: ReactNode; children?: ReactNode }): JSX.Element;
-export function PageHeader(props: { title?: ReactNode; description?: ReactNode; actions?: ReactNode }): JSX.Element;
+export function AppLayout(props: {
+  sidebar?: ReactNode;
+  topbar?: ReactNode;
+  children?: ReactNode;
+}): JSX.Element;
+export function PageHeader(props: {
+  title?: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+}): JSX.Element;
 export function EmptyState(props: {
   icon?: ReactNode;
   title?: ReactNode;

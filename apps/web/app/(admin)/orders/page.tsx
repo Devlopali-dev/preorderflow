@@ -1,4 +1,6 @@
-import { getCustomers, getOrders, getProducts } from "@/lib/api";
+import { getCampaigns, getCustomers, getOrders, getProducts } from "@/lib/api";
+import { ORDER_PAYMENT_STATUS_BADGE, orderPaymentStatusLabel } from "@/lib/payment-labels";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { CreateOrderButton } from "./create-order-button";
 import { OrderActions } from "./order-actions";
@@ -16,14 +18,8 @@ const ORDER_STATUSES = [
   "REFUNDED",
 ];
 
-const PAYMENT_BADGE: Record<string, string> = {
-  PENDING: "badge-default",
-  AUTHORIZED: "badge-primary",
-  PAID: "badge-success",
-  FAILED: "badge-danger",
-  REFUNDED: "badge-warning",
-  PARTIALLY_REFUNDED: "badge-warning",
-};
+// Déroulé nominal d'une commande (les deux derniers statuts, annulée et remboursée, en sortent).
+const FLOW_LENGTH = 7;
 
 const ORDER_STATUS_BADGE: Record<string, string> = {
   DRAFT: "badge-default",
@@ -38,10 +34,11 @@ const ORDER_STATUS_BADGE: Record<string, string> = {
 };
 
 export default async function OrdersPage() {
-  const [orders, products, customers] = await Promise.all([
+  const [orders, products, customers, campaigns] = await Promise.all([
     getOrders(),
     getProducts(),
     getCustomers(),
+    getCampaigns(),
   ]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -56,10 +53,16 @@ export default async function OrdersPage() {
         <div>
           <h1 className="text-2xl font-semibold">Commandes</h1>
           <p className="card-subtitle">
-            {orders.length} commande{orders.length > 1 ? "s" : ""}
+            {orders.length} commande{orders.length > 1 ? "s" : ""} -{" "}
+            <em>{ORDER_STATUSES.slice(0, FLOW_LENGTH).map(orderStatusLabel).join(" → ")}</em>
           </p>
         </div>
-        <CreateOrderButton apiUrl={apiUrl} products={products} customers={customers} />
+        <CreateOrderButton
+          apiUrl={apiUrl}
+          products={products}
+          customers={customers}
+          campaigns={campaigns}
+        />
       </div>
 
       {groups.length === 0 && (
@@ -70,10 +73,11 @@ export default async function OrdersPage() {
         {groups.map((group) => (
           <CollapsibleSection
             key={group.status}
+            id={`orders-${group.status}`}
             header={
               <>
                 <span className={`badge ${ORDER_STATUS_BADGE[group.status] ?? "badge-default"}`}>
-                  {group.status}
+                  {orderStatusLabel(group.status)}
                 </span>
                 <span className="table-muted">{group.orders.length}</span>
               </>
@@ -104,9 +108,9 @@ export default async function OrdersPage() {
                       </td>
                       <td className="text-center">
                         <span
-                          className={`badge ${PAYMENT_BADGE[order.paymentStatus] ?? "badge-default"}`}
+                          className={`badge ${ORDER_PAYMENT_STATUS_BADGE[order.paymentStatus] ?? "badge-default"}`}
                         >
-                          {order.paymentStatus}
+                          {orderPaymentStatusLabel(order.paymentStatus)}
                         </span>
                       </td>
                       <td className="text-center">

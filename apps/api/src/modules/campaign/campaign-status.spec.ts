@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { assertValidCampaignTransition, InvalidCampaignTransitionError } from "./campaign-status";
+import {
+  assertValidCampaignTransition,
+  InvalidCampaignTransitionError,
+  isArchivedStatus,
+} from "./campaign-status";
 
 describe("assertValidCampaignTransition", () => {
   it("autorise le chemin nominal complet", () => {
@@ -37,13 +41,30 @@ describe("assertValidCampaignTransition", () => {
     );
   });
 
-  it("refuse toute transition depuis un état terminal", () => {
-    expect(() => assertValidCampaignTransition("TERMINEE", "DRAFT")).toThrow(
+  it("autorise la réactivation d'une campagne archivée, uniquement vers le brouillon", () => {
+    expect(() => assertValidCampaignTransition("TERMINEE", "DRAFT")).not.toThrow();
+    expect(() => assertValidCampaignTransition("ANNULEE", "DRAFT")).not.toThrow();
+  });
+
+  it("refuse toute autre transition depuis une campagne archivée", () => {
+    for (const from of ["TERMINEE", "ANNULEE"] as const) {
+      for (const to of ["RECENSEMENT", "COMMANDES_OUVERTES", "PRODUCTION", "TERMINEE"] as const) {
+        if (from === to) continue;
+        expect(() => assertValidCampaignTransition(from, to)).toThrow(
+          InvalidCampaignTransitionError,
+        );
+      }
+    }
+    expect(() => assertValidCampaignTransition("TERMINEE", "ANNULEE")).toThrow(
       InvalidCampaignTransitionError,
     );
-    expect(() => assertValidCampaignTransition("ANNULEE", "DRAFT")).toThrow(
-      InvalidCampaignTransitionError,
-    );
+  });
+
+  it("reconnaît les statuts archivés", () => {
+    expect(isArchivedStatus("TERMINEE")).toBe(true);
+    expect(isArchivedStatus("ANNULEE")).toBe(true);
+    expect(isArchivedStatus("DRAFT")).toBe(false);
+    expect(isArchivedStatus("EXPEDITION")).toBe(false);
   });
 
   it("tolère une transition vers le même statut (no-op)", () => {

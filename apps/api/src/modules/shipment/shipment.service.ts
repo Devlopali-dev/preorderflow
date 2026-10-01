@@ -72,6 +72,12 @@ export class ShipmentService {
       throw error;
     }
 
+    // Une commande non payée ne se livre pas : refus avant toute écriture, sinon
+    // l'expédition passerait à « livrée » puis la commande refuserait.
+    if (status === "DELIVERED") {
+      this.orderService.assertPaidForDelivery(shipment.order.paymentStatus);
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.shipment.update({
         where: { id: shipment.id },

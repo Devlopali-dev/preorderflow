@@ -2,6 +2,33 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { prisma } from "@preorderflow/database";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
+import { CustomerAddressDto } from "./dto/customer-address.dto";
+
+// Un champ optionnel vide (chaîne vide ou espaces) est stocké à null.
+function emptyToNull(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+// Les champs d'une adresse, prêts à écrire (hors `id`, jamais pris du client).
+function addressData(address: CustomerAddressDto) {
+  return {
+    type: address.type,
+    firstName: address.firstName.trim(),
+    lastName: address.lastName.trim(),
+    company: emptyToNull(address.company),
+    address1: address.address1.trim(),
+    address2: emptyToNull(address.address2),
+    postalCode: address.postalCode.trim(),
+    city: address.city.trim(),
+    country: address.country.trim(),
+    phone: emptyToNull(address.phone),
+  };
+}
+
+// Suffixe d'email d'un client anonymisé (cf. anonymize) : plus aucune donnée
+// personnelle à modifier, et surtout pas de nouvelle à ajouter.
+const ANONYMIZED_EMAIL_SUFFIX = "@anonymise.invalid";
 
 @Injectable()
 export class CustomerService {
@@ -14,7 +41,16 @@ export class CustomerService {
     if (existing) {
       throw new BadRequestException(`Un client existe déjà avec l'email "${dto.email}"`);
     }
-    return prisma.customer.create({ data: dto });
+    return prisma.customer.create({
+      data: {
+        email: dto.email,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: emptyToNull(dto.phone),
+        addresses: { create: (dto.addresses ?? []).map(addressData) },
+      },
+      include: { addresses: true },
+    });
   }
 
   async getById(id: string) {
@@ -28,9 +64,55 @@ export class CustomerService {
     return customer;
   }
 
+  // Met à jour toutes les informations du client. Si `addresses` est fourni, le
+  // carnet est synchronisé dans une seule transaction : adresses avec `id`
+  // mises à jour, sans `id` créées, absentes supprimées (les commandes gardent
+  // un instantané JSON de leurs adresses, aucune n'y fait référence).
   async update(id: string, dto: UpdateCustomerDto) {
-    await this.getById(id);
-    return prisma.customer.update({ where: { id }, data: dto });
+    const customer = await this.getById(id);
+    if (customer.email.endsWith(ANONYMIZED_EMAIL_SUFFIX)) {
+      throw new BadRequestException(
+        "Ce client est anonymisé : ses informations ne sont plus modifiables",
+      );
+    }
+
+    if (dto.email !== undefined && dto.email.toLowerCase() !== customer.email.toLowerCase()) {
+      const clash = await prisma.customer.findUnique({ where: { email: dto.email } });
+      if (clash) {
+        throw new BadRequestException(`Un client existe déjà avec l'email "${dto.email}"`);
+      }
+    }
+
+    const keptAddresses = (dto.addresses ?? []).filter((address) => address.id);
+    const ownAddressIds = new Set(customer.addresses.map((address) => address.id));
+    if (keptAddresses.some((address) => !ownAddressIds.has(address.id!))) {
+      throw new BadRequestException("Une adresse n'appartient pas à ce client");
+    }
+
+    return prisma.$transaction(async (tx) => {
+      if (dto.addresses) {
+        await tx.address.deleteMany({
+          where: { customerId: id, id: { notIn: keptAddresses.map((address) => address.id!) } },
+        });
+        for (const address of keptAddresses) {
+          await tx.address.update({ where: { id: address.id! }, data: addressData(address) });
+        }
+        for (const address of dto.addresses.filter((a) => !a.id)) {
+          await tx.address.create({ data: { customerId: id, ...addressData(address) } });
+        }
+      }
+
+      return tx.customer.update({
+        where: { id },
+        data: {
+          email: dto.email,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone === undefined ? undefined : emptyToNull(dto.phone),
+        },
+        include: { addresses: true },
+      });
+    });
   }
 
   /**

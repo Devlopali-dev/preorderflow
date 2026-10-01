@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
-import type { Color, Product, ProductVariant } from "@/lib/api";
+import type { Color, Product, ProductPhoto, ProductVariant } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { MAX_PRODUCT_PHOTOS } from "@/lib/product-photos";
 import { ColorLabel } from "@/components/color-label";
+import { ColorsManager } from "@/components/colors-manager";
 
 export function ProductEditModal({
   product,
@@ -20,21 +22,29 @@ export function ProductEditModal({
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description ?? "");
   const [price, setPrice] = useState(String(product.price));
-  const [imageUrl, setImageUrl] = useState(product.imageUrl);
+  const [photos, setPhotos] = useState<ProductPhoto[]>(product.photos ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [colors, setColors] = useState<Color[]>([]);
-  const [newColorId, setNewColorId] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // Palette globale (/settings) : chargée à l'ouverture pour proposer les
-  // couleurs pas encore utilisées par ce produit.
-  useEffect(() => {
-    fetch(`${apiUrl}/api/v1/colors`, { headers: { ...getClientAuthHeaders() } })
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setColors)
-      .catch(() => setColors([]));
+  // Palette globale : chargée à l'ouverture pour proposer les couleurs pas
+  // encore utilisées par ce produit, et rechargée quand on la modifie ici.
+  const loadColors = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/colors`, {
+        headers: { ...getClientAuthHeaders() },
+      });
+      setColors(res.ok ? await res.json() : []);
+    } catch {
+      setColors([]);
+    }
   }, [apiUrl]);
+
+  useEffect(() => {
+    void loadColors();
+  }, [loadColors]);
 
   const usedColorIds = new Set(variants.map((variant) => variant.colorId));
   const availableColors = colors.filter((color) => color.active && !usedColorIds.has(color.id));
@@ -69,11 +79,9 @@ export function ProductEditModal({
     }
   }
 
-  async function handleAddVariant() {
-    await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", {
-      colorId: newColorId,
-    });
-    setNewColorId("");
+  // Choisir une couleur dans la liste l'ajoute aussitôt : pas de second geste.
+  async function handleAddVariant(colorId: string) {
+    await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", { colorId });
   }
 
   function handleToggleVariant(variant: ProductVariant) {
@@ -120,7 +128,27 @@ export function ProductEditModal({
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       const updated = await res.json();
-      setImageUrl(updated.imageUrl);
+      setPhotos(updated.photos);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      e.target.value = "";
+      setSaving(false);
+    }
+  }
+
+  async function handleRemovePhoto(photoId: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/products/${product.id}/photos/${photoId}`, {
+        method: "DELETE",
+        headers: { ...getClientAuthHeaders() },
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      const updated = await res.json();
+      setPhotos(updated.photos);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -207,6 +235,10 @@ export function ProductEditModal({
         </label>
         <div className="flex flex-col gap-2 text-sm">
           <span>Couleurs</span>
+          <p className="text-xs opacity-60">
+            Désactiver une couleur la retire. Elle reste visible en inactive tant qu&apos;elle a du
+            stock ou de l&apos;historique (commandes, production, recensement).
+          </p>
           <ul className="flex flex-col gap-1">
             {variants.map((variant) => (
               <li key={variant.id} className="flex items-center justify-between gap-2">
@@ -218,51 +250,82 @@ export function ProductEditModal({
                   />
                   <span className="opacity-60">{variant.sku}</span>
                 </span>
-                <Button
-                  variant="secondary"
-                  disabled={saving}
-                  onClick={() => handleToggleVariant(variant)}
-                >
-                  {variant.active ? "Désactiver" : "Activer"}
-                </Button>
+                {/* Standard (sans couleur) : la variante de repli, jamais désactivable. */}
+                {variant.color !== null && (
+                  <Button
+                    variant="secondary"
+                    disabled={saving}
+                    onClick={() => handleToggleVariant(variant)}
+                  >
+                    {variant.active ? "Désactiver" : "Activer"}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
-          <div className="flex gap-2">
-            <select
-              className="select flex-1"
-              aria-label="Ajouter une couleur"
-              value={newColorId}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewColorId(e.target.value)}
-            >
-              <option value="">Ajouter une couleur…</option>
-              {availableColors.map((color) => (
-                <option key={color.id} value={color.id}>
-                  {color.name}
-                </option>
+          {/* Toujours sur l'invite : la couleur choisie est ajoutée puis disparaît de la liste. */}
+          <select
+            className="select"
+            aria-label="Ajouter une couleur"
+            value=""
+            disabled={saving}
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              if (e.target.value) void handleAddVariant(e.target.value);
+            }}
+          >
+            <option value="">Ajouter une couleur…</option>
+            {availableColors.map((color) => (
+              <option key={color.id} value={color.id}>
+                {color.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            aria-expanded={paletteOpen}
+            onClick={() => setPaletteOpen((open) => !open)}
+          >
+            {paletteOpen ? "Masquer la palette de couleurs" : "Gérer la palette de couleurs"}
+          </Button>
+          {paletteOpen && <ColorsManager colors={colors} apiUrl={apiUrl} onChanged={loadColors} />}
+        </div>
+        <div className="flex flex-col gap-2 text-sm">
+          <span className="form-label">
+            Photos ({photos.length}/{MAX_PRODUCT_PHOTOS})
+          </span>
+          {photos.length > 0 && (
+            <ul className="flex flex-nowrap gap-3">
+              {photos.map((photo, index) => (
+                <li key={photo.id} className="flex flex-col items-center gap-1">
+                  <img
+                    src={`${apiUrl}${photo.url}`}
+                    alt={`Photo ${index + 1}`}
+                    className="h-20 w-20 rounded object-cover"
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={saving}
+                    aria-label={`Supprimer la photo ${index + 1}`}
+                    onClick={() => void handleRemovePhoto(photo.id)}
+                  >
+                    Supprimer
+                  </Button>
+                </li>
               ))}
-            </select>
-            <Button variant="secondary" disabled={saving || !newColorId} onClick={handleAddVariant}>
-              Ajouter
-            </Button>
-          </div>
-          {colors.length === 0 && (
-            <p className="text-xs opacity-60">
-              Aucune couleur dans la palette : créez-en dans les paramètres.
-            </p>
+            </ul>
+          )}
+          {photos.length < MAX_PRODUCT_PHOTOS && (
+            <label className="flex flex-col gap-1">
+              Ajouter une photo
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={saving}
+                onChange={handleUploadPhoto}
+              />
+            </label>
           )}
         </div>
-        <label className="flex flex-col gap-1 text-sm">
-          Photo
-          {imageUrl && (
-            <img src={`${apiUrl}${imageUrl}`} alt="" className="h-24 w-24 rounded object-cover" />
-          )}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleUploadPhoto}
-          />
-        </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>

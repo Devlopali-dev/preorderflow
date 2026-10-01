@@ -9,6 +9,7 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  Req,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiConsumes, ApiTags } from "@nestjs/swagger";
@@ -16,8 +17,11 @@ import { Throttle } from "@nestjs/throttler";
 import { diskStorage } from "multer";
 import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
+import type { Request } from "express";
 import { extname, join } from "node:path";
+import { CampaignOrderService } from "./campaign-order.service";
 import { CampaignService } from "./campaign.service";
+import { CreatePublicOrderDto } from "./dto/create-public-order.dto";
 import { PdfThumbnailService } from "./pdf-thumbnail.service";
 import {
   CreateCampaignDto,
@@ -25,7 +29,12 @@ import {
   UpdateCampaignDto,
   UpdateCampaignStatusDto,
 } from "./dto/create-campaign.dto";
+import { isArchivedStatus } from "./campaign-status";
+import { deleteUploadedFiles } from "../../common/uploaded-files";
+import { AuditService } from "../audit/audit.service";
+import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Public } from "../auth/public.decorator";
+import { Roles } from "../auth/roles.decorator";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
@@ -35,14 +44,17 @@ const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
 export class CampaignController {
   constructor(
     private readonly campaignService: CampaignService,
+    private readonly campaignOrderService: CampaignOrderService,
     private readonly pdfThumbnailService: PdfThumbnailService,
+    private readonly auditService: AuditService,
   ) {}
 
   // Lecture publique : page vitrine de campagne (§19) + dashboard admin.
+  // Les brouillons n'apparaissent que pour un administrateur connecté (jeton reconnu même sur une route publique).
   @Public()
   @Get()
-  list() {
-    return this.campaignService.list();
+  list(@Req() req: Request) {
+    return this.campaignService.list(Boolean(req.user));
   }
 
   @Post()
@@ -50,10 +62,18 @@ export class CampaignController {
     return this.campaignService.create(dto);
   }
 
+  // Déclenche tout de suite le passage automatique selon les dates (le planificateur le
+  // fait déjà toutes les minutes) : renvoie les campagnes modifiées.
+  @Roles("ADMIN")
+  @Post("apply-schedule")
+  applySchedule() {
+    return this.campaignService.applySchedule();
+  }
+
   @Public()
   @Get(":id")
-  getOne(@Param("id") id: string) {
-    return this.campaignService.getBySlugOrId(id);
+  getOne(@Param("id") id: string, @Req() req: Request) {
+    return this.campaignService.getVisibleBySlugOrId(id, Boolean(req.user));
   }
 
   @Patch(":id")
@@ -61,9 +81,18 @@ export class CampaignController {
     return this.campaignService.update(id, dto);
   }
 
+  // Suppression définitive, y compris d'une campagne archivée avec ses demandes
+  // de recensement : action destructive, réservée aux ADMIN et journalisée.
+  @Roles("ADMIN")
   @Delete(":id")
-  remove(@Param("id") id: string) {
-    return this.campaignService.remove(id);
+  async remove(@Param("id") id: string, @CurrentAdminId() adminId: string) {
+    const removed = await this.campaignService.remove(id);
+    await deleteUploadedFiles(removed.files);
+    await this.auditService.log(adminId, "CAMPAIGN_DELETED", "Campaign", removed.id, {
+      name: removed.name,
+      deletedInterests: removed.deletedInterests,
+    });
+    return { id: removed.id };
   }
 
   // Même pattern que ProductController (stockage disque local, nom de
@@ -161,23 +190,35 @@ export class CampaignController {
     const { campaign, removed } = await this.campaignService.removeMedia(id, mediaId);
 
     // Nettoie les fichiers associés (PDF + vignette) du disque local.
-    const files = [removed.url, removed.thumbnailUrl]
-      .filter((url): url is string => Boolean(url))
-      .map((url) => join(process.cwd(), "uploads", url.replace(/^\/uploads\//, "")));
-    await Promise.all(files.map((file) => unlink(file).catch(() => undefined)));
+    await deleteUploadedFiles(
+      [removed.url, removed.thumbnailUrl].filter((url): url is string => Boolean(url)),
+    );
 
     return campaign;
   }
 
   @Patch(":id/status")
-  updateStatus(@Param("id") id: string, @Body() dto: UpdateCampaignStatusDto) {
-    return this.campaignService.updateStatus(id, dto.status as never);
+  async updateStatus(
+    @Param("id") id: string,
+    @Body() dto: UpdateCampaignStatusDto,
+    @CurrentAdminId() adminId: string,
+  ) {
+    const before = await this.campaignService.getBySlugOrId(id);
+    const updated = await this.campaignService.updateStatus(id, dto.status as never);
+    // Réactiver une campagne archivée (retour en brouillon) est tracé.
+    if (isArchivedStatus(before.status) && updated.status === "DRAFT") {
+      await this.auditService.log(adminId, "CAMPAIGN_REACTIVATED", "Campaign", updated.id, {
+        name: updated.name,
+        from: before.status,
+      });
+    }
+    return updated;
   }
 
   @Public()
   @Get(":id/statistics")
-  getStatistics(@Param("id") id: string) {
-    return this.campaignService.getStatistics(id);
+  getStatistics(@Param("id") id: string, @Req() req: Request) {
+    return this.campaignService.getStatistics(id, Boolean(req.user));
   }
 
   // Formulaire public de recensement — rate-limité en plus du throttler
@@ -187,5 +228,14 @@ export class CampaignController {
   @Post(":id/interests")
   registerInterest(@Param("id") id: string, @Body() dto: CreateInterestDto) {
     return this.campaignService.registerInterest(id, dto);
+  }
+
+  // Commande publique, quand les commandes de la campagne sont ouvertes : même protections
+  // que le recensement (rate limiting + honeypot), plus un client existant n'est jamais réécrit.
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post(":id/orders")
+  createOrder(@Param("id") id: string, @Body() dto: CreatePublicOrderDto) {
+    return this.campaignOrderService.create(id, dto);
   }
 }

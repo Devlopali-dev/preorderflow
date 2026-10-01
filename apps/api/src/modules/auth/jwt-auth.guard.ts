@@ -4,6 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { IS_PUBLIC_KEY } from "./public.decorator";
 import { JwtPayload } from "./jwt-payload";
+import { AdminSessionService } from "./admin-session.service";
 
 const VALID_ADMIN_ROLES = new Set(["ADMIN", "OPERATOR"]);
 
@@ -16,27 +17,32 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
+    private readonly admins: AdminSessionService,
   ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
+    const request = context.switchToHttp().getRequest<Request>();
     if (isPublic) {
+      // Route publique : accessible sans jeton, mais un administrateur connecté est reconnu
+      // quand il en fournit un valide (ex. voir une campagne en brouillon, invisible du public).
+      await this.attachStaffIfValid(request);
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
     const token = extractBearerToken(request);
     if (!token) {
       throw new UnauthorizedException("Authentification requise");
     }
 
+    let payload: JwtPayload;
     try {
       // Pas de `secret` explicite ici : JwtService utilise celui configuré
       // par JwtModule.registerAsync (via ConfigService, cf. auth.module.ts).
-      const payload = this.jwtService.verify<JwtPayload>(token);
+      payload = this.jwtService.verify<JwtPayload>(token);
       // Un token client (payload.type === "customer", cf. customer-auth)
       // est signé avec le même secret applicatif et passerait la
       // vérification de signature ci-dessus — le champ `role` est le seul
@@ -46,10 +52,36 @@ export class JwtAuthGuard implements CanActivate {
       if (!VALID_ADMIN_ROLES.has(payload.role)) {
         throw new Error("not an admin token");
       }
-      request.user = payload;
-      return true;
     } catch {
       throw new UnauthorizedException("Token invalide ou expiré");
+    }
+
+    // La signature est valide, mais le compte peut avoir disparu (base
+    // réinitialisée) ou été désactivé depuis l'émission du jeton : 401, jamais
+    // un 500 plus loin (profil introuvable, clé étrangère de l'audit). Le rôle
+    // vient de la base : un admin rétrogradé perd ses droits immédiatement.
+    const admin = await this.admins.findActive(payload.sub);
+    if (!admin) {
+      throw new UnauthorizedException(
+        "Session invalide : ce compte n'existe plus ou est désactivé",
+      );
+    }
+    request.user = { ...payload, role: admin.role };
+    return true;
+  }
+
+  // Meilleur effort pour les routes publiques : jeton absent, invalide, expiré ou d'un client
+  // (même signature, rôle différent) → la requête reste simplement anonyme, jamais une erreur.
+  private async attachStaffIfValid(request: Request): Promise<void> {
+    const token = extractBearerToken(request);
+    if (!token) return;
+    try {
+      const payload = this.jwtService.verify<JwtPayload>(token);
+      if (!VALID_ADMIN_ROLES.has(payload.role)) return;
+      const admin = await this.admins.findActive(payload.sub);
+      if (admin) request.user = { ...payload, role: admin.role };
+    } catch {
+      // anonyme
     }
   }
 }

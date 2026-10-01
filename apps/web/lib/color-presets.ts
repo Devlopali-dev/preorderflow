@@ -1,5 +1,5 @@
-// Palette de base proposée à la création d'une couleur (/settings) : un clic
-// remplit le nom et la pastille. Ce ne sont que des suggestions — l'admin
+// Palette de base proposée dans les modales de produit : un clic ajoute la
+// couleur (un second la retire). Ce ne sont que des suggestions — l'admin
 // peut toujours saisir un nom et choisir n'importe quelle pastille.
 // Les valeurs hex sont des données de pastille, pas des styles de l'interface.
 export interface ColorPreset {

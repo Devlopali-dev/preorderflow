@@ -10,9 +10,13 @@ export class CreateProductDto {
   @IsString()
   name!: string;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false,
+    description: "Facultatif : généré depuis le nom, unique (suffixe -2, -3… en cas de doublon).",
+  })
+  @IsOptional()
   @IsString()
-  slug!: string;
+  slug?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -40,11 +44,6 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   weight?: number;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -87,11 +86,6 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

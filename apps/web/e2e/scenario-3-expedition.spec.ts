@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { authHeader, loginAsAdmin } from "./helpers";
+import { authHeader, loginAsAdmin, payOrder } from "./helpers";
 
 // Scénario 3 du cahier des charges (§29) :
 // Commande payée -> Préparation -> Expédition -> Tracking -> Livraison
@@ -33,21 +33,16 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
     },
   });
   const order = await orderRes.json();
-  await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
-    headers: auth,
-    data: { status: "PENDING_PAYMENT" },
-  });
-  await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
-    headers: auth,
-    data: { status: "PAID" },
-  });
+  await payOrder(request, token, order.id);
 
   await page.goto(`/orders/${order.id}`);
 
   // Préparation
-  await page.getByRole("button", { name: "Marquer en préparation" }).click();
+  await page.getByRole("button", { name: "Passer en préparation" }).click();
+  await page.getByRole("button", { name: "Confirmer" }).click();
   await expect(page.getByRole("button", { name: "Marquer prête à expédier" })).toBeVisible();
   await page.getByRole("button", { name: "Marquer prête à expédier" }).click();
+  await page.getByRole("button", { name: "Confirmer" }).click();
 
   // Expédition (avec tracking)
   await page.getByPlaceholder("Numéro de suivi").fill("TRACK-SCENARIO-3");
@@ -73,7 +68,7 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
 
   // Livraison
   await page.getByRole("button", { name: "Marquer livrée" }).click();
-  await expect(page.getByText("Statut expédition : DELIVERED")).toBeVisible();
+  await expect(page.getByText("Statut expédition : Livré")).toBeVisible();
 
   const deliveredOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, {
     headers: auth,

@@ -3,7 +3,8 @@
 import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
-import type { CustomerSummary, Product } from "@/lib/api";
+import type { Campaign, CustomerSummary, Product } from "@/lib/api";
+import { isArchivedCampaign } from "@/lib/campaign-status";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { variantLabel } from "@/lib/variants";
 
@@ -13,11 +14,13 @@ export function OrderCreateModal({
   apiUrl,
   products,
   customers,
+  campaigns,
   onClose,
 }: {
   apiUrl: string;
   products: Product[];
   customers: CustomerSummary[];
+  campaigns: Campaign[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -26,17 +29,26 @@ export function OrderCreateModal({
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
   // Une ligne de commande vise une variante (couleur) : « Stylo — Rouge ».
-  const variantOptions = products.flatMap((product) =>
-    product.variants
-      .filter((variant) => variant.active)
-      .map((variant) => ({ id: variant.id, label: variantLabel(product.name, variant.color) })),
+  const allOptions = products.flatMap((product) =>
+    product.variants.map((variant) => ({
+      id: variant.id,
+      label: variantLabel(product.name, variant.color),
+      archived: !product.active || !variant.active,
+    })),
   );
+  // Les produits archivés restent visibles pour mémoire, en fin de liste, mais
+  // ne se commandent plus.
+  const variantOptions = allOptions.filter((option) => !option.archived);
+  const archivedOptions = allOptions.filter((option) => option.archived);
   const [variantId, setVariantId] = useState(variantOptions[0]?.id ?? "");
   const [quantity, setQuantity] = useState("1");
   const [address1, setAddress1] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("FR");
+  // Campagne d'origine, facultative : son lien de paiement servira au règlement.
+  const [campaignId, setCampaignId] = useState("");
+  const openCampaigns = campaigns.filter((campaign) => !isArchivedCampaign(campaign.status));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,6 +83,7 @@ export function OrderCreateModal({
           customerEmail,
           customerFirstName,
           customerLastName,
+          campaignId: campaignId || undefined,
           items: [{ variantId, quantity: Number(quantity) }],
           shippingAddress: {
             firstName: customerFirstName,
@@ -120,6 +133,23 @@ export function OrderCreateModal({
             ))}
           </select>
         </label>
+        {openCampaigns.length > 0 && (
+          <label className="flex flex-col gap-1 text-sm">
+            Campagne (optionnel)
+            <select
+              className="select"
+              value={campaignId}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setCampaignId(e.target.value)}
+            >
+              <option value="">Aucune</option>
+              {openCampaigns.map((campaign) => (
+                <option key={campaign.id} value={campaign.id}>
+                  {campaign.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-1 text-sm">
           Email du client
           <Input
@@ -161,6 +191,21 @@ export function OrderCreateModal({
                   {option.label}
                 </option>
               ))}
+              {archivedOptions.length > 0 && (
+                <>
+                  <option disabled>──────────</option>
+                  {archivedOptions.map((option) => (
+                    <option
+                      key={option.id}
+                      value={option.id}
+                      disabled
+                      style={{ fontStyle: "italic" }}
+                    >
+                      {option.label} (archivé)
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </label>
           <label className="flex w-20 flex-col gap-1 text-sm">

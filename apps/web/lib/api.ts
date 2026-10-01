@@ -1,6 +1,24 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "./auth";
 import { CUSTOMER_AUTH_COOKIE_NAME } from "./customer-auth";
+import { forwardedForHeader } from "./forwarded-ip";
+
+// Un 401 de l'API veut dire « session invalide » (jeton expiré, compte supprimé
+// ou désactivé, base réinitialisée), pas une panne : on renvoie vers la
+// connexion plutôt que de faire planter la page. Pour l'admin, la route
+// session-expired efface aussi le cookie périmé (un Server Component ne peut pas
+// le faire, et le middleware ne regarde que sa présence).
+function assertOk(res: Response): void {
+  if (res.status === 401) redirect("/api/auth/session-expired");
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+}
+
+// Même principe pour l'espace client (magic link) : retour à la connexion client.
+function assertCustomerOk(res: Response): void {
+  if (res.status === 401) redirect("/mon-compte/connexion");
+  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+}
 
 // URL de l'API côté serveur (réseau interne) — côté client, utiliser
 // NEXT_PUBLIC_API_URL directement dans les composants "use client".
@@ -13,7 +31,13 @@ export const API_URL =
 // l'autorisation (CLAUDE.md §26), jamais le frontend.
 function authHeaders(): Record<string, string> {
   const token = cookies().get(AUTH_COOKIE_NAME)?.value;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return { ...visitorHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
+
+// L'API limite le débit par IP : à la place du visiteur, le serveur Next lui transmet son adresse
+// (cf. lib/forwarded-ip.ts), sinon tous les visiteurs partageraient celle du serveur web.
+function visitorHeaders(): Record<string, string> {
+  return forwardedForHeader(headers());
 }
 
 // Même principe pour l'espace client (Server Components sous /mon-compte),
@@ -21,7 +45,7 @@ function authHeaders(): Record<string, string> {
 // cookie admin (cf. lib/customer-auth.ts).
 function customerAuthHeaders(): Record<string, string> {
   const token = cookies().get(CUSTOMER_AUTH_COOKIE_NAME)?.value;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return { ...visitorHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 export interface CampaignMedia {
@@ -43,6 +67,13 @@ export interface Color {
 
 // Unité vendable et stockable d'un produit. `color` est null pour la variante
 // par défaut d'un produit sans couleur.
+// Photo d'un produit : 3 au plus, la première est la principale.
+export interface ProductPhoto {
+  id: string;
+  url: string;
+  position: number;
+}
+
 export interface ProductVariant {
   id: string;
   sku: string;
@@ -64,32 +95,41 @@ export interface Campaign {
   slug: string;
   description: string | null;
   status: string;
-  indicativePrice: string;
-  currency: string;
   imageUrl: string | null;
   documentUrl: string | null;
+  paymentLink?: string | null;
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];
-  product?: { variants: CampaignVariantOption[] };
+  product?: { price: string; currency: string; variants: CampaignVariantOption[] };
 }
 
+// Lecture publique, mais le jeton admin (cookie) est transmis s'il existe : un administrateur voit
+// aussi les campagnes en brouillon, introuvables (404) pour un visiteur.
 export async function getCampaign(slug: string): Promise<Campaign | null> {
-  const res = await fetch(`${API_URL}/api/v1/campaigns/${slug}`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/campaigns/${slug}`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  const res = await fetch(`${API_URL}/api/v1/campaigns`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  const res = await fetch(`${API_URL}/api/v1/campaigns`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
+  assertOk(res);
   return res.json();
 }
 
 export interface DashboardOverview {
   activeCampaigns: number;
   totalInterests: number;
+  interestPeople: number;
+  interestQuantity: number;
   totalOrders: number;
   ordersToPay: number;
   ordersToPrepare: number;
@@ -103,7 +143,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -124,7 +164,7 @@ export async function getOrders(): Promise<OrderSummary[]> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -141,19 +181,27 @@ export async function getCustomers(): Promise<CustomerSummary[]> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
+}
+
+export interface CustomerAddress {
+  id: string;
+  type: "BILLING" | "SHIPPING";
+  firstName: string;
+  lastName: string;
+  company: string | null;
+  address1: string;
+  address2: string | null;
+  postalCode: string;
+  city: string;
+  country: string;
+  phone: string | null;
 }
 
 export interface CustomerDetail extends CustomerSummary {
   phone: string | null;
-  addresses: Array<{
-    id: string;
-    address1: string;
-    city: string;
-    postalCode: string;
-    country: string;
-  }>;
+  addresses: CustomerAddress[];
   orders: Array<{ id: string; number: string; status: string; total: string; currency: string }>;
 }
 
@@ -163,7 +211,7 @@ export async function getCustomer(id: string): Promise<CustomerDetail | null> {
     headers: authHeaders(),
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -182,7 +230,7 @@ export async function getAuditLogs(): Promise<AuditLogEntry[]> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -209,7 +257,7 @@ export async function getSettings(): Promise<Settings> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -226,7 +274,7 @@ export async function getAdminProfile(): Promise<AdminProfile> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -243,7 +291,7 @@ export async function getNotificationTemplates(): Promise<NotificationTemplateDe
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -266,7 +314,7 @@ export interface OrderDetail extends OrderSummary {
     status: string;
     amount: string;
     provider: string;
-    metadata: { revolutLink?: string; stripeCheckoutUrl?: string } | null;
+    metadata: { paymentLink?: string; revolutLink?: string; stripeCheckoutUrl?: string } | null;
   }>;
   shipment: {
     id: string;
@@ -296,7 +344,7 @@ export async function getInventory(): Promise<InventoryRow[]> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -311,23 +359,17 @@ export interface Product {
   taxRate: string;
   weight: string | null;
   active: boolean;
-  imageUrl: string | null;
   documentUrl: string | null;
+  photos: ProductPhoto[];
   variants: ProductVariant[];
 }
 
-export async function getColors(): Promise<Color[]> {
-  const res = await fetch(`${API_URL}/api/v1/colors`, {
-    cache: "no-store",
-    headers: authHeaders(),
-  });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
-  return res.json();
-}
-
 export async function getProducts(): Promise<Product[]> {
-  const res = await fetch(`${API_URL}/api/v1/products`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  const res = await fetch(`${API_URL}/api/v1/products`, {
+    cache: "no-store",
+    headers: visitorHeaders(),
+  });
+  assertOk(res);
   return res.json();
 }
 
@@ -353,7 +395,7 @@ export async function getProductionBatches(): Promise<ProductionBatchSummary[]> 
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -370,7 +412,7 @@ export async function getShipments(): Promise<ShipmentSummary[]> {
     cache: "no-store",
     headers: authHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -380,7 +422,7 @@ export async function getOrder(id: string): Promise<OrderDetail | null> {
     headers: authHeaders(),
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertOk(res);
   return res.json();
 }
 
@@ -392,6 +434,15 @@ export interface CustomerProfile {
   firstName: string;
   lastName: string;
   phone: string | null;
+  addresses?: Array<{
+    id: string;
+    type: "BILLING" | "SHIPPING";
+    address1: string;
+    address2: string | null;
+    postalCode: string;
+    city: string;
+    country: string;
+  }>;
 }
 
 export async function getCustomerProfile(): Promise<CustomerProfile | null> {
@@ -400,7 +451,7 @@ export async function getCustomerProfile(): Promise<CustomerProfile | null> {
     headers: customerAuthHeaders(),
   });
   if (res.status === 401) return null;
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertCustomerOk(res);
   return res.json();
 }
 
@@ -423,14 +474,19 @@ export async function getCustomerOrders(): Promise<CustomerOrderSummary[]> {
     cache: "no-store",
     headers: customerAuthHeaders(),
   });
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertCustomerOk(res);
   return res.json();
 }
 
 export interface CustomerOrderDetail extends CustomerOrderSummary {
   paymentStatus: string;
   fulfillmentStatus: string;
-  payments: Array<{ status: string; amount: string }>;
+  payments: Array<{
+    status: string;
+    amount: string;
+    provider: string;
+    metadata: { paymentLink?: string } | null;
+  }>;
   shipment:
     | (CustomerOrderSummary["shipment"] & {
         trackingUrl: string | null;
@@ -446,6 +502,6 @@ export async function getCustomerOrder(id: string): Promise<CustomerOrderDetail 
     headers: customerAuthHeaders(),
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+  assertCustomerOk(res);
   return res.json();
 }

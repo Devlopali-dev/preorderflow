@@ -1,0 +1,220 @@
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createPublicOrderSchema, type CreatePublicOrderInput } from "@preorderflow/types";
+import { Button, FormGroup, Input, Textarea } from "@preorderflow/ui";
+import { PaymentQrCode } from "@/components/payment-qr-code";
+import type { CampaignVariantOption } from "@/lib/api";
+import { VariantQuantities, MAX_QUANTITY } from "./variant-quantities";
+
+type Confirmation =
+  | {
+      kind: "order";
+      orderNumber: string;
+      total: string;
+      currency: string;
+      paymentLink: string | null;
+    }
+  | { kind: "ignored" };
+
+// Formulaire d'ACHAT : affiché à la place du formulaire de recensement quand les commandes de
+// la campagne sont ouvertes. La commande est créée, puis le client reçoit le lien pour payer
+// (Revolut avec le montant) ; elle reste en attente de paiement, vérifiée à la main.
+export function OrderForm({
+  campaignId,
+  apiUrl,
+  variants,
+  unitPrice,
+  currency,
+}: {
+  campaignId: string;
+  apiUrl: string;
+  variants: CampaignVariantOption[];
+  unitPrice: string | null;
+  currency: string | null;
+}) {
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [itemsError, setItemsError] = useState<string | null>(null);
+  // Une seule option : 1 exemplaire par défaut ; plusieurs couleurs : 0 partout, la personne choisit.
+  const [quantities, setQuantities] = useState<Record<string, number>>(() =>
+    variants.length === 1 ? { [variants[0]!.id]: 1 } : {},
+  );
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<CreatePublicOrderInput>({
+    resolver: zodResolver(createPublicOrderSchema),
+    defaultValues: { country: "FR" },
+  });
+
+  function setQuantity(variantId: string, quantity: number) {
+    const clamped = Math.min(MAX_QUANTITY, Math.max(0, Number.isFinite(quantity) ? quantity : 0));
+    setQuantities((current) => ({ ...current, [variantId]: clamped }));
+    setItemsError(null);
+  }
+
+  const totalQuantity = variants.reduce((sum, variant) => sum + (quantities[variant.id] ?? 0), 0);
+  const subtotal = unitPrice === null ? null : (Number(unitPrice) * totalQuantity).toFixed(2);
+
+  async function onSubmit(values: CreatePublicOrderInput) {
+    setServerError(null);
+    const items = variants
+      .map((variant) => ({ variantId: variant.id, quantity: quantities[variant.id] ?? 0 }))
+      .filter((item) => item.quantity > 0);
+    if (items.length === 0) {
+      setItemsError("Indiquez au moins un exemplaire.");
+      return;
+    }
+    const { address1, address2, postalCode, city, country, ...rest } = values;
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaignId}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...rest,
+          items,
+          shippingAddress: { address1, address2: address2 || undefined, postalCode, city, country },
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message?.toString() ?? "Une erreur est survenue.");
+      }
+      const body = await res.json();
+      setConfirmation(body.ignored ? { kind: "ignored" } : { kind: "order", ...body });
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "Une erreur est survenue.");
+    }
+  }
+
+  if (confirmation?.kind === "ignored") {
+    return (
+      <div className="card p-4" role="status">
+        Merci, votre commande a bien été enregistrée.
+      </div>
+    );
+  }
+
+  if (confirmation?.kind === "order") {
+    return (
+      <div className="card flex flex-col gap-3 p-4 text-sm" role="status">
+        <p>
+          Merci, votre commande <strong>n°{confirmation.orderNumber}</strong> est enregistrée. Un
+          e-mail de confirmation vous a été envoyé.
+        </p>
+        <p>
+          Montant à régler :{" "}
+          <strong>
+            {confirmation.total} {confirmation.currency}
+          </strong>
+        </p>
+        {confirmation.paymentLink ? (
+          <>
+            <a
+              href={confirmation.paymentLink}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-primary w-fit"
+            >
+              Payer avec Revolut
+            </a>
+            <PaymentQrCode link={confirmation.paymentLink} label="QR code de paiement" />
+          </>
+        ) : (
+          <p className="opacity-70">
+            Le lien de paiement n'est pas disponible : un e-mail vous indiquera comment régler.
+          </p>
+        )}
+        <p className="opacity-70">
+          Indiquez vos <strong>nom et prénom</strong> dans la <strong>remarque</strong> du paiement.
+          Votre commande est en attente de paiement : nous vérifions votre règlement manuellement.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+      <VariantQuantities
+        variants={variants}
+        quantities={quantities}
+        setQuantity={setQuantity}
+        itemsError={itemsError}
+        legend="Quelles quantités souhaitez-vous commander, par couleur ?"
+        singleLabel="Quelle quantité souhaitez-vous commander ?"
+      />
+
+      {subtotal !== null && (
+        <p className="text-sm" aria-live="polite">
+          Sous-total : <strong data-testid="order-subtotal">{subtotal}</strong> {currency}
+        </p>
+      )}
+
+      <FormGroup label="Email" htmlFor="email" error={errors.email?.message}>
+        <Input id="email" type="email" {...register("email")} />
+      </FormGroup>
+
+      <div className="flex gap-4">
+        <FormGroup label="Prénom" htmlFor="firstName" error={errors.firstName?.message}>
+          <Input id="firstName" {...register("firstName")} />
+        </FormGroup>
+        <FormGroup label="Nom" htmlFor="lastName" error={errors.lastName?.message}>
+          <Input id="lastName" {...register("lastName")} />
+        </FormGroup>
+      </div>
+
+      <FormGroup label="Téléphone (optionnel)" htmlFor="phone">
+        <Input id="phone" {...register("phone")} />
+      </FormGroup>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-1 text-sm font-medium">Adresse de livraison</legend>
+        <FormGroup label="Adresse" htmlFor="address1" error={errors.address1?.message}>
+          <Input id="address1" {...register("address1")} />
+        </FormGroup>
+        <FormGroup label="Complément d'adresse (optionnel)" htmlFor="address2">
+          <Input id="address2" {...register("address2")} />
+        </FormGroup>
+        <div className="flex gap-4">
+          <FormGroup label="Code postal" htmlFor="postalCode" error={errors.postalCode?.message}>
+            <Input id="postalCode" {...register("postalCode")} />
+          </FormGroup>
+          <FormGroup label="Ville" htmlFor="city" error={errors.city?.message}>
+            <Input id="city" {...register("city")} />
+          </FormGroup>
+          <FormGroup label="Pays" htmlFor="country" error={errors.country?.message}>
+            <Input id="country" maxLength={2} {...register("country")} />
+          </FormGroup>
+        </div>
+      </fieldset>
+
+      <FormGroup label="Remarque (optionnel)" htmlFor="notes">
+        <Textarea id="notes" {...register("notes")} />
+      </FormGroup>
+
+      {/* honeypot anti-spam : caché visuellement, jamais rempli par un humain */}
+      <input
+        type="text"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden="true"
+        className="hidden"
+        {...register("website")}
+      />
+
+      <p className="text-xs opacity-70">
+        Ce formulaire passe une vraie commande : vous recevrez ensuite le lien pour la payer.
+      </p>
+
+      {serverError && <p className="text-sm text-red-600">{serverError}</p>}
+
+      <Button type="submit" variant="primary" loading={isSubmitting}>
+        Commander
+      </Button>
+    </form>
+  );
+}

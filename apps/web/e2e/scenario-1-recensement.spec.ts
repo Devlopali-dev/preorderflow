@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { authHeader, getAdminToken } from "./helpers";
+import { authHeader, getAdminToken, isStableColor } from "./helpers";
 
 // Scénario 1 du cahier des charges (§29) :
 // Créer campagne -> Publier campagne -> Créer intérêt -> Vérifier statistiques
@@ -11,7 +11,7 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
   // Produit dédié à ce scénario, avec deux couleurs de la palette : le test ne
   // dépend pas de l'état des variantes du seed (qu'on peut désactiver à la main).
   const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
-    .filter((c: { active: boolean }) => c.active)
+    .filter(isStableColor)
     .slice(0, 2) as Array<{ id: string; name: string }>;
   expect(colors).toHaveLength(2);
   const [first, second] = colors;
@@ -46,7 +46,6 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
       slug,
       description: "Campagne créée par le scénario e2e 1.",
       productId: product.id,
-      indicativePrice: 5,
     },
   });
   expect(createRes.ok()).toBe(true);

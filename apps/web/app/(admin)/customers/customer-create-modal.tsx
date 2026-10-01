@@ -1,16 +1,26 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Modal } from "@preorderflow/ui";
+import { Button, Modal } from "@preorderflow/ui";
 import { getClientAuthHeaders } from "@/lib/auth";
+import {
+  CustomerForm,
+  EMPTY_CUSTOMER,
+  toCustomerPayload,
+  type CustomerFormValue,
+} from "./customer-form";
+
+// Les erreurs de validation de l'API arrivent en liste de messages.
+function messageOf(body: { message?: string | string[] } | null, status: number): string {
+  const message = body?.message;
+  if (Array.isArray(message)) return message.join(" ; ");
+  return message ?? `Erreur (${status})`;
+}
 
 export function CustomerCreateModal({ apiUrl, onClose }: { apiUrl: string; onClose: () => void }) {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [value, setValue] = useState<CustomerFormValue>(EMPTY_CUSTOMER);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,9 +31,9 @@ export function CustomerCreateModal({ apiUrl, onClose }: { apiUrl: string; onClo
       const res = await fetch(`${apiUrl}/api/v1/customers`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
-        body: JSON.stringify({ email, firstName, lastName, phone: phone || undefined }),
+        body: JSON.stringify(toCustomerPayload(value)),
       });
-      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      if (!res.ok) throw new Error(messageOf(await res.json().catch(() => null), res.status));
       onClose();
       router.refresh();
     } catch (err) {
@@ -38,6 +48,7 @@ export function CustomerCreateModal({ apiUrl, onClose }: { apiUrl: string; onClo
       isOpen
       onClose={onClose}
       title="Nouveau client"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -50,39 +61,7 @@ export function CustomerCreateModal({ apiUrl, onClose }: { apiUrl: string; onClo
       }
     >
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          Email
-          <Input
-            placeholder="Email"
-            type="email"
-            value={email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Prénom
-          <Input
-            placeholder="Prénom"
-            value={firstName}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Nom
-          <Input
-            placeholder="Nom"
-            value={lastName}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Téléphone
-          <Input
-            placeholder="Téléphone"
-            value={phone}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
-          />
-        </label>
+        <CustomerForm value={value} onChange={setValue} />
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>
