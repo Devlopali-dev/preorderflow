@@ -7,6 +7,24 @@ correctifs.
 
 ## [Non publié]
 
+## [0.6.1] — 2026-10-01
+
+### Corrigé
+
+- **Erreur 500 sur `/campaigns` (et `/settings`) avec une ancienne session** : après une
+  réinitialisation de la base, le cookie d'un admin disparu avait une signature valide, mais
+  `GET /auth/me` plantait (« No AdminUser found »). Le même cookie faisait aussi échouer en 500 toute
+  écriture auditée (clé étrangère), et un admin désactivé gardait son accès jusqu'à l'expiration du jeton.
+
+### Modifié
+
+- Le garde d'authentification vérifie en base, à chaque requête, que le compte admin existe et est
+  actif (401 « Session invalide » sinon) et prend le rôle en base plutôt que celui du jeton : un admin
+  rétrogradé perd ses droits immédiatement.
+- Web : un 401 de l'API renvoie vers `/login` et efface le cookie périmé (route
+  `/api/auth/session-expired`) au lieu de faire planter la page ; la page de connexion explique que la
+  session n'est plus valide.
+
 ## [0.6.0] — 2026-09-30
 
 ### Ajouté
