@@ -7,6 +7,22 @@ correctifs.
 
 ## [Non publié]
 
+## [0.16.0] — 2026-10-01
+
+### Ajouté
+
+- **L'adresse saisie par le client remonte dans l'admin.** Une commande publique enregistre l'adresse dans le
+  carnet du client (livraison et facturation) quand il n'en a encore aucune ; un client qui a déjà un carnet
+  n'est jamais modifié par un formulaire anonyme (n'importe qui peut saisir son email).
+- Espace client : section « Adresse de livraison » dans le profil (`PUT /customer/me/address`), préremplie et
+  mise à jour sans doublon ; une facturation identique est créée si elle manque. Le profil renvoie les adresses.
+
+### Corrigé
+
+- Les fichiers uploadés (photos de produit, aperçus de campagne) n'étaient jamais supprimés quand l'API était
+  lancée depuis un autre dossier que `apps/api` (CI, déploiement) : le dossier d'`uploads` est maintenant
+  ancré sur l'emplacement du code.
+
 ## [0.15.1] — 2026-10-01
 
 ### Ajouté
