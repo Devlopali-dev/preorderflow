@@ -48,7 +48,9 @@ export class OrderService {
     return order;
   }
 
-  async create(dto: CreateOrderDto) {
+  // `keepExistingCustomer` : pour une commande passée anonymement, un client déjà connu (même
+  // email) est réutilisé tel quel, sans réécrire son nom ni son téléphone.
+  async create(dto: CreateOrderDto, options: { keepExistingCustomer?: boolean } = {}) {
     const variantIds = [...new Set(dto.items.map((i) => i.variantId))];
     const variants = await prisma.productVariant.findMany({
       where: { id: { in: variantIds }, active: true },
@@ -85,11 +87,13 @@ export class OrderService {
 
       const customer = await tx.customer.upsert({
         where: { email: dto.customerEmail },
-        update: {
-          firstName: dto.customerFirstName,
-          lastName: dto.customerLastName,
-          phone: dto.customerPhone ?? undefined,
-        },
+        update: options.keepExistingCustomer
+          ? {}
+          : {
+              firstName: dto.customerFirstName,
+              lastName: dto.customerLastName,
+              phone: dto.customerPhone ?? undefined,
+            },
         create: {
           email: dto.customerEmail,
           firstName: dto.customerFirstName,

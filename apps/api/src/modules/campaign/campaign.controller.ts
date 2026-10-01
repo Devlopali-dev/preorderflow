@@ -17,7 +17,9 @@ import { diskStorage } from "multer";
 import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { CampaignOrderService } from "./campaign-order.service";
 import { CampaignService } from "./campaign.service";
+import { CreatePublicOrderDto } from "./dto/create-public-order.dto";
 import { PdfThumbnailService } from "./pdf-thumbnail.service";
 import {
   CreateCampaignDto,
@@ -40,6 +42,7 @@ const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
 export class CampaignController {
   constructor(
     private readonly campaignService: CampaignService,
+    private readonly campaignOrderService: CampaignOrderService,
     private readonly pdfThumbnailService: PdfThumbnailService,
     private readonly auditService: AuditService,
   ) {}
@@ -222,5 +225,14 @@ export class CampaignController {
   @Post(":id/interests")
   registerInterest(@Param("id") id: string, @Body() dto: CreateInterestDto) {
     return this.campaignService.registerInterest(id, dto);
+  }
+
+  // Commande publique, quand les commandes de la campagne sont ouvertes : même protections
+  // que le recensement (rate limiting + honeypot), plus un client existant n'est jamais réécrit.
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post(":id/orders")
+  createOrder(@Param("id") id: string, @Body() dto: CreatePublicOrderDto) {
+    return this.campaignOrderService.create(id, dto);
   }
 }

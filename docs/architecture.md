@@ -173,6 +173,13 @@ Il n'existe pas de champ qui fusionnerait ces valeurs. Le dashboard campagne cal
 
 ## 4. Machines à états
 
+### 4.0 Formulaire public selon le statut
+
+La page publique d'une campagne suit son statut : `DRAFT` / `RECENSEMENT` → formulaire de **recensement**
+(inchangé, ne constitue pas une commande) ; `COMMANDES_OUVERTES` → formulaire d'**achat** (couleurs et
+quantités, adresse de livraison) qui crée une vraie commande puis affiche le lien pour payer ; au-delà
+(commandes fermées, production, expédition, archives) → plus de formulaire, un message.
+
 ### 4.1 Campaign.status
 
 ```text
@@ -295,6 +302,9 @@ PATCH  /api/v1/campaigns/:id                    # nom/dates — pas le statut (l
 PATCH  /api/v1/campaigns/:id/status
 DELETE /api/v1/campaigns/:id                    # ADMIN — en cours : refusé (400) si des CampaignInterest existent ; archive : suppression définitive avec ses demandes
 POST   /api/v1/campaigns/:id/interests          # public, rate-limited — items: [{variantId, quantity}]
+POST   /api/v1/campaigns/:id/orders             # public, rate-limited (5/min) + honeypot — commandes ouvertes seulement (400 sinon) :
+                                                #   crée la commande (campaignId), génère le règlement manuel (lien avec le montant),
+                                                #   renvoie { orderNumber, total, currency, paymentLink } ; un client existant n'est jamais réécrit
 GET    /api/v1/campaigns/:id/statistics         # + ventilation par couleur (byVariant)
 
 GET    /api/v1/products                         # public — inclut les variantes

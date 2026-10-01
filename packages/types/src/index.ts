@@ -40,3 +40,22 @@ export const campaignStatusSchema = z.enum([
 ]);
 
 export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
+
+// Commande passée depuis la page publique d'une campagne dont les commandes sont ouvertes.
+// Les lignes (couleurs et quantités) vivent dans l'état du formulaire, comme pour le recensement.
+export const createPublicOrderSchema = z.object({
+  email: z.string().email("Adresse e-mail invalide"),
+  firstName: z.string().min(1, "Prénom requis").max(100),
+  lastName: z.string().min(1, "Nom requis").max(100),
+  phone: z.string().max(30).optional(),
+  address1: z.string().min(1, "Adresse requise").max(200),
+  address2: z.string().max(200).optional(),
+  postalCode: z.string().min(1, "Code postal requis").max(20),
+  city: z.string().min(1, "Ville requise").max(100),
+  country: z.string().length(2, "Code pays à 2 lettres (ex : FR)"),
+  notes: z.string().max(1000).optional(),
+  // champ honeypot anti-spam : doit rester vide
+  website: z.string().max(0).optional(),
+});
+
+export type CreatePublicOrderInput = z.infer<typeof createPublicOrderSchema>;

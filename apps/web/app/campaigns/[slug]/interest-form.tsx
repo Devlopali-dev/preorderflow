@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createInterestSchema, type CreateInterestInput } from "@preorderflow/types";
 import { Button, FormGroup, Input, Textarea } from "@preorderflow/ui";
 import type { CampaignVariantOption } from "@/lib/api";
+import { MAX_QUANTITY, VariantQuantities } from "./variant-quantities";
 
 // Les quantités par couleur vivent dans un état local (une ligne par
 // variante) ; react-hook-form ne valide que le reste du formulaire.
 const formSchema = createInterestSchema.omit({ campaignId: true, items: true });
 type FormValues = Omit<CreateInterestInput, "campaignId" | "items">;
-
-const MAX_QUANTITY = 999;
 
 export function InterestForm({
   campaignId,
@@ -39,8 +38,6 @@ export function InterestForm({
     resolver: zodResolver(formSchema),
     defaultValues: { consentToContact: false },
   });
-
-  const hasChoice = variants.length > 1 || variants.some((variant) => variant.color);
 
   function setQuantity(variantId: string, quantity: number) {
     const clamped = Math.min(MAX_QUANTITY, Math.max(0, Number.isFinite(quantity) ? quantity : 0));
@@ -84,76 +81,14 @@ export function InterestForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-      {hasChoice ? (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-medium">
-            Combien souhaitez-vous en obtenir, par couleur ?
-          </legend>
-          {variants.map((variant) => {
-            const label = variant.color?.name ?? "Standard";
-            const quantity = quantities[variant.id] ?? 0;
-            return (
-              <div key={variant.id} className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2 text-sm">
-                  {variant.color && (
-                    <span
-                      aria-hidden="true"
-                      className="inline-block h-4 w-4 rounded-full border"
-                      style={{ backgroundColor: variant.color.hex }}
-                    />
-                  )}
-                  {label}
-                </span>
-                <span className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    aria-label={`Retirer un exemplaire : ${label}`}
-                    disabled={quantity === 0}
-                    onClick={() => setQuantity(variant.id, quantity - 1)}
-                  >
-                    −
-                  </Button>
-                  <output aria-label={`Quantité : ${label}`} className="w-8 text-center">
-                    {quantity}
-                  </output>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    aria-label={`Ajouter un exemplaire : ${label}`}
-                    disabled={quantity >= MAX_QUANTITY}
-                    onClick={() => setQuantity(variant.id, quantity + 1)}
-                  >
-                    +
-                  </Button>
-                </span>
-              </div>
-            );
-          })}
-          {itemsError && (
-            <p role="alert" className="text-sm text-red-600">
-              {itemsError}
-            </p>
-          )}
-        </fieldset>
-      ) : (
-        <FormGroup
-          label="Combien souhaitez-vous en obtenir ?"
-          htmlFor="quantity"
-          error={itemsError ?? undefined}
-        >
-          <Input
-            id="quantity"
-            type="number"
-            min={1}
-            max={MAX_QUANTITY}
-            value={variants[0] ? (quantities[variants[0].id] ?? 1) : 1}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              variants[0] && setQuantity(variants[0].id, Number(e.target.value))
-            }
-          />
-        </FormGroup>
-      )}
+      <VariantQuantities
+        variants={variants}
+        quantities={quantities}
+        setQuantity={setQuantity}
+        itemsError={itemsError}
+        legend="Combien souhaitez-vous en obtenir, par couleur ?"
+        singleLabel="Combien souhaitez-vous en obtenir ?"
+      />
 
       <FormGroup label="Email" htmlFor="email" error={errors.email?.message}>
         <Input id="email" type="email" {...register("email")} />

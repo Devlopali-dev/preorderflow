@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCampaign } from "@/lib/api";
 import { InterestForm } from "./interest-form";
+import { OrderForm } from "./order-form";
 import { MediaGallery } from "./media-gallery";
 
 export default async function CampaignPage({ params }: { params: { slug: string } }) {
@@ -9,6 +10,11 @@ export default async function CampaignPage({ params }: { params: { slug: string 
     notFound();
   }
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+  // DRAFT et RECENSEMENT : formulaire de recensement. COMMANDES_OUVERTES : formulaire d'achat.
+  // Ensuite (commandes fermées, production, expédition, archives) : plus de formulaire.
+  const isOpenForOrders = campaign.status === "COMMANDES_OUVERTES";
+  const isClosed = !["DRAFT", "RECENSEMENT", "COMMANDES_OUVERTES"].includes(campaign.status);
 
   return (
     <main className="mx-auto w-full max-w-5xl p-4 sm:p-8">
@@ -19,15 +25,31 @@ export default async function CampaignPage({ params }: { params: { slug: string 
             {campaign.description && <p className="mt-2 opacity-80">{campaign.description}</p>}
             {campaign.product && (
               <p className="mt-2 text-sm opacity-70">
-                Prix indicatif : {campaign.product.price} {campaign.product.currency}
+                {isOpenForOrders ? "Prix" : "Prix indicatif"} : {campaign.product.price}{" "}
+                {campaign.product.currency}
               </p>
             )}
           </div>
-          <InterestForm
-            campaignId={campaign.id}
-            apiUrl={apiUrl}
-            variants={campaign.product?.variants ?? []}
-          />
+          {/* Le formulaire suit le statut de la campagne : recensement, achat, ou fermé. */}
+          {isOpenForOrders ? (
+            <OrderForm
+              campaignId={campaign.id}
+              apiUrl={apiUrl}
+              variants={campaign.product?.variants ?? []}
+              unitPrice={campaign.product?.price ?? null}
+              currency={campaign.product?.currency ?? null}
+            />
+          ) : isClosed ? (
+            <div className="card p-4 text-sm" role="status">
+              Les commandes de cette campagne sont fermées.
+            </div>
+          ) : (
+            <InterestForm
+              campaignId={campaign.id}
+              apiUrl={apiUrl}
+              variants={campaign.product?.variants ?? []}
+            />
+          )}
         </div>
 
         <MediaGallery media={campaign.media} />
