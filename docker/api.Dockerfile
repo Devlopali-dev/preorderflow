@@ -39,11 +39,42 @@ COPY . .
 RUN pnpm --filter @preorderflow/database generate
 RUN pnpm --filter api build
 
+# Image de production : uniquement ce dont l'API a besoin pour tourner, pas tout le workspace (sources, dépendances
+# de développement, outils de test et de build, soit plus de 2 Go).
+#
+# Les paquets du dépôt (@preorderflow/database et types) sont consommés EN TYPESCRIPT par l'API compilée
+# (`main: src/index.ts`) : on garde la disposition du workspace (liens vers packages/…) au lieu d'un `pnpm deploy`,
+# qui les copierait sous node_modules où Node refuse de lire du TypeScript.
 FROM base AS runner
 ENV NODE_ENV=production
-COPY --from=build /app /app
+# Les manifestes de TOUS les projets du workspace, pour que le lockfile reste valable (`--frozen-lockfile`).
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY apps/mcp-server/package.json apps/mcp-server/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/types/package.json packages/types/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/config/package.json packages/config/package.json
+# Dépendances de PRODUCTION de l'API seulement. --ignore-scripts : le `prepare` (husky) de la racine n'existe pas
+# sans les dépendances de développement ; le client Prisma est généré explicitement plus bas.
+# Le magasin et le cache de pnpm (plus de 500 Mo) sont des MONTAGES DE CACHE BuildKit : ils servent à la construction
+# mais n'entrent jamais dans l'image (un `rm` dans une couche suivante ne l'aurait pas réduite), et accélèrent les
+# reconstructions.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm \
+    --mount=type=cache,id=pnpm-meta,target=/root/.cache/pnpm \
+    pnpm install --frozen-lockfile --prod --ignore-scripts --filter "api..."
+COPY --from=build /app/apps/api/dist apps/api/dist
+COPY --from=build /app/packages/database packages/database
+COPY --from=build /app/packages/types packages/types
+# Client Prisma pour CETTE installation. Le CLI `prisma` est une dépendance de production (migrations au démarrage) :
+# /root/.cache/prisma, où il télécharge son moteur de migration, reste dans l'image.
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm \
+    --mount=type=cache,id=pnpm-meta,target=/root/.cache/pnpm \
+    pnpm --filter @preorderflow/database generate
 EXPOSE 3001
-# Les migrations Prisma s'appliquent au démarrage (`migrate deploy` : n'applique que celles qui manquent,
-# sans jamais toucher aux données ni réinitialiser le schéma). Un échec arrête le conteneur, visible dans
-# les logs, plutôt que de laisser une API qui répond 500 sur une base sans tables.
-CMD ["sh", "-c", "pnpm --filter @preorderflow/database migrate && pnpm --filter api start:prod"]
+# Les migrations Prisma s'appliquent au démarrage (`migrate deploy` : n'applique que celles qui manquent, sans jamais
+# toucher aux données ni réinitialiser le schéma). Un échec arrête le conteneur, visible dans les logs, plutôt que de
+# laisser une API qui répond 500 sur une base sans tables. Le binaire Prisma est appelé directement (pas de pnpm au
+# démarrage : son magasin a été retiré) ; `exec` : Node devient le processus principal et reçoit SIGTERM (arrêt propre).
+CMD ["sh", "-c", "cd packages/database && ./node_modules/.bin/prisma migrate deploy && cd ../.. && exec node apps/api/dist/main.js"]

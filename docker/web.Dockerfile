@@ -32,8 +32,15 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN pnpm --filter web build
 
-FROM base AS runner
+# Image de production : la sortie `standalone` de Next.js (serveur minimal + seules les dépendances réellement utilisées,
+# repérées au build), au lieu de tout le workspace. Pas besoin de pnpm ni du code source à l'exécution.
+FROM node:22-alpine AS runner
 ENV NODE_ENV=production
-COPY --from=build /app /app
+ENV PORT=3000
+# Écouter sur toutes les interfaces (sinon Next ne répond qu'à localhost dans le conteneur : sondes de santé, proxy).
+ENV HOSTNAME=0.0.0.0
+WORKDIR /app
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static apps/web/.next/static
 EXPOSE 3000
-CMD ["pnpm", "--filter", "web", "start"]
+CMD ["node", "apps/web/server.js"]

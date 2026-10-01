@@ -14,6 +14,11 @@ async function bootstrap() {
   // plus octet pour octet, la vérification échouerait systématiquement.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
+  // Arrêt propre sur SIGTERM/SIGINT (redéploiement Coolify, `docker stop`) : Nest ferme le serveur et appelle les
+  // `onModuleDestroy` (minuteur des campagnes…). Sans cela, un processus qui est le PID 1 d'un conteneur ignore
+  // SIGTERM et n'est arrêté de force qu'après le délai de grâce de Docker (10 s, code 137).
+  app.enableShutdownHooks();
+
   // Photos produit uploadées (product.controller.ts) — stockage disque local
   // (§32 : aucune dépendance propriétaire obligatoire, pas de S3). En prod,
   // ce dossier doit être un volume Docker persistant (sinon perdu au rebuild).

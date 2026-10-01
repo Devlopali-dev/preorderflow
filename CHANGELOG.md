@@ -7,6 +7,27 @@ correctifs.
 
 ## [Non publié]
 
+## [0.18.3] — 2026-10-02
+
+### Modifié
+
+- **Images de production allégées : API 2,1 Go → 0,9 Go, web 2,0 Go → 0,3 Go.** L'image finale copiait tout le
+  workspace (sources, dépendances de développement, outils de test et de build) ; elle ne garde plus que ce dont la
+  production a besoin.
+  - API : dépendances de production seules (`pnpm install --prod`, avec les paquets du dépôt en lien de workspace car ils
+    sont consommés en TypeScript), `dist`, client Prisma. `prisma` (CLI) devient une dépendance de production de
+    `@preorderflow/database` : migrations au démarrage. Le magasin et le cache de pnpm (plus de 500 Mo) sont des
+    montages de cache BuildKit, hors de l'image.
+  - Web : sortie `standalone` de Next.js (`output: "standalone"`), serveur minimal lancé avec `node apps/web/server.js`.
+- `.dockerignore` : `.env*`, `node_modules`, `.git`, fichiers uploadés et sorties de tests n'entrent plus dans le contexte
+  de build (un build local embarquait sinon vos fichiers `.env`).
+
+### Corrigé
+
+- **Arrêt propre de l'API** : sur SIGTERM (`docker stop`, redéploiement Coolify), l'API ignorait le signal et n'était tuée
+  qu'après 10 s (code 137). Les hooks d'arrêt de Nest sont activés : arrêt immédiat, code 0.
+- Le conteneur de l'API lance `node` directement (`exec`) au lieu d'un `pnpm start:prod` sous un shell.
+
 ## [0.18.2] — 2026-10-02
 
 ### Ajouté

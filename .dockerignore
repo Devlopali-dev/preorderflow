@@ -1,0 +1,22 @@
+# Contexte de build Docker : rien de ce qui suit ne doit entrer dans une image.
+.git
+**/node_modules
+**/.next
+**/dist
+**/*.tsbuildinfo
+
+# Secrets et fichiers locaux : jamais dans une image (un `COPY . .` les y mettrait).
+.env
+.env.*
+!.env.example
+
+# Fichiers uploadés et sorties de tests
+apps/api/uploads/*
+!apps/api/uploads/products
+!apps/api/uploads/products/.gitkeep
+**/test-results
+**/playwright-report
+**/coverage
+**/*.log
+.claude
+.remember
