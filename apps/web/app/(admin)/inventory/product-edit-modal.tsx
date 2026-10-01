@@ -294,13 +294,13 @@ export function ProductEditModal({
             Photos ({photos.length}/{MAX_PRODUCT_PHOTOS})
           </span>
           {photos.length > 0 && (
-            <ul className="flex flex-wrap gap-3">
+            <ul className="flex flex-nowrap gap-3">
               {photos.map((photo, index) => (
                 <li key={photo.id} className="flex flex-col items-center gap-1">
                   <img
                     src={`${apiUrl}${photo.url}`}
                     alt={`Photo ${index + 1}`}
-                    className="h-24 w-24 rounded object-cover"
+                    className="h-20 w-20 rounded object-cover"
                   />
                   <Button
                     variant="secondary"

@@ -104,6 +104,15 @@ test("à la création d'un produit, 3 photos au maximum : les fichiers en trop s
   await expect(page.getByText(/3 photos au maximum/)).toBeVisible();
   await expect(page.getByRole("button", { name: /^Retirer la photo/ })).toHaveCount(3);
 
+  // Petits aperçus sur une seule ligne, bouton Retirer sous chaque image.
+  const previews = page.getByRole("img", { name: /^Aperçu / });
+  await expect(previews).toHaveCount(3);
+  const boxes = await Promise.all([0, 1, 2].map((i) => previews.nth(i).boundingBox()));
+  expect(new Set(boxes.map((box) => Math.round(box!.y))).size).toBe(1);
+  expect(boxes[0]!.width).toBeLessThanOrEqual(96);
+  const retirer = await page.getByRole("button", { name: "Retirer la photo a.png" }).boundingBox();
+  expect(retirer!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height - 1);
+
   // Retirer une photo libère une place.
   await page.getByRole("button", { name: "Retirer la photo c.png" }).click();
   await expect(page.getByLabel(/^Photos \(optionnel, 2\/3\)/)).toBeEnabled();
@@ -124,6 +133,15 @@ test("à la création d'un produit, 3 photos au maximum : les fichiers en trop s
   await page.getByRole("button", { name: product.name, exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("img", { name: /^Photo \d$/ })).toHaveCount(3);
+  const thumbs = await Promise.all(
+    [0, 1, 2].map((i) =>
+      dialog
+        .getByRole("img", { name: /^Photo \d$/ })
+        .nth(i)
+        .boundingBox(),
+    ),
+  );
+  expect(new Set(thumbs.map((box) => Math.round(box!.y))).size).toBe(1);
   await expect(dialog.getByText("Ajouter une photo")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Supprimer la photo 1" }).click();
   await expect(dialog.getByRole("img", { name: /^Photo \d$/ })).toHaveCount(2);

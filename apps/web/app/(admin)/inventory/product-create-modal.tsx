@@ -83,6 +83,14 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
     );
   }
 
+  // Aperçus des fichiers choisis : des URL locales, libérées dès que la liste change.
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = photos.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [photos]);
+
   // Au plus 3 photos : les fichiers en trop sont écartés, avec un message.
   function handlePickPhotos(e: ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -236,13 +244,15 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
             />
           </label>
           {photos.length > 0 && (
-            <ul className="flex flex-col gap-1">
+            // Petits aperçus sur une seule ligne (3 au plus), bouton Retirer dessous.
+            <ul className="flex flex-nowrap gap-3">
               {photos.map((file, index) => (
-                <li
-                  key={`${file.name}-${index}`}
-                  className="flex items-center justify-between gap-2"
-                >
-                  <span className="truncate">{file.name}</span>
+                <li key={`${file.name}-${index}`} className="flex flex-col items-center gap-1">
+                  <img
+                    src={previewUrls[index]}
+                    alt={`Aperçu ${file.name}`}
+                    className="h-20 w-20 rounded object-cover"
+                  />
                   <Button
                     variant="secondary"
                     disabled={index < uploadedPhotos}
