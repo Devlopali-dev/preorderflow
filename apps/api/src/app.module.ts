@@ -1,7 +1,9 @@
 import { join } from "node:path";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { ThrottlerModule } from "@nestjs/throttler";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { throttlerModuleOptions } from "./common/rate-limit";
 import { HealthModule } from "./health/health.module";
 import { CampaignModule } from "./modules/campaign/campaign.module";
 import { CustomerModule } from "./modules/customer/customer.module";
@@ -27,12 +29,7 @@ import { ColorModule } from "./modules/color/color.module";
       // process NestJS = apps/api, donc le défaut de ConfigModule le rate.
       envFilePath: join(__dirname, "../../../.env"),
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60_000,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRoot(throttlerModuleOptions()),
     HealthModule,
     CampaignModule,
     CustomerModule,
@@ -49,6 +46,11 @@ import { ColorModule } from "./modules/color/color.module";
     AuditModule,
     SettingsModule,
     ColorModule,
+  ],
+  providers: [
+    // Sans ce garde global, les `@Throttle` des routes sensibles (login, magic link, recensement,
+    // commande publique…) n'ont aucun effet : le module seul ne limite rien.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

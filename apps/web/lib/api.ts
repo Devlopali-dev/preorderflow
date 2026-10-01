@@ -1,7 +1,8 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "./auth";
 import { CUSTOMER_AUTH_COOKIE_NAME } from "./customer-auth";
+import { forwardedForHeader } from "./forwarded-ip";
 
 // Un 401 de l'API veut dire « session invalide » (jeton expiré, compte supprimé
 // ou désactivé, base réinitialisée), pas une panne : on renvoie vers la
@@ -30,7 +31,13 @@ export const API_URL =
 // l'autorisation (CLAUDE.md §26), jamais le frontend.
 function authHeaders(): Record<string, string> {
   const token = cookies().get(AUTH_COOKIE_NAME)?.value;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return { ...visitorHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+}
+
+// L'API limite le débit par IP : à la place du visiteur, le serveur Next lui transmet son adresse
+// (cf. lib/forwarded-ip.ts), sinon tous les visiteurs partageraient celle du serveur web.
+function visitorHeaders(): Record<string, string> {
+  return forwardedForHeader(headers());
 }
 
 // Même principe pour l'espace client (Server Components sous /mon-compte),
@@ -38,7 +45,7 @@ function authHeaders(): Record<string, string> {
 // cookie admin (cf. lib/customer-auth.ts).
 function customerAuthHeaders(): Record<string, string> {
   const token = cookies().get(CUSTOMER_AUTH_COOKIE_NAME)?.value;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return { ...visitorHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 export interface CampaignMedia {
@@ -358,7 +365,10 @@ export interface Product {
 }
 
 export async function getProducts(): Promise<Product[]> {
-  const res = await fetch(`${API_URL}/api/v1/products`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/products`, {
+    cache: "no-store",
+    headers: visitorHeaders(),
+  });
   assertOk(res);
   return res.json();
 }

@@ -6,6 +6,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
+import { parseTrustProxy } from "./common/rate-limit";
 
 async function bootstrap() {
   // rawBody: true — le webhook Stripe doit vérifier la signature sur le
@@ -17,6 +18,9 @@ async function bootstrap() {
   // (§32 : aucune dépendance propriétaire obligatoire, pas de S3). En prod,
   // ce dossier doit être un volume Docker persistant (sinon perdu au rebuild).
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
+
+  // Derrière Traefik/Coolify : lire l'IP réelle du visiteur (limites de débit par IP). Voir TRUST_PROXY.
+  app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 
   app.use(helmet());
   app.enableCors({

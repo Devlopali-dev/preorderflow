@@ -37,6 +37,10 @@ jobs:
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
       TZ: UTC
+      # La suite E2E enchaîne bien plus d'appels que les seuils (login, recensement, commande publique…) :
+      # les limites de débit sont coupées pour elle. Elles sont vérifiées à part, sur une seconde API
+      # démarrée SANS cette variable (cf. rate-limit.spec.ts).
+      RATE_LIMIT_DISABLED: "true"
       # Secrets applicatifs : valeurs de test uniquement, jamais celles de
       # production (cf. .env.example). Nécessaires pour que login admin,
       # magic link client, et les sessions signées fonctionnent réellement
@@ -114,7 +118,10 @@ jobs:
         run: |
           node apps/api/dist/main.js > api.log 2>&1 &
           API_PID=$!
-          trap "kill $API_PID 2>/dev/null" EXIT
+          # Seconde API, limites de débit ACTIVES, pour rate-limit.spec.ts uniquement.
+          RATE_LIMIT_DISABLED=false API_PORT=3102 node apps/api/dist/main.js > api-limited.log 2>&1 &
+          LIMITED_PID=$!
+          trap "kill $API_PID $LIMITED_PID 2>/dev/null" EXIT
 
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3001/health > /dev/null; then
@@ -129,11 +136,26 @@ jobs:
             sleep 1
           done
 
-          pnpm test:e2e
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3102/health > /dev/null; then
+              echo "API (limites actives) prête"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "API (limites actives) n'a pas démarré à temps"
+              cat api-limited.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          RATE_LIMIT_API_URL=http://localhost:3102 pnpm test:e2e
 
       - name: Upload API logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: api-logs
-          path: api.log
+          path: |
+            api.log
+            api-limited.log

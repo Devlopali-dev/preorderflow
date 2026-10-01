@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { forwardedForHeader } from "@/lib/forwarded-ip";
 import { CUSTOMER_AUTH_COOKIE_NAME } from "@/lib/customer-auth";
 
 const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -8,7 +9,11 @@ export async function POST(request: NextRequest) {
 
   const res = await fetch(`${API_URL}/api/v1/customer/auth/magic-link/verify`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // L'API limite le débit par IP : on lui transmet celle du visiteur, pas celle du serveur web.
+      ...forwardedForHeader(request.headers),
+    },
     body: JSON.stringify(body),
   });
 

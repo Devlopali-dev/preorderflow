@@ -25,8 +25,17 @@
 
 - `helmet` pour les en-têtes de sécurité HTTP.
 - CORS strict, origine limitée à `CORS_ORIGIN`.
-- Rate limiting global (`@nestjs/throttler`) + limite dédiée plus stricte sur le formulaire de
-  recensement public.
+- **Rate limiting** (`@nestjs/throttler`, `ThrottlerGuard` enregistré en garde global) : 100 requêtes par
+  minute et par IP, et des seuils stricts par route : login et `setup` 10/min, lien magique 5/min (vérification
+  10/min), recensement public 5/min, commande publique 5/min, réglages sensibles 5/min. Au-delà : 429 avec
+  `Retry-After` et un message en français. Vérifié sur les vraies routes par `rate-limit.spec.ts` (seconde API
+  de la CI, limites actives).
+- `RATE_LIMIT_DISABLED=true` coupe les limites (suite E2E, développement) : **jamais en production**.
+- **IP réelle du visiteur.** Derrière un reverse proxy (Traefik/Coolify), l'adresse de la connexion est celle du
+  proxy : sans `TRUST_PROXY=1`, tous les visiteurs partageraient la même limite. Accès direct : laisser
+  `TRUST_PROXY` vide, l'en-tête `X-Forwarded-For` est alors ignoré (impossible de contourner la limite en le
+  falsifiant). Le serveur Next retransmet l'`X-Forwarded-For` reçu pour ses appels à l'API (rendu serveur,
+  login, lien magique), sans y ajouter sa propre adresse.
 - Anti-spam recensement : honeypot obligatoire, captcha (Turnstile) activable par variable d'env.
 
 ## RGPD

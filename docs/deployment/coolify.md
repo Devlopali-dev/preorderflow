@@ -24,6 +24,10 @@ Renseigner sur chaque application les variables de `.env.example` pertinentes (v
 `docs/deployment.md` pour les valeurs critiques). `DATABASE_URL` et `REDIS_URL` pointent vers les
 ressources internes Coolify créées aux étapes 1 et 2.
 
+**Limites de débit.** Sur l'application API, renseigner `TRUST_PROXY=1` (un seul proxy, Traefik, devant
+l'API) : sans cela, l'API ne voit que l'adresse du proxy et tous les visiteurs partagent la même limite de
+débit. Ne **jamais** définir `RATE_LIMIT_DISABLED=true` en production.
+
 ## 5. Domaine et HTTPS
 
 - Associer un domaine à l'application `web` (ex. `app.mondomaine.fr`) et un sous-domaine à `api`

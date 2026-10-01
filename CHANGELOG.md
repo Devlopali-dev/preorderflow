@@ -7,6 +7,27 @@ correctifs.
 
 ## [Non publié]
 
+## [0.18.0] — 2026-10-02
+
+### Corrigé (sécurité)
+
+- **Les limites de débit étaient inertes.** `ThrottlerGuard` n'était enregistré nulle part : les `@Throttle`
+  de toutes les routes sensibles (login, magic link, recensement, commande publique, réglages) n'avaient aucun
+  effet, et la protection contre le brute-force annoncée n'existait pas. Le garde est maintenant global :
+  100 requêtes par minute et par IP, seuils stricts par route, 429 avec `Retry-After` et un message en français.
+
+### Ajouté
+
+- `TRUST_PROXY` : nombre de proxys devant l'API (1 derrière Traefik/Coolify) pour lire l'IP réelle du visiteur ;
+  vide en accès direct (l'en-tête `X-Forwarded-For` est alors ignoré, donc non falsifiable). **À renseigner en
+  production** derrière un proxy, sinon tous les visiteurs partagent la même limite.
+- Le serveur Next retransmet l'IP du visiteur à l'API pour ses propres appels (rendu serveur, login, lien
+  magique, `setup`), pour que la limite s'applique au visiteur et non au serveur web.
+- `RATE_LIMIT_DISABLED=true` coupe les limites (suite E2E, développement ; posé par `docker-compose.dev.yml`
+  et la CI) : jamais en production.
+- Tests : unitaires, intégration sur un vrai serveur HTTP (429, `Retry-After`, `X-Forwarded-For` falsifié sans
+  effet, proxy de confiance) et e2e sur les vraies routes avec une seconde API aux limites actives (CI).
+
 ## [0.17.1] — 2026-10-02
 
 ### Modifié
