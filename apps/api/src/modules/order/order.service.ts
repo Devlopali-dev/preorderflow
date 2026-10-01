@@ -39,6 +39,7 @@ export class OrderService {
         customer: true,
         payments: true,
         shipment: true,
+        campaign: { select: { id: true, name: true, paymentLink: true } },
       },
     });
     if (!order) {
@@ -67,6 +68,13 @@ export class OrderService {
       };
     });
 
+    if (dto.campaignId) {
+      const campaign = await prisma.campaign.findUnique({ where: { id: dto.campaignId } });
+      if (!campaign) {
+        throw new BadRequestException("Campagne introuvable");
+      }
+    }
+
     const totals = computeOrderTotals(lines, dto.shippingAmount ?? 0);
     const billingAddress = dto.billingAddress ?? dto.shippingAddress;
 
@@ -94,6 +102,7 @@ export class OrderService {
         data: {
           number: orderNumber,
           customerId: customer.id,
+          campaignId: dto.campaignId,
           status: "DRAFT",
           paymentStatus: "UNPAID",
           fulfillmentStatus: "UNFULFILLED",

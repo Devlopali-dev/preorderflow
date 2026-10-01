@@ -39,7 +39,7 @@ test("le détail d'une commande permet de générer un paiement Revolut (QR + li
 
   await page.getByRole("button", { name: "Générer le paiement" }).click();
   await expect(page.getByRole("button", { name: "Marquer comme payée" })).toBeVisible();
-  await expect(page.getByAltText("QR code de paiement Revolut")).toBeVisible();
+  await expect(page.getByAltText("QR code de paiement")).toBeVisible();
 
   await page.getByRole("button", { name: "Marquer comme payée" }).click();
   await expect(page.getByText(/Paiement reçu/)).toBeVisible();

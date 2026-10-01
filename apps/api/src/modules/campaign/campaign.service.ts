@@ -57,6 +57,7 @@ export class CampaignService {
         slug: dto.slug,
         description: dto.description,
         productId: dto.productId,
+        paymentLink: dto.paymentLink ?? undefined,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,
@@ -83,6 +84,8 @@ export class CampaignService {
       data: {
         name: dto.name,
         description: dto.description,
+        // null efface le lien, undefined ne le touche pas.
+        paymentLink: dto.paymentLink,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,

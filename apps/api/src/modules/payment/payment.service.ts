@@ -61,9 +61,10 @@ export class PaymentService {
       providerReference = session.id;
       metadata = { stripeCheckoutUrl: session.url };
     } else if (provider === "MANUAL") {
-      const revolutBaseLink = process.env.REVOLUT_PAYMENT_LINK;
-      if (revolutBaseLink) {
-        metadata = { revolutLink: buildRevolutPaymentLink(revolutBaseLink, amount) };
+      // Lien de la campagne d'origine, à défaut celui du .env.
+      const baseLink = order.campaign?.paymentLink ?? process.env.REVOLUT_PAYMENT_LINK;
+      if (baseLink) {
+        metadata = { paymentLink: buildRevolutPaymentLink(baseLink, amount, order.currency) };
       }
     }
 

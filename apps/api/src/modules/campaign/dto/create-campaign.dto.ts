@@ -9,6 +9,7 @@ import {
   IsISO8601,
   IsOptional,
   IsString,
+  IsUrl,
   IsUUID,
   Min,
   ValidateNested,
@@ -31,6 +32,15 @@ export class CreateCampaignDto {
   @ApiProperty()
   @IsUUID()
   productId!: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: "Lien de paiement de la campagne (http/https)",
+  })
+  @IsOptional()
+  @IsUrl({ protocols: ["http", "https"], require_protocol: true })
+  paymentLink?: string | null;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -86,6 +96,15 @@ export class UpdateCampaignDto {
   @IsOptional()
   @IsString()
   documentUrl?: string;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: "Lien de paiement (null pour l'effacer)",
+  })
+  @IsOptional()
+  @IsUrl({ protocols: ["http", "https"], require_protocol: true })
+  paymentLink?: string | null;
 }
 
 export class UpdateCampaignStatusDto {

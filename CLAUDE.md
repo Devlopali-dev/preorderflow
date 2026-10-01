@@ -363,6 +363,7 @@ Prévoir :
 ```text
 MANUAL
 BANK_TRANSFER
+CASH
 STRIPE
 ```
 

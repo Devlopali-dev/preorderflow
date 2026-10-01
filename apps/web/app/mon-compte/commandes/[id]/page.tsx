@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCustomerOrder } from "@/lib/api";
 import { variantLabel } from "@/lib/variants";
+import { orderPaymentStatusLabel } from "@/lib/payment-labels";
 import { CustomerNav } from "../../customer-nav";
 
 export default async function CustomerOrderDetailPage({ params }: { params: { id: string } }) {
@@ -32,7 +33,7 @@ export default async function CustomerOrderDetailPage({ params }: { params: { id
 
         <div className="mt-6">
           <h2 className="mb-2 font-medium">Paiement</h2>
-          <p className="text-sm">Statut : {order.paymentStatus}</p>
+          <p className="text-sm">Statut : {orderPaymentStatusLabel(order.paymentStatus)}</p>
         </div>
 
         {order.shipment && (

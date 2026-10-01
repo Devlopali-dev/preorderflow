@@ -3,24 +3,19 @@
 import { useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Select } from "@preorderflow/ui";
-import { PaymentQrCode } from "./qr-code";
+import { PaymentQrCode } from "@/components/payment-qr-code";
 import type { OrderDetail } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import {
+  PAYMENT_PROVIDER_LABEL,
+  paymentProviderLabel,
+  paymentStatusLabel,
+} from "@/lib/payment-labels";
 
-const PROVIDER_OPTIONS = [
-  { value: "MANUAL", label: "Manuel (Revolut)" },
-  { value: "BANK_TRANSFER", label: "Virement bancaire" },
-  { value: "STRIPE", label: "Carte bancaire (Stripe)" },
-];
-
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  PENDING: "en attente",
-  AUTHORIZED: "autorisé",
-  PAID: "reçu",
-  FAILED: "échoué",
-  REFUNDED: "remboursé",
-  PARTIALLY_REFUNDED: "partiellement remboursé",
-};
+const PROVIDER_OPTIONS = Object.entries(PAYMENT_PROVIDER_LABEL).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 export function PaymentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl: string }) {
   const router = useRouter();
@@ -81,9 +76,8 @@ export function PaymentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl: st
           <ul>
             {order.payments.map((payment) => (
               <li key={payment.id}>
-                {PROVIDER_OPTIONS.find((option) => option.value === payment.provider)?.label ??
-                  payment.provider}{" "}
-                — {payment.amount} € — {PAYMENT_STATUS_LABEL[payment.status] ?? payment.status}
+                {paymentProviderLabel(payment.provider)} — {payment.amount} € —{" "}
+                {paymentStatusLabel(payment.status)}
               </li>
             ))}
           </ul>
@@ -112,9 +106,10 @@ export function PaymentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl: st
     );
   }
 
-  const revolutLink = pendingPayment.metadata?.revolutLink;
+  // `revolutLink` : ancien nom de la clé, gardé pour les paiements déjà générés.
+  const manualLink = pendingPayment.metadata?.paymentLink ?? pendingPayment.metadata?.revolutLink;
   const stripeCheckoutUrl = pendingPayment.metadata?.stripeCheckoutUrl;
-  const paymentLink = revolutLink ?? stripeCheckoutUrl;
+  const paymentLink = manualLink ?? stripeCheckoutUrl;
 
   return (
     <div className="flex flex-col gap-4">

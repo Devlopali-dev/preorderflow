@@ -3,7 +3,8 @@
 import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
-import type { CustomerSummary, Product } from "@/lib/api";
+import type { Campaign, CustomerSummary, Product } from "@/lib/api";
+import { isArchivedCampaign } from "@/lib/campaign-status";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { variantLabel } from "@/lib/variants";
 
@@ -13,11 +14,13 @@ export function OrderCreateModal({
   apiUrl,
   products,
   customers,
+  campaigns,
   onClose,
 }: {
   apiUrl: string;
   products: Product[];
   customers: CustomerSummary[];
+  campaigns: Campaign[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -43,6 +46,9 @@ export function OrderCreateModal({
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("FR");
+  // Campagne d'origine, facultative : son lien de paiement servira au règlement.
+  const [campaignId, setCampaignId] = useState("");
+  const openCampaigns = campaigns.filter((campaign) => !isArchivedCampaign(campaign.status));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +83,7 @@ export function OrderCreateModal({
           customerEmail,
           customerFirstName,
           customerLastName,
+          campaignId: campaignId || undefined,
           items: [{ variantId, quantity: Number(quantity) }],
           shippingAddress: {
             firstName: customerFirstName,
@@ -126,6 +133,23 @@ export function OrderCreateModal({
             ))}
           </select>
         </label>
+        {openCampaigns.length > 0 && (
+          <label className="flex flex-col gap-1 text-sm">
+            Campagne (optionnel)
+            <select
+              className="select"
+              value={campaignId}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setCampaignId(e.target.value)}
+            >
+              <option value="">Aucune</option>
+              {openCampaigns.map((campaign) => (
+                <option key={campaign.id} value={campaign.id}>
+                  {campaign.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-1 text-sm">
           Email du client
           <Input

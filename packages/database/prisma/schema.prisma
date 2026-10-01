@@ -66,12 +66,15 @@ model Campaign {
   product           Product        @relation(fields: [productId], references: [id])
   imageUrl          String?
   documentUrl       String?
+  // Lien de paiement propre à la campagne (ex : revolut.me/…) ; à défaut, celui du .env.
+  paymentLink       String?
   interestSettings  Json?          // ex: quantités max, message légal, seuils d'affichage
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
   interests CampaignInterest[]
   media     CampaignMedia[]
+  orders    Order[]
 
   @@map("campaigns")
 }
@@ -292,6 +295,9 @@ model Order {
   number             String                  @unique // ex: 2026-0042
   customerId         String
   customer           Customer                @relation(fields: [customerId], references: [id])
+  // Campagne d'origine, facultative : la commande reste indépendante du recensement.
+  campaignId         String?
+  campaign           Campaign?               @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   status             OrderStatus             @default(DRAFT)
   paymentStatus      OrderPaymentStatus      @default(UNPAID)
   fulfillmentStatus  OrderFulfillmentStatus  @default(UNFULFILLED)
@@ -311,6 +317,7 @@ model Order {
   shipment  Shipment?
 
   @@index([customerId])
+  @@index([campaignId])
   @@map("orders")
 }
 
@@ -339,6 +346,7 @@ model OrderItem {
 enum PaymentProvider {
   MANUAL
   BANK_TRANSFER
+  CASH
   STRIPE
 }
 

@@ -83,6 +83,7 @@ export interface Campaign {
   status: string;
   imageUrl: string | null;
   documentUrl: string | null;
+  paymentLink?: string | null;
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];
@@ -291,7 +292,7 @@ export interface OrderDetail extends OrderSummary {
     status: string;
     amount: string;
     provider: string;
-    metadata: { revolutLink?: string; stripeCheckoutUrl?: string } | null;
+    metadata: { paymentLink?: string; revolutLink?: string; stripeCheckoutUrl?: string } | null;
   }>;
   shipment: {
     id: string;

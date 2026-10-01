@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Campaign } from "@/lib/api";
 import { ConfirmModal } from "@/components/confirm-modal";
+import { CampaignPaymentLinkField } from "@/components/campaign-payment-link-field";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { isArchivedCampaign } from "@/lib/campaign-status";
 
@@ -28,6 +29,7 @@ export function CampaignEditModal({
   const [name, setName] = useState(campaign.name);
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
+  const [paymentLink, setPaymentLink] = useState(campaign.paymentLink ?? "");
   const [media, setMedia] = useState(campaign.media ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,8 @@ export function CampaignEditModal({
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({
           name,
+          // Vide : null efface le lien.
+          paymentLink: paymentLink.trim() || null,
           startDate: startDate ? new Date(startDate).toISOString() : undefined,
           endDate: endDate ? new Date(endDate).toISOString() : undefined,
         }),
@@ -235,6 +239,11 @@ export function CampaignEditModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
           />
         </label>
+        <CampaignPaymentLinkField
+          value={paymentLink}
+          onChange={setPaymentLink}
+          disabled={readOnly}
+        />
         <div className="flex flex-col gap-2 text-sm">
           <span className="form-label">Aperçus ({media.length}/5)</span>
           {media.length > 0 && (

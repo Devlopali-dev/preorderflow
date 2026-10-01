@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@preorderflow/ui";
-import type { CustomerSummary, Product } from "@/lib/api";
+import type { Campaign, CustomerSummary, Product } from "@/lib/api";
 import { NoProductNotice } from "@/components/no-product-notice";
 import { OrderCreateModal } from "./order-create-modal";
 
@@ -10,10 +10,12 @@ export function CreateOrderButton({
   apiUrl,
   products,
   customers,
+  campaigns,
 }: {
   apiUrl: string;
   products: Product[];
   customers: CustomerSummary[];
+  campaigns: Campaign[];
 }) {
   const [open, setOpen] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
@@ -32,6 +34,7 @@ export function CreateOrderButton({
           apiUrl={apiUrl}
           products={products}
           customers={customers}
+          campaigns={campaigns}
           onClose={() => setOpen(false)}
         />
       )}
