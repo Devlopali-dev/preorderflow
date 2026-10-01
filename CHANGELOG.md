@@ -7,6 +7,16 @@ correctifs.
 
 ## [Non publié]
 
+## [0.10.1] — 2026-10-01
+
+### Modifié
+
+- Statuts de commande affichés en français partout (Brouillon, En attente de paiement, Payée, En préparation,
+  Prête à expédier, Expédiée, Livrée, Annulée, Remboursée) : groupes et rappel de la page commandes, modales,
+  fiches client, espace client, intitulés des boutons (« Passer en préparation », « Marquer prête à
+  expédier »…) et message de confirmation. Les codes de l'API (`PAID`, `SHIPPED`…) ne changent pas : ils
+  restent les identifiants (ancres, requêtes). Les statuts d'expédition ne sont pas concernés.
+
 ## [0.10.0] — 2026-10-01
 
 ### Ajouté
