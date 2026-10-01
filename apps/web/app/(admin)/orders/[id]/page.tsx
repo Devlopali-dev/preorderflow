@@ -3,6 +3,7 @@ import { getOrder } from "@/lib/api";
 import { variantLabel } from "@/lib/variants";
 import { PaymentPanel } from "./payment-panel";
 import { FulfillmentPanel } from "./fulfillment-panel";
+import { OrderActions } from "../order-actions";
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
   const order = await getOrder(params.id);
@@ -47,6 +48,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
         />
       </div>
+
+      {/* Ne rend rien pour une commande sans action (annulée, remboursée, livrée). */}
+      <OrderActions
+        orderId={order.id}
+        status={order.status}
+        apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+      />
     </main>
   );
 }

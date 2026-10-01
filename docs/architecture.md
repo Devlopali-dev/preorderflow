@@ -206,8 +206,11 @@ bloquée sans aucune sortie.
 DRAFT → PENDING_PAYMENT → PAID → PROCESSING → READY_TO_SHIP → SHIPPED → DELIVERED
               │
               ├──→ CANCELLED (depuis DRAFT, PENDING_PAYMENT, PAID)
-              └──→ REFUNDED (depuis PAID, PROCESSING, READY_TO_SHIP, SHIPPED, DELIVERED)
+              └──→ REFUNDED (depuis PAID, PROCESSING, READY_TO_SHIP, SHIPPED)
 ```
+
+`DELIVERED` est un état final : une commande livrée est en lecture seule. Une commande ne peut être
+livrée que si `paymentStatus = PAID` (refus 400 sinon, y compris via l'expédition).
 
 `Order.paymentStatus` et `Order.fulfillmentStatus` sont des sous-machines indépendantes qui contraignent (sans dupliquer) `Order.status` :
 

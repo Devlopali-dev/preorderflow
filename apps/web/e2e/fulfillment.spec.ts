@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { authHeader, loginAsAdmin } from "./helpers";
+import { authHeader, loginAsAdmin, payOrder } from "./helpers";
 
 test("le détail d'une commande permet de la préparer, l'expédier et la livrer", async ({
   page,
@@ -34,19 +34,16 @@ test("le détail d'une commande permet de la préparer, l'expédier et la livrer
   });
   const order = await orderRes.json();
 
-  for (const status of ["PENDING_PAYMENT", "PAID"]) {
-    await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
-      headers: authHeader(token),
-      data: { status },
-    });
-  }
+  await payOrder(request, token, order.id);
 
   await page.goto(`/orders/${order.id}`);
 
-  await page.getByRole("button", { name: "Marquer en préparation" }).click();
-  await expect(page.getByRole("button", { name: "Marquer prête à expédier" })).toBeVisible();
+  await page.getByRole("button", { name: "Passer à PROCESSING" }).click();
+  await page.getByRole("button", { name: "Confirmer" }).click();
+  await expect(page.getByRole("button", { name: "Passer à READY_TO_SHIP" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Marquer prête à expédier" }).click();
+  await page.getByRole("button", { name: "Passer à READY_TO_SHIP" }).click();
+  await page.getByRole("button", { name: "Confirmer" }).click();
   await expect(page.getByPlaceholder("Numéro de suivi")).toBeVisible();
 
   await page.getByPlaceholder("Numéro de suivi").fill("TRACK-PLAYWRIGHT-1");

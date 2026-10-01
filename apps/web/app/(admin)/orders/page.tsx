@@ -16,6 +16,9 @@ const ORDER_STATUSES = [
   "REFUNDED",
 ];
 
+// Déroulé nominal d'une commande (les deux derniers statuts, annulée et remboursée, en sortent).
+const FLOW_LENGTH = 7;
+
 const PAYMENT_BADGE: Record<string, string> = {
   PENDING: "badge-default",
   AUTHORIZED: "badge-primary",
@@ -56,7 +59,8 @@ export default async function OrdersPage() {
         <div>
           <h1 className="text-2xl font-semibold">Commandes</h1>
           <p className="card-subtitle">
-            {orders.length} commande{orders.length > 1 ? "s" : ""}
+            {orders.length} commande{orders.length > 1 ? "s" : ""} -{" "}
+            <em>{ORDER_STATUSES.slice(0, FLOW_LENGTH).join(" → ")}</em>
           </p>
         </div>
         <CreateOrderButton apiUrl={apiUrl} products={products} customers={customers} />

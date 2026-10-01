@@ -107,28 +107,30 @@ test("la modale d'une commande annulée a un paiement en lecture seule et ni pie
   await expect(dialog.getByRole("button", { name: "Rembourser" })).toHaveCount(0);
 });
 
-test("la modale d'une commande en cours a ses boutons de statut en bas, après les autres sections", async ({
+test("la modale d'une commande payée n'a qu'un seul bouton d'avancement, en pied de modale", async ({
   page,
   request,
 }) => {
   const token = await loginAsAdmin(page, request);
-  const { order, setStatus } = await createOrder(request, token, ["PENDING_PAYMENT"]);
+  const { order, setStatus } = await createOrder(request, token, ["PENDING_PAYMENT", "PAID"]);
 
   await page.goto("/orders");
   await page.getByRole("button", { name: order.number, exact: true }).click();
   const dialog = page.getByRole("dialog");
 
   await expect(dialog.getByRole("heading", { name: "Statut", exact: true })).toHaveCount(0);
-  const action = dialog.getByRole("button", { name: "Passer à PAID" });
-  await expect(action).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Annuler", exact: true })).toBeVisible();
+  // Un seul bouton pour passer en préparation : le panneau Préparation n'a plus le sien.
+  const action = dialog.getByRole("button", { name: "Passer à PROCESSING" });
+  await expect(action).toHaveCount(1);
+  await expect(dialog.getByRole("button", { name: "Marquer en préparation" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Rembourser" })).toBeVisible();
 
-  // Les boutons sont après la section Préparation & expédition, pas au milieu.
+  // Le bouton est après la section Préparation & expédition, pas au milieu.
   const lastSection = await dialog.getByRole("heading", { name: /Préparation/ }).boundingBox();
   const actionBox = await action.boundingBox();
   expect(actionBox!.y).toBeGreaterThan(lastSection!.y);
 
-  await setStatus("CANCELLED");
+  await setStatus("REFUNDED");
 });
 
 test("les cartes du dashboard mènent au groupe exact de la page commandes", async ({

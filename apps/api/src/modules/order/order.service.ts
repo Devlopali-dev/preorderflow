@@ -8,6 +8,7 @@ import {
 } from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
+import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { NotificationService } from "../notification/notification.service";
 
@@ -131,6 +132,19 @@ export class OrderService {
     return order;
   }
 
+  // Refus métier converti en 400 ; utilisé aussi par les expéditions, qui doivent
+  // refuser AVANT d'écrire quoi que ce soit.
+  assertPaidForDelivery(paymentStatus: string) {
+    try {
+      assertOrderPaidForDelivery(paymentStatus);
+    } catch (error) {
+      if (error instanceof OrderNotPaidError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   async updateStatus(id: string, status: OrderStatus) {
     const order = await this.getById(id);
     try {
@@ -140,6 +154,10 @@ export class OrderService {
         throw new BadRequestException(error.message);
       }
       throw error;
+    }
+
+    if (status === "DELIVERED") {
+      this.assertPaidForDelivery(order.paymentStatus);
     }
 
     const fulfillmentStatus = mapOrderStatusToFulfillment(status) ?? order.fulfillmentStatus;

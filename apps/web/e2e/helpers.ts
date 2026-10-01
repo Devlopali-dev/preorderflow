@@ -56,3 +56,24 @@ export async function loginAsAdmin(page: Page, request: APIRequestContext): Prom
 
   return accessToken;
 }
+
+// Paie réellement une commande : génère le paiement puis le confirme, ce qui
+// renseigne aussi `paymentStatus`. Passer le statut à « payée » à la main laisse
+// la commande non payée (donc non livrable).
+export async function payOrder(
+  request: APIRequestContext,
+  token: string,
+  orderId: string,
+): Promise<void> {
+  const auth = authHeader(token);
+  const created = await request.post(`${API_URL}/api/v1/orders/${orderId}/payments`, {
+    headers: auth,
+    data: { provider: "BANK_TRANSFER" },
+  });
+  if (!created.ok()) throw new Error(`Paiement impossible (${created.status()})`);
+  const payment = await created.json();
+  const confirmed = await request.post(`${API_URL}/api/v1/payments/${payment.id}/confirm`, {
+    headers: auth,
+  });
+  if (!confirmed.ok()) throw new Error(`Confirmation impossible (${confirmed.status()})`);
+}

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { authHeader, loginAsAdmin } from "./helpers";
+import { authHeader, loginAsAdmin, payOrder } from "./helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -38,7 +38,8 @@ test("les expéditions sont groupées par statut, avec une action pour passer au
       },
     })
   ).json();
-  for (const status of ["PENDING_PAYMENT", "PAID", "PROCESSING", "READY_TO_SHIP"]) {
+  await payOrder(request, token, order.id);
+  for (const status of ["PROCESSING", "READY_TO_SHIP"]) {
     await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
       headers: auth,
       data: { status },

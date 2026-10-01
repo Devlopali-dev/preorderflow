@@ -26,11 +26,17 @@ export function OrderCreateModal({
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
   // Une ligne de commande vise une variante (couleur) : « Stylo — Rouge ».
-  const variantOptions = products.flatMap((product) =>
-    product.variants
-      .filter((variant) => variant.active)
-      .map((variant) => ({ id: variant.id, label: variantLabel(product.name, variant.color) })),
+  const allOptions = products.flatMap((product) =>
+    product.variants.map((variant) => ({
+      id: variant.id,
+      label: variantLabel(product.name, variant.color),
+      archived: !product.active || !variant.active,
+    })),
   );
+  // Les produits archivés restent visibles pour mémoire, en fin de liste, mais
+  // ne se commandent plus.
+  const variantOptions = allOptions.filter((option) => !option.archived);
+  const archivedOptions = allOptions.filter((option) => option.archived);
   const [variantId, setVariantId] = useState(variantOptions[0]?.id ?? "");
   const [quantity, setQuantity] = useState("1");
   const [address1, setAddress1] = useState("");
@@ -161,6 +167,21 @@ export function OrderCreateModal({
                   {option.label}
                 </option>
               ))}
+              {archivedOptions.length > 0 && (
+                <>
+                  <option disabled>──────────</option>
+                  {archivedOptions.map((option) => (
+                    <option
+                      key={option.id}
+                      value={option.id}
+                      disabled
+                      style={{ fontStyle: "italic" }}
+                    >
+                      {option.label} (archivé)
+                    </option>
+                  ))}
+                </>
+              )}
             </select>
           </label>
           <label className="flex w-20 flex-col gap-1 text-sm">

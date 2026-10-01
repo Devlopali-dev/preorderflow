@@ -8,7 +8,7 @@ const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PROCESSING: ["READY_TO_SHIP", "REFUNDED"],
   READY_TO_SHIP: ["SHIPPED", "REFUNDED"],
   SHIPPED: ["DELIVERED", "REFUNDED"],
-  DELIVERED: ["REFUNDED"],
+  DELIVERED: [], // commande livrée : lecture seule
   CANCELLED: [],
   REFUNDED: [],
 };
