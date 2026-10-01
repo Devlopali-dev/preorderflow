@@ -3,7 +3,43 @@
 PreOrderFlow se déploie comme **une seule application Docker Compose** : `docker-compose.coolify.yml` lance
 PostgreSQL, Redis, l'API et le site web. Les migrations Prisma s'appliquent seules au démarrage de l'API.
 
+## Deux façons de déployer
+
+|                 | Images publiées (recommandé)            | Construction sur le serveur (secours)          |
+| --------------- | --------------------------------------- | ---------------------------------------------- |
+| Fichier Compose | `/docker-compose.coolify-image.yml`     | `/docker-compose.coolify.yml`                  |
+| Qui construit   | la CI GitHub (testée avant publication) | le serveur Coolify, à chaque déploiement       |
+| Déploiement     | quelques secondes (téléchargement)      | plusieurs minutes, dépend du réseau du serveur |
+| Retour arrière  | changer `IMAGE_TAG`                     | redéployer un ancien commit                    |
+
+### Option recommandée : images publiées (GHCR)
+
+À chaque push sur `main`, la CI construit les images `api` et `web`, les publie sous un tag `sha-…`, **les démarre et
+les teste** (santé, requête base, rendu serveur, URL d'API figée, limites de débit), puis seulement alors les promeut
+en `latest` et `<version>` (celle de `package.json`). Un `latest` qui ne démarre pas n'est jamais publié.
+
+**Une fois, côté GitHub :**
+
+1. _Settings → Secrets and variables → Actions → Variables_ : créer la variable **`NEXT_PUBLIC_API_URL`** =
+   URL publique de l'API (`https://api.mondomaine.fr`). Elle est figée dans l'image web à sa construction : la publication
+   échoue explicitement si elle est vide, et changer d'URL d'API demande de republier les images.
+2. Après la première publication, rendre les deux paquets **publics** : _profil ou organisation → Packages →
+   `preorderflow-api` / `preorderflow-web` → Package settings → Change visibility → Public_. Sans cela, Coolify doit
+   présenter un jeton GitHub avec le droit `read:packages`.
+
+**Côté Coolify :** application Docker Compose (voir §1 à §4 ci-dessous), mais avec **Docker Compose Location :
+`/docker-compose.coolify-image.yml`**, et la variable **`IMAGE_TAG`** (`latest`, `0.18.2` ou `sha-abc1234`). Les variables du
+§3 restent les mêmes, sauf `NEXT_PUBLIC_API_URL` qui n'est plus lue (elle est dans l'image).
+
+**Déploiement automatique (facultatif).** Dans Coolify, copier le _Deploy Webhook_ de l'application, puis créer dans GitHub
+les secrets `COOLIFY_DEPLOY_WEBHOOK` (l'URL) et `COOLIFY_TOKEN` (un jeton API Coolify). La CI appelle alors le webhook
+après avoir promu les images. Sans ces secrets, lancer le déploiement à la main depuis Coolify.
+
+**Retour arrière :** mettre l'`IMAGE_TAG` d'une version précédente (ou un `sha-…`) et redéployer.
+
 ## 1. Créer l'application
+
+_(Pour le déploiement par images, seul l'emplacement du fichier Compose change : voir ci-dessus.)_
 
 - **New Resource → Public / Private Repository** (GitHub), branche `main`.
 - **Build Pack : Docker Compose**.

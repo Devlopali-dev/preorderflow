@@ -7,6 +7,20 @@ correctifs.
 
 ## [Non publié]
 
+## [0.18.2] — 2026-10-02
+
+### Ajouté
+
+- **Images Docker publiées sur GHCR.** À chaque push sur `main`, la CI construit les images `api` et `web`
+  (`ghcr.io/<propriétaire>/preorderflow-api` et `-web`, `linux/amd64`), les publie sous un tag `sha-…`, **les démarre
+  depuis le registre et les teste**, puis seulement alors les promeut en `latest` et `<version>`. Coolify les tire au
+  lieu de les construire : `docker-compose.coolify-image.yml` (variable `IMAGE_TAG`, retour arrière en changeant le tag).
+  `docker-compose.coolify.yml` (construction sur le serveur) reste comme secours.
+- `scripts/smoke-production.sh` : smoke test partagé (santé, requête base, rendu serveur, URL d'API figée, limites de
+  débit) par le job `docker-production` et par la publication.
+- Variable de dépôt GitHub `NEXT_PUBLIC_API_URL` (URL publique de l'API, figée dans l'image web) ; secrets facultatifs
+  `COOLIFY_DEPLOY_WEBHOOK` et `COOLIFY_TOKEN` pour déclencher le déploiement.
+
 ## [0.18.1] — 2026-10-02
 
 ### Corrigé (déploiement)
