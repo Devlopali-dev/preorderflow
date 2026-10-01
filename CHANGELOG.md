@@ -7,6 +7,19 @@ correctifs.
 
 ## [Non publié]
 
+## [0.15.0] — 2026-10-01
+
+### Modifié
+
+- **Une campagne en brouillon est invisible du public.** L'API l'exclut de la liste publique, de sa fiche et de
+  ses statistiques pour un visiteur (404, jamais 403 : on ne confirme pas son existence) et refuse son
+  recensement et sa commande publics. Un administrateur connecté la voit toujours : sa page publique est alors
+  un aperçu, sans formulaire. Dès son passage en recensement, la campagne devient publique.
+- Les routes publiques reconnaissent un administrateur connecté quand il fournit un jeton valide (compte actif
+  vérifié en base) ; un jeton absent, invalide, expiré ou d'un client laisse la requête anonyme, sans erreur.
+- Le serveur MCP lit les statistiques de campagne avec son jeton (une campagne en brouillon n'est plus lisible
+  anonymement).
+
 ## [0.14.0] — 2026-10-01
 
 ### Ajouté
