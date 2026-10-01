@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CustomerPortalService } from "./customer-portal.service";
 import { UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
@@ -35,5 +35,15 @@ export class CustomerPortalController {
   @Get("orders/:id")
   getOrder(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
     return this.customerPortalService.getOrder(customerId, orderId);
+  }
+
+  @Post("orders/:id/pay-now")
+  payNow(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
+    return this.customerPortalService.payNow(customerId, orderId);
+  }
+
+  @Post("orders/:id/pay-later")
+  payLater(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
+    return this.customerPortalService.payLater(customerId, orderId);
   }
 }

@@ -447,7 +447,12 @@ export async function getCustomerOrders(): Promise<CustomerOrderSummary[]> {
 export interface CustomerOrderDetail extends CustomerOrderSummary {
   paymentStatus: string;
   fulfillmentStatus: string;
-  payments: Array<{ status: string; amount: string }>;
+  payments: Array<{
+    status: string;
+    amount: string;
+    provider: string;
+    metadata: { paymentLink?: string } | null;
+  }>;
   shipment:
     | (CustomerOrderSummary["shipment"] & {
         trackingUrl: string | null;

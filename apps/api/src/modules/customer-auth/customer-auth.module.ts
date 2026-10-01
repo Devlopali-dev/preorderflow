@@ -6,9 +6,10 @@ import { CustomerPortalService } from "./customer-portal.service";
 import { CustomerAuthGuard } from "./customer-auth.guard";
 import { AuthModule } from "../auth/auth.module";
 import { NotificationModule } from "../notification/notification.module";
+import { PaymentModule } from "../payment/payment.module";
 
 @Module({
-  imports: [AuthModule, NotificationModule],
+  imports: [AuthModule, NotificationModule, PaymentModule],
   controllers: [CustomerAuthController, CustomerPortalController],
   providers: [CustomerAuthService, CustomerPortalService, CustomerAuthGuard],
 })
