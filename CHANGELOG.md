@@ -7,6 +7,23 @@ correctifs.
 
 ## [Non publié]
 
+## [0.12.0] — 2026-10-01
+
+### Modifié
+
+- **Nouveau produit : couleurs choisies par clic sur la palette.** Plus de cases à cocher : un clic sur une
+  couleur l'ajoute aux « couleurs proposées » (affichées au-dessus du bouton de palette), un second la retire.
+  Une couleur absente de la base est créée au premier clic, une couleur désactivée est réactivée. La liste
+  « Désactiver / Supprimer » n'apparaît plus à la création : elle reste dans la modale d'un produit existant,
+  pour les couleurs hors palette de base. La palette est bloquée tant que la liste des couleurs n'est pas chargée.
+- La modale « Nouveau produit » est plus large (`xl`) pour que tout son contenu tienne.
+
+### Corrigé
+
+- API : délai de keep-alive du serveur HTTP porté à 65 s (5 s par défaut dans Node). Une connexion réutilisée
+  au moment où le serveur la fermait échouait en « socket hang up », et peut produire des 502 derrière un
+  reverse proxy (Traefik).
+
 ## [0.11.1] — 2026-10-01
 
 ### Modifié
