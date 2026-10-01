@@ -7,6 +7,16 @@ correctifs.
 
 ## [Non publié]
 
+## [0.12.1] — 2026-10-01
+
+### Modifié
+
+- Nouvelle campagne : les images et le PDF choisis s'affichent en petits aperçus sur une seule ligne, avec
+  un bouton « Retirer » dessous, comme pour un nouveau produit. Les images s'ajoutent au fil des sélections
+  (5 aperçus au maximum, images et PDF confondus : le surplus est écarté avec un message). Le PDF est
+  représenté par une vignette « PDF » avec son nom, la vraie miniature n'étant générée par le serveur
+  qu'à l'envoi.
+
 ## [0.12.0] — 2026-10-01
 
 ### Modifié
