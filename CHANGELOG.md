@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.12.2] — 2026-10-01
+
+### Modifié
+
+- Campagne (création et édition) : un seul champ « Ajouter une image ou un PDF » au lieu de deux. Images et
+  PDF se choisissent ensemble, chaque fichier étant dirigé selon son type. À la création, un second PDF est
+  écarté avec un message (un seul PDF par campagne) et le total reste limité à 5 aperçus.
+
 ## [0.12.1] — 2026-10-01
 
 ### Modifié
