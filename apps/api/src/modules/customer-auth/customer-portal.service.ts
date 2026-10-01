@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
-import { UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
+import { CustomerAddressInputDto, UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
+import { saveShippingAddress } from "../customer/address-book";
 import { assertPaymentChoiceOpen, PaymentChoiceClosedError } from "./payment-choice-rules";
 import { NotificationService } from "../notification/notification.service";
 import { PaymentService } from "../payment/payment.service";
@@ -13,11 +14,30 @@ export class CustomerPortalService {
   ) {}
 
   async getProfile(customerId: string) {
-    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      include: { addresses: { orderBy: { type: "desc" } } },
+    });
     if (!customer) {
       throw new NotFoundException("Client introuvable");
     }
     return customer;
+  }
+
+  // Adresse de livraison du client connecté : toujours celle de son propre compte (identifiant du
+  // jeton), jamais un identifiant d'adresse fourni. Elle remonte dans l'administration.
+  async saveAddress(customerId: string, dto: CustomerAddressInputDto) {
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) {
+      throw new NotFoundException("Client introuvable");
+    }
+    await saveShippingAddress(customer.id, {
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      phone: customer.phone,
+      ...dto,
+    });
+    return this.getProfile(customerId);
   }
 
   async updateProfile(customerId: string, dto: UpdateCustomerProfileDto) {

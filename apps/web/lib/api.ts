@@ -424,6 +424,15 @@ export interface CustomerProfile {
   firstName: string;
   lastName: string;
   phone: string | null;
+  addresses?: Array<{
+    id: string;
+    type: "BILLING" | "SHIPPING";
+    address1: string;
+    address2: string | null;
+    postalCode: string;
+    city: string;
+    country: string;
+  }>;
 }
 
 export async function getCustomerProfile(): Promise<CustomerProfile | null> {

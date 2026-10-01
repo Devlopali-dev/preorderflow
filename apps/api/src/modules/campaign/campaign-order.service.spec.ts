@@ -2,8 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException } from "@nestjs/common";
 
 // vi.mock est hissé en tête du fichier : le mock doit l'être aussi.
-const { findMany } = vi.hoisted(() => ({ findMany: vi.fn() }));
-vi.mock("@preorderflow/database", () => ({ prisma: { productVariant: { findMany } } }));
+const { findMany, addressCount, addressCreateMany } = vi.hoisted(() => ({
+  findMany: vi.fn(),
+  addressCount: vi.fn(),
+  addressCreateMany: vi.fn(),
+}));
+vi.mock("@preorderflow/database", () => ({
+  prisma: {
+    productVariant: { findMany },
+    address: { count: addressCount, createMany: addressCreateMany },
+  },
+}));
 
 import { CampaignOrderService } from "./campaign-order.service";
 import type { CreatePublicOrderDto } from "./dto/create-public-order.dto";
@@ -34,7 +43,16 @@ describe("CampaignOrderService — commande publique", () => {
   );
 
   beforeEach(() => {
-    for (const mock of [findMany, getVisibleBySlugOrId, create, createForOrder]) mock.mockReset();
+    for (const mock of [
+      findMany,
+      getVisibleBySlugOrId,
+      create,
+      createForOrder,
+      addressCount,
+      addressCreateMany,
+    ])
+      mock.mockReset();
+    addressCount.mockResolvedValue(0);
     getVisibleBySlugOrId.mockResolvedValue({
       id: "c1",
       productId: "p1",
@@ -43,6 +61,7 @@ describe("CampaignOrderService — commande publique", () => {
     findMany.mockResolvedValue([{ id: VARIANT_A }]);
     create.mockResolvedValue({
       id: "o1",
+      customerId: "cust1",
       number: "2026-0042",
       currency: "EUR",
       total: { toFixed: (digits: number) => (6).toFixed(digits) },
@@ -72,6 +91,22 @@ describe("CampaignOrderService — commande publique", () => {
       currency: "EUR",
       paymentLink: "https://revolut.me/x?currency=EUR&amount=600",
     });
+  });
+
+  it("enregistre l'adresse dans le carnet du client, sans toucher à un client qui en a déjà une", async () => {
+    await service.create("c1", dto());
+    expect(addressCreateMany).toHaveBeenCalledTimes(1);
+    const rows = addressCreateMany.mock.calls[0]![0].data as Array<{
+      customerId: string;
+      city: string;
+    }>;
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.customerId === "cust1" && r.city === "Paris")).toBe(true);
+
+    addressCreateMany.mockReset();
+    addressCount.mockResolvedValue(2); // carnet déjà rempli
+    await service.create("c1", dto());
+    expect(addressCreateMany).not.toHaveBeenCalled();
   });
 
   it("renvoie null quand aucun lien de paiement n'est configuré", async () => {

@@ -12,9 +12,12 @@ export default async function CustomerProfilePage() {
   return (
     <>
       <CustomerNav />
-      <main className="mx-auto max-w-sm p-8">
+      <main className="mx-auto max-w-md p-8">
         <h1 className="mb-6 text-2xl font-semibold">Mon profil</h1>
-        <ProfileForm profile={profile} apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} />
+        <ProfileForm
+          profile={profile}
+          apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
+        />
       </main>
     </>
   );

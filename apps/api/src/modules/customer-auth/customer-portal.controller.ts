@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CustomerPortalService } from "./customer-portal.service";
-import { UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
+import { CustomerAddressInputDto, UpdateCustomerProfileDto } from "./dto/customer-auth.dto";
 import { CustomerAuthGuard } from "./customer-auth.guard";
 import { CurrentCustomerId } from "./current-customer.decorator";
 import { Public } from "../auth/public.decorator";
@@ -25,6 +25,11 @@ export class CustomerPortalController {
   @Patch()
   updateProfile(@CurrentCustomerId() customerId: string, @Body() dto: UpdateCustomerProfileDto) {
     return this.customerPortalService.updateProfile(customerId, dto);
+  }
+
+  @Put("address")
+  saveAddress(@CurrentCustomerId() customerId: string, @Body() dto: CustomerAddressInputDto) {
+    return this.customerPortalService.saveAddress(customerId, dto);
   }
 
   @Get("orders")

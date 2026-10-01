@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import { authHeader, getAdminToken } from "./helpers";
+import { authHeader, getAdminToken, loginAsAdmin } from "./helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -122,6 +122,12 @@ test("commandes ouvertes : formulaire d'achat, commande réelle et lien pour pay
   ).json();
   expect(after.firstName).toBe(known.firstName);
   expect(after.lastName).toBe(known.lastName);
+  // Son carnet d'adresses non plus : un client qui en a déjà un n'est jamais modifié par un formulaire public.
+  const beforeAddresses = (
+    await (await request.get(`${apiUrl}/api/v1/customers/${known.id}`, { headers: auth })).json()
+  ).addresses;
+  expect(after.addresses).toHaveLength(beforeAddresses.length);
+  expect(after.addresses.some((address: { city: string }) => address.city === "Lyon")).toBe(false);
 
   await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
     headers: auth,
@@ -164,5 +170,66 @@ test("l'API refuse une commande publique tant que les commandes ne sont pas ouve
   expect(res.status()).toBe(400);
   expect((await res.json()).message).toMatch(/pas ouvertes/);
 
+  await cleanup();
+});
+
+test("commande publique d'un nouveau client : son adresse remonte dans l'admin", async ({
+  page,
+  request,
+}) => {
+  const token = await getAdminToken(request);
+  const auth = authHeader(token);
+  const { campaign, cleanup } = await campaignAt(request, token, "A", "COMMANDES_OUVERTES");
+  const email = `nouveau-${Date.now()}-${Math.floor(Math.random() * 1000)}@example.com`;
+
+  await page.goto(`/campaigns/${campaign.slug}`);
+  await page.getByLabel("Quelle quantité souhaitez-vous commander ?").fill("1");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Prénom").fill("Nadia");
+  await page.getByLabel("Nom", { exact: true }).fill("Nouvelle");
+  await page.getByLabel("Adresse", { exact: true }).fill("5 place Bellecour");
+  await page.getByLabel("Complément d'adresse (optionnel)").fill("Bâtiment B");
+  await page.getByLabel("Code postal").fill("69002");
+  await page.getByLabel("Ville").fill("Lyon");
+  await page.getByRole("button", { name: "Commander" }).click();
+  await expect(page.getByText(/Merci, votre commande/)).toBeVisible();
+
+  const customers = await (
+    await request.get(`${apiUrl}/api/v1/customers`, { headers: auth })
+  ).json();
+  const created = customers.find((c: { email: string }) => c.email === email);
+  expect(created).toBeTruthy();
+  const detail = await (
+    await request.get(`${apiUrl}/api/v1/customers/${created.id}`, { headers: auth })
+  ).json();
+  // Carnet d'adresses : livraison et facturation, avec ce que le client a saisi.
+  expect(detail.addresses.map((a: { type: string }) => a.type).sort()).toEqual([
+    "BILLING",
+    "SHIPPING",
+  ]);
+  expect(detail.addresses[0]).toMatchObject({
+    firstName: "Nadia",
+    lastName: "Nouvelle",
+    address1: "5 place Bellecour",
+    address2: "Bâtiment B",
+    postalCode: "69002",
+    city: "Lyon",
+    country: "FR",
+  });
+
+  // Et l'administration l'affiche sur la fiche du client.
+  await loginAsAdmin(page, request);
+  await page.goto("/customers");
+  await page.getByRole("button", { name: "Nadia Nouvelle" }).click();
+  await expect(
+    page.getByRole("dialog").locator('input[value="5 place Bellecour"]').first(),
+  ).toBeVisible();
+
+  for (const order of detail.orders) {
+    await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
+      headers: auth,
+      data: { status: "CANCELLED" },
+    });
+  }
   await cleanup();
 });

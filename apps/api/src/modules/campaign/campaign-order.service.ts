@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
 import { CampaignService } from "./campaign.service";
 import { CreatePublicOrderDto } from "./dto/create-public-order.dto";
+import { saveAddressIfNone } from "../customer/address-book";
 import { OrderService } from "../order/order.service";
 import { PaymentService } from "../payment/payment.service";
 
@@ -61,6 +62,15 @@ export class CampaignOrderService {
       // Formulaire anonyme : il ne doit jamais réécrire la fiche d'un client existant.
       { keepExistingCustomer: true },
     );
+
+    // L'adresse remonte dans le carnet du client (donc dans l'admin), sans jamais modifier un
+    // client qui en a déjà une.
+    await saveAddressIfNone(order.customerId, {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      phone: dto.phone,
+      ...dto.shippingAddress,
+    });
 
     const payment = await this.paymentService.createForOrder(order.id, { provider: "MANUAL" });
     const metadata = payment.metadata as { paymentLink?: string } | null;
