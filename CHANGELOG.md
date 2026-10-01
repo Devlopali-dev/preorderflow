@@ -7,6 +7,22 @@ correctifs.
 
 ## [Non publié]
 
+## [0.15.1] — 2026-10-01
+
+### Ajouté
+
+- **Nettoyage des données de test E2E.** `pnpm db:clean-e2e` (`--dry-run` pour simuler) supprime ce que la
+  suite Playwright laisse dans la base de dev : produits et campagnes à horodatage de test, clients
+  `@example.com` hors clients de démo et leurs commandes, lots de production, couleurs temporaires,
+  notifications, audit des comptes de démo et fichiers uploadés orphelins. Le jeu de démo et les données
+  réelles sont épargnés.
+- La suite lance ce nettoyage seule en fin de passage (`globalTeardown`) ; `E2E_KEEP_DATA=1` garde les données.
+
+### Corrigé
+
+- La base de dev grossissait à chaque passage de la suite (centaines de produits, commandes à 1 Mo), ce qui
+  faisait dépasser leur délai à des tests au hasard.
+
 ## [0.15.0] — 2026-10-01
 
 ### Modifié
