@@ -7,6 +7,31 @@ correctifs.
 
 ## [Non publié]
 
+## [0.7.0] — 2026-10-01
+
+### Ajouté
+
+- Dashboard : la carte « Demandes de recensement » affiche aussi le nombre de personnes et d'exemplaires
+  (`StatCard` accepte une `caption`). L'API expose `interestPeople` et `interestQuantity`.
+- Seed de développement rejouable et complet (commandes, expéditions, couleurs, archives).
+
+### Modifié
+
+- Le compteur de recensement du dashboard ne compte que les campagnes actives ; une campagne archivée
+  n'y entre plus.
+- Modale d'une commande : les actions de statut passent en pied de modale, la section « Statut » vide
+  disparaît. Les cartes du dashboard mènent au groupe exact de `/orders` (ancres `orders-<statut>`).
+- Produits : choisir une couleur dans le select l'ajoute aussitôt ; une couleur créée dans la palette à la
+  création d'un produit est cochée automatiquement.
+
+### Corrigé
+
+- Une commande annulée ou remboursée refuse la création et la confirmation d'un paiement (400, avant toute
+  écriture : le paiement ne passe plus à « payé » sur une commande annulée). Son panneau de paiement est en
+  lecture seule.
+- Le retrait d'une variante est enfin visible dans le tableau des produits (la règle `.table tbody td`
+  écrasait l'indentation Tailwind ; classe `.table-indent` du design system).
+
 ## [0.6.1] — 2026-10-01
 
 ### Corrigé
