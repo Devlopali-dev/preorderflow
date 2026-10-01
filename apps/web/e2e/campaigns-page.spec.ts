@@ -179,3 +179,55 @@ test("les archives sont repliées, en lecture seule, réactivables et supprimabl
   await expect(row).toHaveCount(0);
   expect((await request.get(`${apiUrl}/api/v1/campaigns/${campaign.id}`)).status()).toBe(404);
 });
+
+test("nouvelle campagne : images et PDF en petits aperçus sur une ligne, bouton Retirer dessous, 5 au maximum", async ({
+  page,
+  request,
+}) => {
+  await loginAsAdmin(page, request);
+  const png = (name: string) => ({ name, mimeType: "image/png", buffer: TINY_PNG });
+  // Le PDF n'est pas envoyé (la campagne n'est pas créée) : un contenu minimal suffit.
+  const pdf = {
+    name: "dossier.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.4\n"),
+  };
+
+  await page.goto("/campaigns");
+  await page.getByRole("button", { name: "Nouvelle campagne" }).click();
+  const dialog = page.getByRole("dialog");
+  const images = dialog.getByText("Ajouter une image").locator("..").locator("input");
+  const pdfInput = dialog.getByText("Ajouter un PDF").locator("..").locator("input");
+
+  await images.setInputFiles(["a", "b", "c"].map((n) => png(`${n}.png`)));
+  await pdfInput.setInputFiles(pdf);
+  await expect(dialog.getByText("Aperçus (4/5)")).toBeVisible();
+
+  // Trois images et le PDF : une seule ligne, chaque aperçu est petit, Retirer en dessous.
+  const previews = dialog.getByRole("img", { name: /^Aperçu / });
+  await expect(previews).toHaveCount(4);
+  const boxes = await Promise.all([0, 1, 2, 3].map((i) => previews.nth(i).boundingBox()));
+  expect(new Set(boxes.map((box) => Math.round(box!.y))).size).toBe(1);
+  expect(boxes.every((box) => box!.width <= 96)).toBe(true);
+  const retirer = await dialog.getByRole("button", { name: "Retirer l'image a.png" }).boundingBox();
+  expect(retirer!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height - 1);
+  await expect(dialog.getByRole("img", { name: "Aperçu du PDF dossier.pdf" })).toContainText("PDF");
+
+  // Un seul PDF : le champ se bloque ; cinq aperçus au plus, le surplus est écarté avec un message.
+  await expect(pdfInput).toBeDisabled();
+  await images.setInputFiles(["d", "e", "f"].map((n) => png(`${n}.png`)));
+  await expect(dialog.getByText("Aperçus (5/5)")).toBeVisible();
+  await expect(dialog.getByText(/5 aperçus au maximum/)).toBeVisible();
+  await expect(images).toBeDisabled();
+
+  // Retirer libère une place, y compris celle du PDF.
+  await dialog.getByRole("button", { name: "Retirer l'image d.png" }).click();
+  await expect(dialog.getByText("Aperçus (4/5)")).toBeVisible();
+  await expect(images).toBeEnabled();
+  await dialog.getByRole("button", { name: "Retirer le PDF dossier.pdf" }).click();
+  await expect(dialog.getByText("Aperçus (3/5)")).toBeVisible();
+  await expect(pdfInput).toBeEnabled();
+  await expect(dialog.getByRole("img", { name: /^Aperçu du PDF/ })).toHaveCount(0);
+
+  await dialog.getByRole("button", { name: "Annuler" }).click();
+});

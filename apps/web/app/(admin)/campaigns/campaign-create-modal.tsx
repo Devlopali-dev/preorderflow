@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Product } from "@/lib/api";
@@ -57,6 +57,38 @@ export function CampaignCreateModal({
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState(0);
   const [pdfUploaded, setPdfUploaded] = useState(false);
+
+  const mediaCount = images.length + (pdf ? 1 : 0);
+
+  // Aperçus des images choisies : des URL locales, libérées dès que la liste change.
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const urls = images.map((file) => URL.createObjectURL(file));
+    setPreviewUrls(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [images]);
+
+  // Au plus 5 aperçus (images + PDF) : les fichiers en trop sont écartés, avec un message.
+  function handlePickImages(e: ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const room = MAX_MEDIA - mediaCount;
+    setImages((current) => [...current, ...picked.slice(0, room)]);
+    setError(
+      picked.length > room
+        ? `Une campagne accepte ${MAX_MEDIA} aperçus au maximum (images et PDF) : les fichiers en trop ont été écartés.`
+        : null,
+    );
+  }
+
+  function handlePickPdf(e: ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (picked) {
+      setPdf(picked);
+      setError(null);
+    }
+  }
 
   function handleSelectProduct(e: ChangeEvent<HTMLSelectElement>) {
     const product = products.find((p) => p.id === e.target.value);
@@ -166,6 +198,7 @@ export function CampaignCreateModal({
       isOpen
       onClose={onClose}
       title="Nouvelle campagne"
+      size="lg"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -256,10 +289,8 @@ export function CampaignCreateModal({
                 type="file"
                 multiple
                 accept="image/jpeg,image/png,image/webp"
-                disabled={uploadedImages > 0}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setImages(Array.from(e.target.files ?? []))
-                }
+                disabled={created || mediaCount >= MAX_MEDIA}
+                onChange={handlePickImages}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -267,11 +298,54 @@ export function CampaignCreateModal({
               <input
                 type="file"
                 accept="application/pdf"
-                disabled={pdfUploaded}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setPdf(e.target.files?.[0] ?? null)}
+                disabled={created || Boolean(pdf) || mediaCount >= MAX_MEDIA}
+                onChange={handlePickPdf}
               />
             </label>
           </div>
+          {mediaCount > 0 && (
+            // Petits aperçus sur une seule ligne, bouton Retirer dessous (comme pour un produit).
+            <ul className="flex flex-nowrap gap-3">
+              {images.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="flex flex-col items-center gap-1">
+                  <img
+                    src={previewUrls[index]}
+                    alt={`Aperçu ${file.name}`}
+                    className="h-20 w-20 rounded object-cover"
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={index < uploadedImages}
+                    aria-label={`Retirer l'image ${file.name}`}
+                    onClick={() => setImages((current) => current.filter((_, i) => i !== index))}
+                  >
+                    Retirer
+                  </Button>
+                </li>
+              ))}
+              {pdf && (
+                <li className="flex flex-col items-center gap-1">
+                  <div
+                    role="img"
+                    aria-label={`Aperçu du PDF ${pdf.name}`}
+                    title={pdf.name}
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded bg-bg-subtle p-1 text-center text-xs"
+                  >
+                    <strong>PDF</strong>
+                    <span className="w-full truncate">{pdf.name}</span>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    disabled={pdfUploaded}
+                    aria-label={`Retirer le PDF ${pdf.name}`}
+                    onClick={() => setPdf(null)}
+                  >
+                    Retirer
+                  </Button>
+                </li>
+              )}
+            </ul>
+          )}
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
