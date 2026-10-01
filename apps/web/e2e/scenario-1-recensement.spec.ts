@@ -11,7 +11,7 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
   // Produit dédié à ce scénario, avec deux couleurs de la palette : le test ne
   // dépend pas de l'état des variantes du seed (qu'on peut désactiver à la main).
   const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
-    .filter((c: { active: boolean }) => c.active)
+    .filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise")
     .slice(0, 2) as Array<{ id: string; name: string }>;
   expect(colors).toHaveLength(2);
   const [first, second] = colors;

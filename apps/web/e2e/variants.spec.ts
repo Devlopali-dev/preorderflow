@@ -17,7 +17,7 @@ async function setup(request: APIRequestContext, label: string) {
   const auth = authHeader(await getAdminToken(request));
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
-    .filter((c: { active: boolean }) => c.active)
+    .filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise")
     .slice(0, 2) as Array<{ id: string; name: string }>;
   const product = await (
     await request.post(`${apiUrl}/api/v1/products`, {

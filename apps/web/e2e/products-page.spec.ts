@@ -22,7 +22,9 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
   // Deux couleurs actives de la palette, quelles qu'elles soient.
   const [first, second] = (
     await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json()
-  ).filter((c: { active: boolean }) => c.active) as Array<{ name: string }>;
+  ).filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise") as Array<{
+    name: string;
+  }>;
 
   await page.goto("/inventory");
   await page.getByRole("button", { name: "Nouveau produit" }).click();
@@ -140,39 +142,58 @@ test("une couleur inactive est en italique avec un badge d'avertissement", async
   }
 });
 
-test("la palette de base pré-remplit la couleur et une couleur créée peut être supprimée", async ({
+test("la palette de base s'active et se retire en un clic, et la couleur apparaît au-dessus du bouton de palette", async ({
   page,
   request,
 }) => {
   const token = await loginAsAdmin(page, request);
   const auth = authHeader(token);
+  const turquoise = async () =>
+    (
+      (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json()) as Array<{
+        id: string;
+        name: string;
+        active: boolean;
+      }>
+    ).find((c) => c.name === "Turquoise");
 
   // État de départ propre si un run précédent a été interrompu.
-  const colors = await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json();
-  const leftover = colors.find((c: { name: string }) => c.name === "Turquoise");
+  const leftover = await turquoise();
   if (leftover) await request.delete(`${apiUrl}/api/v1/colors/${leftover.id}`, { headers: auth });
 
   await openPaletteFromNewProductModal(page);
-
-  // Des couleurs au-delà de bleu / noir / rouge sont proposées.
   const presets = page.getByRole("group", { name: "Palette de base" });
+  const button = presets.getByRole("button", { name: /Turquoise/ });
+
+  // Des couleurs au-delà de bleu / noir / rouge sont proposées, non enfoncées.
   await expect(presets.getByRole("button")).not.toHaveCount(3);
-  await expect(presets.getByRole("button", { name: /Turquoise/ })).toBeEnabled();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
 
-  // Une couleur déjà dans la palette n'est plus proposée.
-  await expect(presets.getByRole("button", { name: /Rouge/ })).toBeDisabled();
+  // Un clic ajoute la couleur : bouton enfoncé, cochée d'office, et listée au-dessus du
+  // bouton « Masquer la palette », sans passer par le champ « Nouvelle couleur ».
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  const checkbox = page.getByRole("checkbox", { name: "Turquoise", exact: true });
+  await expect(checkbox).toBeChecked();
+  const checkboxBox = await checkbox.boundingBox();
+  const toggleBox = await page
+    .getByRole("button", { name: "Masquer la palette de couleurs" })
+    .boundingBox();
+  expect(checkboxBox!.y).toBeLessThan(toggleBox!.y);
+  expect((await turquoise())?.active).toBe(true);
 
-  await presets.getByRole("button", { name: /Turquoise/ }).click();
-  await expect(page.getByPlaceholder("Nom (ex : Rouge)")).toHaveValue("Turquoise");
-  await page.getByRole("button", { name: "Ajouter", exact: true }).click();
+  // Un second clic la retire (supprimée : aucun produit ne l'utilise).
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("checkbox", { name: "Turquoise", exact: true })).toHaveCount(0);
+  expect(await turquoise()).toBeUndefined();
 
-  // Supprimer : confirmation demandée, puis la couleur disparaît.
-  await page.getByRole("button", { name: "Supprimer la couleur Turquoise" }).click();
-  await page.getByRole("button", { name: "Supprimer", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Supprimer la couleur Turquoise" })).toHaveCount(0);
-
-  // Une couleur utilisée ne peut pas être supprimée.
-  await expect(page.getByRole("button", { name: "Supprimer la couleur Rouge" })).toBeDisabled();
+  // Une couleur utilisée par un produit se désactive au lieu d'être supprimée : on le
+  // lit sur l'infobulle, sans toucher à la couleur partagée du seed.
+  await expect(presets.getByRole("button", { name: /Rouge/ })).toHaveAttribute(
+    "title",
+    /utilisée par un produit/,
+  );
 });
 
 test("les lignes de variantes sont réellement décalées par rapport à celle du produit", async ({
@@ -234,7 +255,7 @@ test("choisir une couleur dans la modale d'un produit l'ajoute aussitôt, sans b
     })
   ).json();
   const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
-    .filter((c: { active: boolean }) => c.active)
+    .filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise")
     .slice(0, 1) as Array<{ id: string; name: string }>;
   const [color] = colors;
 
