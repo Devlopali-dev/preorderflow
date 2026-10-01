@@ -3,15 +3,15 @@ import { authHeader, getAdminToken } from "./helpers";
 import { loginAsCustomer } from "./magic-link";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-const CUSTOMER_EMAIL = "client3@example.com";
 
 // Commande en brouillon pour un client du seed (le même nom évite de renommer le client).
-async function draftOrderFor(request: APIRequestContext, token: string) {
+// Un client par test : les tests tournent en parallèle et un lien magique est à usage unique.
+async function draftOrderFor(request: APIRequestContext, token: string, email: string) {
   const auth = authHeader(token);
   const customers = await (
     await request.get(`${apiUrl}/api/v1/customers`, { headers: auth })
   ).json();
-  const customer = customers.find((c: { email: string }) => c.email === CUSTOMER_EMAIL);
+  const customer = customers.find((c: { email: string }) => c.email === email);
   const products = await (await request.get(`${apiUrl}/api/v1/products`, { headers: auth })).json();
   const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
 
@@ -19,7 +19,7 @@ async function draftOrderFor(request: APIRequestContext, token: string) {
     await request.post(`${apiUrl}/api/v1/orders`, {
       headers: auth,
       data: {
-        customerEmail: CUSTOMER_EMAIL,
+        customerEmail: email,
         customerFirstName: customer.firstName,
         customerLastName: customer.lastName,
         items: [
@@ -55,9 +55,10 @@ test("« Oui, payer maintenant » affiche le lien Revolut avec le montant et met
   request,
 }) => {
   const token = await getAdminToken(request);
-  const { order, read, cancel } = await draftOrderFor(request, token);
+  const email = "client4@example.com";
+  const { order, read, cancel } = await draftOrderFor(request, token, email);
 
-  await loginAsCustomer(page, CUSTOMER_EMAIL);
+  await loginAsCustomer(page, email);
   await page.goto(`/mon-compte/commandes/${order.id}`);
   await expect(page.getByText("Souhaitez-vous payer directement ?")).toBeVisible();
   await page.getByRole("button", { name: "Oui, payer maintenant" }).click();
@@ -91,9 +92,10 @@ test("« Non, plus tard » prévient qu'un e-mail de validation parviendra, sans
   request,
 }) => {
   const token = await getAdminToken(request);
-  const { order, read, cancel } = await draftOrderFor(request, token);
+  const email = "client5@example.com";
+  const { order, read, cancel } = await draftOrderFor(request, token, email);
 
-  await loginAsCustomer(page, CUSTOMER_EMAIL);
+  await loginAsCustomer(page, email);
   await page.goto(`/mon-compte/commandes/${order.id}`);
   await page.getByRole("button", { name: "Non, plus tard" }).click();
   await expect(

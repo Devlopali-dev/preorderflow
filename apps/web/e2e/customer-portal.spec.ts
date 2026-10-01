@@ -8,14 +8,14 @@ test("un client peut se connecter par magic link et voir ses commandes, isolées
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
   // 1. Demande de lien (on note les liens déjà journalisés pour reconnaître le nouveau)
-  const knownTokens = new Set(readMagicLinkTokens());
+  const knownTokens = new Set(readMagicLinkTokens("client3@example.com"));
   await page.goto("/mon-compte/connexion");
   await page.getByLabel("Email").fill("client3@example.com");
   await page.getByRole("button", { name: "Recevoir mon lien de connexion" }).click();
   await expect(page.getByText(/Vérifiez vos emails/)).toBeVisible();
 
   // 2. Récupération du token (boîte mail de test) et vérification
-  const token = await waitForNewMagicLinkToken(knownTokens);
+  const token = await waitForNewMagicLinkToken(knownTokens, "client3@example.com");
   await page.goto(`/mon-compte/verifier?token=${token}`);
   await expect(page).toHaveURL(/\/mon-compte$/);
   await expect(page.getByRole("heading", { name: "Mes commandes" })).toBeVisible();

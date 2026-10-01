@@ -36,10 +36,21 @@ function apiLogSources(): Array<() => string> {
 
 // Tous les liens magiques journalisés, dans l'ordre, depuis la première source
 // disponible qui en contient.
-export function readMagicLinkTokens(): string[] {
+//
+// `email` restreint aux liens envoyés à ce destinataire : plusieurs tests se
+// connectent en parallèle, et un lien est à usage unique — prendre « le dernier
+// lien » du journal pouvait récupérer celui d'un autre test.
+export function readMagicLinkTokens(email?: string): string[] {
   for (const readLog of apiLogSources()) {
     try {
-      const tokens = [...readLog().matchAll(/token=([A-Za-z0-9._-]+)/g)].map((m) => m[1]);
+      // Un message journalisé commence par « [email:console] to=<destinataire> ».
+      const blocks = readLog().split("[email:console]").slice(1);
+      const wanted = email
+        ? blocks.filter((block) => block.trimStart().startsWith(`to=${email} `))
+        : blocks;
+      const tokens = wanted.flatMap((block) =>
+        [...block.matchAll(/token=([A-Za-z0-9._-]+)/g)].map((m) => m[1]!),
+      );
       if (tokens.length > 0) return tokens;
     } catch {
       // Source indisponible (pas de Docker, fichier absent) : essayer la suivante.
@@ -51,10 +62,13 @@ export function readMagicLinkTokens(): string[] {
 // Le log s'écrit après la réponse de l'API (et `docker compose logs` a un léger
 // retard) : lire « le dernier lien » tout de suite risquait de prendre un
 // ancien lien déjà consommé. On attend qu'un lien absent de `known` apparaisse.
-export async function waitForNewMagicLinkToken(known: Set<string>): Promise<string> {
+export async function waitForNewMagicLinkToken(
+  known: Set<string>,
+  email?: string,
+): Promise<string> {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
-    const fresh = readMagicLinkTokens().filter((token) => !known.has(token));
+    const fresh = readMagicLinkTokens(email).filter((token) => !known.has(token));
     if (fresh.length > 0) return fresh[fresh.length - 1]!;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
@@ -66,12 +80,12 @@ export async function waitForNewMagicLinkToken(known: Set<string>): Promise<stri
 // Connexion d'un client du seed par lien magique : lit le lien dans la « boîte
 // mail » de test (logs de l'API, fournisseur e-mail « console »).
 export async function loginAsCustomer(page: Page, email: string): Promise<void> {
-  const knownTokens = new Set(readMagicLinkTokens());
+  const knownTokens = new Set(readMagicLinkTokens(email));
   await page.goto("/mon-compte/connexion");
   await page.getByLabel("Email").fill(email);
   await page.getByRole("button", { name: "Recevoir mon lien de connexion" }).click();
   await expect(page.getByText(/Vérifiez vos emails/)).toBeVisible();
-  const token = await waitForNewMagicLinkToken(knownTokens);
+  const token = await waitForNewMagicLinkToken(knownTokens, email);
   await page.goto(`/mon-compte/verifier?token=${token}`);
   await expect(page).toHaveURL(/\/mon-compte$/);
 }
