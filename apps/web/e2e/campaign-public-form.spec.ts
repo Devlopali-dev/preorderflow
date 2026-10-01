@@ -127,7 +127,11 @@ test("commandes ouvertes : formulaire d'achat, commande réelle et lien pour pay
     await (await request.get(`${apiUrl}/api/v1/customers/${known.id}`, { headers: auth })).json()
   ).addresses;
   expect(after.addresses).toHaveLength(beforeAddresses.length);
-  expect(after.addresses.some((address: { city: string }) => address.city === "Lyon")).toBe(false);
+  expect(
+    after.addresses.some(
+      (address: { address1: string }) => address.address1 === "12 rue des Lilas",
+    ),
+  ).toBe(false);
 
   await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
     headers: auth,
@@ -221,9 +225,7 @@ test("commande publique d'un nouveau client : son adresse remonte dans l'admin",
   await loginAsAdmin(page, request);
   await page.goto("/customers");
   await page.getByRole("button", { name: "Nadia Nouvelle" }).click();
-  await expect(
-    page.getByRole("dialog").locator('input[value="5 place Bellecour"]').first(),
-  ).toBeVisible();
+  await expect(page.getByRole("dialog").getByText(/5 place Bellecour/)).toBeVisible();
 
   for (const order of detail.orders) {
     await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
