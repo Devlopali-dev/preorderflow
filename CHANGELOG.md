@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.11.1] — 2026-10-01
+
+### Modifié
+
+- Photos d'un produit : petits aperçus sur une seule ligne, avec le bouton « Retirer » (création) ou
+  « Supprimer » (édition) sous chaque image. À la création, les photos choisies s'affichent en aperçu au lieu
+  d'un nom de fichier.
+
 ## [0.11.0] — 2026-10-01
 
 ### Ajouté
