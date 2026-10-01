@@ -189,7 +189,14 @@ jobs:
             web:
               ports: ["3200:3000"]
           EOF
-          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300
+          # Une seconde tentative : le démon BuildKit des runners GitHub coupe parfois sa connexion en plein build
+          # (« failed to receive status: rpc error ... EOF »), sans rapport avec le code. Un vrai échec se reproduit.
+          for attempt in 1 2; do
+            docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300 && break
+            if [ "$attempt" -eq 2 ]; then exit 1; fi
+            echo "Échec du build (tentative $attempt), nouvelle tentative..."
+            docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env down -v || true
+          done
 
       - name: Smoke test
         run: |
