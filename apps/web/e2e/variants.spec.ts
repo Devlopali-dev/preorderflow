@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import { authHeader, getAdminToken } from "./helpers";
+import { authHeader, getAdminToken, isStableColor } from "./helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -17,7 +17,7 @@ async function setup(request: APIRequestContext, label: string) {
   const auth = authHeader(await getAdminToken(request));
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
-    .filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise")
+    .filter(isStableColor)
     .slice(0, 2) as Array<{ id: string; name: string }>;
   const product = await (
     await request.post(`${apiUrl}/api/v1/products`, {

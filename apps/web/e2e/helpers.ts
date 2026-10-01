@@ -77,3 +77,15 @@ export async function payOrder(
   });
   if (!confirmed.ok()) throw new Error(`Confirmation impossible (${confirmed.status()})`);
 }
+
+// Couleurs créées puis supprimées par des tests qui tournent en parallèle
+// (palette, couleur inactive ou « d'office ») : les autres tests ne doivent pas
+// les choisir, elles peuvent disparaître en cours de route.
+const TEMPORARY_COLORS = /^(Auto|Inactive)-\d+/;
+export const VOLATILE_COLORS = ["Turquoise", "Bordeaux"];
+
+export function isStableColor(color: { active: boolean; name: string }): boolean {
+  return (
+    color.active && !VOLATILE_COLORS.includes(color.name) && !TEMPORARY_COLORS.test(color.name)
+  );
+}

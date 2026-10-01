@@ -1,5 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
-import { authHeader, loginAsAdmin } from "./helpers";
+import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { authHeader, isStableColor, loginAsAdmin } from "./helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -19,10 +19,13 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
   const sku = `UI-${stamp}`;
   const name = `Produit UI ${stamp}`;
 
-  // Deux couleurs actives de la palette, quelles qu'elles soient.
+  // Deux couleurs actives de la palette : les DEUX DERNIÈRES, car variants.spec
+  // désactive temporairement les premières, en parallèle.
   const [first, second] = (
     await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json()
-  ).filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise") as Array<{
+  )
+    .filter(isStableColor)
+    .slice(-2) as Array<{
     name: string;
   }>;
 
@@ -43,10 +46,16 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
   });
 
   // Les couleurs n'apparaissent que si le produit a des variantes.
-  await expect(page.getByRole("checkbox", { name: first.name, exact: true })).toHaveCount(0);
+  await expect(page.getByRole("group", { name: "Palette de couleurs" })).toHaveCount(0);
   await page.getByRole("checkbox", { name: "Ce produit a des variantes" }).check();
-  await page.getByRole("checkbox", { name: first.name, exact: true }).check();
-  await page.getByRole("checkbox", { name: second.name, exact: true }).check();
+  // Pas de cases à cocher : un clic sur la palette ajoute la couleur aux couleurs proposées.
+  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
+  const palette = page.getByRole("group", { name: "Palette de couleurs" });
+  await palette.getByRole("button", { name: first.name }).click();
+  await palette.getByRole("button", { name: second.name }).click();
+  const proposed = page.getByRole("list", { name: "Couleurs proposées" });
+  await expect(proposed).toContainText(first.name);
+  await expect(proposed).toContainText(second.name);
 
   // Plus de champ lien ni PDF : la photo se téléverse, le PDF n'existe pas.
   await expect(page.getByLabel("URL de la photo")).toHaveCount(0);
@@ -87,6 +96,17 @@ async function openPaletteFromNewProductModal(page: Page) {
   await page.goto("/inventory");
   await page.getByRole("button", { name: "Nouveau produit" }).click();
   await page.getByRole("checkbox", { name: "Ce produit a des variantes" }).check();
+  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
+}
+
+// Palette de la modale d'un produit existant (liste de gestion : désactiver, supprimer).
+async function openPaletteFromProductModal(page: Page, request: APIRequestContext, token: string) {
+  const products = await (
+    await request.get(`${apiUrl}/api/v1/products`, { headers: authHeader(token) })
+  ).json();
+  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
+  await page.goto("/inventory");
+  await page.getByRole("button", { name: product.name, exact: true }).click();
   await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
 }
 
@@ -134,7 +154,7 @@ test("une couleur inactive est en italique avec un badge d'avertissement", async
   });
 
   try {
-    await openPaletteFromNewProductModal(page);
+    await openPaletteFromProductModal(page, request, token);
     const row = page.locator("li", { hasText: name });
     await expect(row.locator("span.italic", { hasText: name })).toBeVisible();
     await expect(row.locator(".badge-warning", { hasText: "inactive" })).toBeVisible();
@@ -143,51 +163,42 @@ test("une couleur inactive est en italique avec un badge d'avertissement", async
   }
 });
 
-test("la palette de base s'active et se retire en un clic, et la couleur apparaît au-dessus du bouton de palette", async ({
+test("modale d'un produit existant : la palette de base ajoute et retire une couleur en un clic", async ({
   page,
   request,
 }) => {
   const token = await loginAsAdmin(page, request);
   const auth = authHeader(token);
-  const turquoise = async () =>
+  const bordeaux = async () =>
     (
       (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json()) as Array<{
         id: string;
         name: string;
         active: boolean;
       }>
-    ).find((c) => c.name === "Turquoise");
+    ).find((c) => c.name === "Bordeaux");
 
   // État de départ propre si un run précédent a été interrompu.
-  const leftover = await turquoise();
+  const leftover = await bordeaux();
   if (leftover) await request.delete(`${apiUrl}/api/v1/colors/${leftover.id}`, { headers: auth });
 
-  await openPaletteFromNewProductModal(page);
+  await openPaletteFromProductModal(page, request, token);
   const presets = page.getByRole("group", { name: "Palette de base" });
-  const button = presets.getByRole("button", { name: /Turquoise/ });
+  const button = presets.getByRole("button", { name: /Bordeaux/ });
 
   // Des couleurs au-delà de bleu / noir / rouge sont proposées, non enfoncées.
   await expect(presets.getByRole("button")).not.toHaveCount(3);
   await expect(button).toHaveAttribute("aria-pressed", "false");
 
-  // Un clic ajoute la couleur : bouton enfoncé, cochée d'office, et listée au-dessus du
-  // bouton « Masquer la palette », sans passer par le champ « Nouvelle couleur ».
+  // Un clic ajoute la couleur à la palette, sans passer par le champ « Nouvelle couleur ».
   await button.click();
   await expect(button).toHaveAttribute("aria-pressed", "true");
-  const checkbox = page.getByRole("checkbox", { name: "Turquoise", exact: true });
-  await expect(checkbox).toBeChecked();
-  const checkboxBox = await checkbox.boundingBox();
-  const toggleBox = await page
-    .getByRole("button", { name: "Masquer la palette de couleurs" })
-    .boundingBox();
-  expect(checkboxBox!.y).toBeLessThan(toggleBox!.y);
-  expect((await turquoise())?.active).toBe(true);
+  expect((await bordeaux())?.active).toBe(true);
 
   // Un second clic la retire (supprimée : aucun produit ne l'utilise).
   await button.click();
   await expect(button).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByRole("checkbox", { name: "Turquoise", exact: true })).toHaveCount(0);
-  expect(await turquoise()).toBeUndefined();
+  expect(await bordeaux()).toBeUndefined();
 
   // Une couleur utilisée par un produit se désactive au lieu d'être supprimée : on le
   // lit sur l'infobulle, sans toucher à la couleur partagée du seed.
@@ -195,6 +206,56 @@ test("la palette de base s'active et se retire en un clic, et la couleur appara�
     "title",
     /utilisée par un produit/,
   );
+});
+
+test("création d'un produit : un clic sur la palette ajoute la couleur aux couleurs proposées, sans case à cocher", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const auth = authHeader(token);
+  const colorOf = async () =>
+    (
+      (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json()) as Array<{
+        id: string;
+        name: string;
+        active: boolean;
+      }>
+    ).find((c) => c.name === "Turquoise");
+  const leftover = await colorOf();
+  if (leftover) await request.delete(`${apiUrl}/api/v1/colors/${leftover.id}`, { headers: auth });
+
+  await openPaletteFromNewProductModal(page);
+  // Plus de cases à cocher pour les couleurs, ni de liste « Activer / Supprimer ».
+  await expect(page.getByRole("checkbox")).toHaveCount(1); // seule reste « a des variantes »
+  await expect(page.getByRole("button", { name: /^Supprimer la couleur/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Désactiver" })).toHaveCount(0);
+
+  const palette = page.getByRole("group", { name: "Palette de couleurs" });
+  const button = palette.getByRole("button", { name: /Turquoise/ });
+  const proposed = page.getByRole("list", { name: "Couleurs proposées" });
+
+  // Un clic crée la couleur si besoin et l'ajoute aux couleurs proposées, au-dessus du bouton de palette.
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(proposed).toContainText("Turquoise");
+  const listBox = await proposed.boundingBox();
+  const toggleBox = await page
+    .getByRole("button", { name: "Masquer la palette de couleurs" })
+    .boundingBox();
+  expect(listBox!.y).toBeLessThan(toggleBox!.y);
+  expect((await colorOf())?.active).toBe(true);
+
+  // Un second clic la retire du produit, sans la supprimer de la palette.
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    page.getByRole("list", { name: "Couleurs proposées" }).getByText("Turquoise"),
+  ).toHaveCount(0);
+  expect((await colorOf())?.active).toBe(true);
+
+  const created = await colorOf();
+  await request.delete(`${apiUrl}/api/v1/colors/${created!.id}`, { headers: auth });
 });
 
 test("les lignes de variantes sont réellement décalées par rapport à celle du produit", async ({
@@ -231,8 +292,8 @@ test("une couleur créée via la palette est sélectionnée d'office à la créa
   await page.getByRole("button", { name: "Ajouter", exact: true }).click();
 
   // Cochée sans autre geste ; les couleurs existantes, elles, restent décochées.
-  await expect(page.getByRole("checkbox", { name: colorName, exact: true })).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: "Noir", exact: true })).not.toBeChecked();
+  await expect(page.getByRole("list", { name: "Couleurs proposées" })).toContainText(colorName);
+  await expect(page.getByRole("list", { name: "Couleurs proposées" })).not.toContainText("Noir");
 
   // Nettoyage : la couleur n'est utilisée par aucun produit.
   const colors = await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json();
@@ -256,8 +317,8 @@ test("choisir une couleur dans la modale d'un produit l'ajoute aussitôt, sans b
     })
   ).json();
   const colors = (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json())
-    .filter((c: { active: boolean; name: string }) => c.active && c.name !== "Turquoise")
-    .slice(0, 1) as Array<{ id: string; name: string }>;
+    .filter(isStableColor)
+    .slice(-1) as Array<{ id: string; name: string }>;
   const [color] = colors;
 
   await page.goto("/inventory");

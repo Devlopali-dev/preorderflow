@@ -7,8 +7,7 @@ import type { Color } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { MAX_PRODUCT_PHOTOS } from "@/lib/product-photos";
 import { slugify } from "@/lib/slugify";
-import { ColorLabel } from "@/components/color-label";
-import { ColorsManager } from "@/components/colors-manager";
+import { ProductColorPicker } from "@/components/product-color-picker";
 
 async function failure(res: Response): Promise<Error> {
   const body = await res.json().catch(() => null);
@@ -27,6 +26,7 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   const [photos, setPhotos] = useState<File[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
   const [colors, setColors] = useState<Color[]>([]);
+  const [colorsLoaded, setColorsLoaded] = useState(false);
   const [selectedColorIds, setSelectedColorIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +37,6 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [uploadedPhotos, setUploadedPhotos] = useState(0);
   const [addedColorIds, setAddedColorIds] = useState<string[]>([]);
-
-  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Palette globale (toutes les couleurs : le gestionnaire voit aussi les
   // inactives), rechargée quand on la modifie ici. Une couleur cochée puis
@@ -68,14 +66,14 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
       ]);
     } catch {
       setColors([]);
+    } finally {
+      setColorsLoaded(true);
     }
   }, [apiUrl]);
 
   useEffect(() => {
     void loadColors();
   }, [loadColors]);
-
-  const activeColors = colors.filter((color) => color.active);
 
   function toggleColor(colorId: string) {
     setSelectedColorIds((current) =>
@@ -176,6 +174,7 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
       isOpen
       onClose={onClose}
       title="Nouveau produit"
+      size="xl"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -276,38 +275,21 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
           Ce produit a des variantes (couleurs)
         </label>
         {hasVariants && (
-          <fieldset className="flex flex-col gap-2 text-sm">
-            <legend className="mb-1">Couleurs proposées</legend>
-            {activeColors.length === 0 ? (
-              <p className="text-xs opacity-60">
-                Aucune couleur active : ajoutez-en dans la palette ci-dessous.
-              </p>
-            ) : (
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {activeColors.map((color) => (
-                  <label key={color.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedColorIds.includes(color.id)}
-                      disabled={addedColorIds.includes(color.id)}
-                      onChange={() => toggleColor(color.id)}
-                    />
-                    <ColorLabel name={color.name} hex={color.hex} />
-                  </label>
-                ))}
-              </div>
-            )}
-            <Button
-              variant="secondary"
-              aria-expanded={paletteOpen}
-              onClick={() => setPaletteOpen((open) => !open)}
-            >
-              {paletteOpen ? "Masquer la palette de couleurs" : "Gérer la palette de couleurs"}
-            </Button>
-            {paletteOpen && (
-              <ColorsManager colors={colors} apiUrl={apiUrl} onChanged={loadColors} />
-            )}
-          </fieldset>
+          <ProductColorPicker
+            colors={colors}
+            selectedColorIds={selectedColorIds}
+            lockedColorIds={addedColorIds}
+            apiUrl={apiUrl}
+            loaded={colorsLoaded}
+            disabled={saving}
+            onToggle={toggleColor}
+            onSelect={(colorId) =>
+              setSelectedColorIds((current) =>
+                current.includes(colorId) ? current : [...current, colorId],
+              )
+            }
+            onChanged={loadColors}
+          />
         )}
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>

@@ -156,7 +156,9 @@ test("les cartes du dashboard mènent au groupe exact de la page commandes", asy
   for (const { card, anchor } of cases) {
     await page.goto("/dashboard");
     await page.getByRole("link", { name: new RegExp(card) }).click();
-    await expect(page).toHaveURL(new RegExp(`/orders#${anchor}$`));
+    // La première visite d'une route déclenche sa compilation par le serveur de dev : on
+    // laisse plus de 5 s à la navigation.
+    await expect(page).toHaveURL(new RegExp(`/orders#${anchor}$`), { timeout: 20_000 });
     await expect(page.locator(`#${anchor}`)).toBeInViewport();
   }
 

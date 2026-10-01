@@ -96,6 +96,15 @@ test("à la création d'un produit, 3 photos au maximum : les fichiers en trop s
   await page.getByLabel("SKU").fill(sku);
   await page.getByLabel("Prix").fill("4");
 
+  // Modale assez large pour que tout le contenu y tienne, sans défilement horizontal.
+  const dialog = page.getByRole("dialog");
+  const dialogBox = await dialog.boundingBox();
+  expect(dialogBox!.width).toBeGreaterThanOrEqual(760);
+  await page.getByRole("checkbox", { name: "Ce produit a des variantes" }).check();
+  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
+  expect(await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.getByRole("checkbox", { name: "Ce produit a des variantes" }).uncheck();
+
   const input = page.getByLabel(/^Photos \(optionnel/);
   await expect(input).toBeEnabled();
   // Cinq fichiers d'un coup : trois retenus, les autres écartés avec un message.
@@ -131,8 +140,8 @@ test("à la création d'un produit, 3 photos au maximum : les fichiers en trop s
   // Modale d'édition : trois photos, pas d'ajout possible, une suppression libère la place.
   await page.reload();
   await page.getByRole("button", { name: product.name, exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("img", { name: /^Photo \d$/ })).toHaveCount(3);
+  const editDialog = page.getByRole("dialog");
+  await expect(editDialog.getByRole("img", { name: /^Photo \d$/ })).toHaveCount(3);
   const thumbs = await Promise.all(
     [0, 1, 2].map((i) =>
       dialog
@@ -142,10 +151,10 @@ test("à la création d'un produit, 3 photos au maximum : les fichiers en trop s
     ),
   );
   expect(new Set(thumbs.map((box) => Math.round(box!.y))).size).toBe(1);
-  await expect(dialog.getByText("Ajouter une photo")).toHaveCount(0);
-  await dialog.getByRole("button", { name: "Supprimer la photo 1" }).click();
-  await expect(dialog.getByRole("img", { name: /^Photo \d$/ })).toHaveCount(2);
-  await expect(dialog.getByText("Ajouter une photo")).toBeVisible();
+  await expect(editDialog.getByText("Ajouter une photo")).toHaveCount(0);
+  await editDialog.getByRole("button", { name: "Supprimer la photo 1" }).click();
+  await expect(editDialog.getByRole("img", { name: /^Photo \d$/ })).toHaveCount(2);
+  await expect(editDialog.getByText("Ajouter une photo")).toBeVisible();
 
   await request.patch(`${apiUrl}/api/v1/products/${product.id}/archive`, {
     headers: authHeader(token),

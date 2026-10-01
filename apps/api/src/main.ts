@@ -44,6 +44,14 @@ async function bootstrap() {
   SwaggerModule.setup("api/docs", app, document);
 
   const port = process.env.API_PORT ?? 3001;
+  // Délai de keep-alive supérieur à celui d'un reverse proxy (Traefik : 90 s par
+  // défaut côté client inactif, le proxy réutilise ses connexions) et à l'inactivité
+  // d'un client HTTP : avec les 5 s de Node par défaut, une connexion réutilisée au
+  // moment où le serveur la ferme échoue en « socket hang up » / 502.
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+
   await app.listen(port);
   console.log(`API démarrée sur http://localhost:${port}/api/v1 (docs: /api/docs)`);
 }
