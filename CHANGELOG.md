@@ -7,6 +7,15 @@ correctifs.
 
 ## [Non publié]
 
+## [0.10.2] — 2026-10-01
+
+### Modifié
+
+- Statuts d'expédition affichés en français (En attente, Étiquette créée, Expédié, En transit, En cours de
+  livraison, Livré, Incident, Retourné) : groupes de la page expéditions, boutons (« Marquer expédié »,
+  « Signaler un incident »…), message de confirmation, panneau Préparation et espace client. Les codes de
+  l'API ne changent pas.
+
 ## [0.10.1] — 2026-10-01
 
 ### Modifié
