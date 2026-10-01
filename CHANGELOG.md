@@ -7,6 +7,22 @@ correctifs.
 
 ## [Non publié]
 
+## [0.13.0] — 2026-10-01
+
+### Ajouté
+
+- **Passage automatique des campagnes selon leurs dates.** À partir de la date de début, une campagne en
+  brouillon ou en recensement passe en « commandes ouvertes » ; après la date de fin, une campagne en
+  brouillon, en recensement ou aux commandes ouvertes passe en « commandes fermées » (la fermeture l'emporte
+  quand les deux dates sont dépassées). La production, l'expédition et les archives ne sont jamais touchées,
+  ni une campagne sans date. La date de fin saisie sans heure est incluse : la campagne se ferme à la fin de ce
+  jour-là (en UTC).
+- Un planificateur dans l'API applique la règle au démarrage puis toutes les minutes
+  (`CAMPAIGN_SCHEDULE_INTERVAL_MS`, coupé par `CAMPAIGN_SCHEDULE_DISABLED=true`). Chaque changement est
+  conditionné à l'ancien statut, journalisé et notifié à l'admin.
+- `POST /campaigns/apply-schedule` (ADMIN) déclenche le passage à la demande et renvoie les campagnes modifiées.
+- Les modales de campagne indiquent ce passage automatique sous les dates.
+
 ## [0.12.2] — 2026-10-01
 
 ### Modifié
