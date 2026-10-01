@@ -7,6 +7,26 @@ correctifs.
 
 ## [Non publié]
 
+## [0.14.0] — 2026-10-01
+
+### Ajouté
+
+- **La page publique d'une campagne suit son statut.** En recensement (et brouillon), le formulaire de
+  recensement reste tel quel. Quand les commandes sont **ouvertes**, il devient un formulaire d'**achat** :
+  couleurs et quantités, sous-total, adresse de livraison, bouton « Commander ». Au-delà (commandes
+  fermées, production, expédition, archives), plus de formulaire : un message « commandes fermées ».
+- `POST /campaigns/:id/orders` (public, limité à 5 par minute, honeypot anti-spam) crée une vraie commande
+  liée à la campagne puis son règlement manuel. Il refuse (400) tant que les commandes ne sont pas ouvertes
+  ou si une couleur n'est pas celle du produit de la campagne, et ne réécrit jamais la fiche d'un client
+  existant (même email).
+- Après la commande, le client voit son numéro, le montant, le lien Revolut (celui de la campagne, sinon du
+  `.env`) avec son QR code, et la consigne d'indiquer ses nom et prénom dans la remarque du paiement. La
+  commande reste en attente de paiement, vérifiée à la main.
+
+### Modifié
+
+- Le sélecteur de quantités par couleur est partagé entre les formulaires de recensement et d'achat.
+
 ## [0.13.0] — 2026-10-01
 
 ### Ajouté
