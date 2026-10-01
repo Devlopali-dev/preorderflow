@@ -7,6 +7,26 @@ correctifs.
 
 ## [Non publié]
 
+## [0.9.0] — 2026-10-01
+
+### Ajouté
+
+- Une commande ne peut être livrée que si elle est payée (`paymentStatus = PAID`) : refus 400 par le
+  statut comme par l'expédition, avant toute écriture.
+- Page commandes : rappel en italique de l'ordre des statuts.
+- Nouvelle commande : les produits archivés sont listés en fin de liste, en italique, non sélectionnables.
+
+### Modifié
+
+- Une commande livrée est en lecture seule : plus de remboursement (API, modale et tableau).
+- Plus de boutons d'avancement en double : le pied de la modale ne propose que les étapes propres à la
+  commande (en préparation, prête à expédier), le panneau Préparation que l'expédition. « Payée » passe par la
+  confirmation du paiement, « expédiée » et « livrée » par l'expédition. La page `/orders/[id]` reçoit les
+  mêmes actions de statut.
+- Palette de base des couleurs : boutons à bascule. Un clic ajoute la couleur (cochée d'office, listée au-dessus
+  du bouton de palette), un second la retire (supprimée, ou désactivée si un produit l'utilise). La liste du
+  dessous ne montre plus que les couleurs hors palette de base.
+
 ## [0.8.0] — 2026-10-01
 
 ### Modifié (changement cassant)
