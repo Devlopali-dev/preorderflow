@@ -7,6 +7,29 @@ correctifs.
 
 ## [Non publié]
 
+## [0.10.0] — 2026-10-01
+
+### Ajouté
+
+- **Paiement en espèces** (`CASH`) en plus du manuel (Revolut), du virement et de Stripe.
+- **Lien de paiement par campagne** (`Campaign.paymentLink`, facultatif) avec son QR code dans la modale de
+  campagne. Une commande peut désormais viser une campagne d'origine (`Order.campaignId`, facultatif,
+  choisie à la création) : le lien de la campagne prime sur `REVOLUT_PAYMENT_LINK`.
+- **Espace client : « Payer maintenant ? »** sur une commande en brouillon.
+  `POST /customer/me/orders/:id/pay-now` génère le règlement manuel (lien avec le montant attendu, QR code,
+  consigne d'indiquer nom et prénom dans la remarque), met la commande en attente de paiement et prévient
+  l'admin, sans doublon si on revient sur la page. `POST /customer/me/orders/:id/pay-later` prévient l'admin
+  qu'un mail de validation est à envoyer. Refus (400) dès que la commande n'est plus à régler.
+
+### Modifié
+
+- Lien Revolut : la devise et le montant en **centimes** passent en paramètres
+  (`?currency=EUR&amount=300` pour 3 €), au lieu du montant en chemin. Le lien du `.env` se termine par
+  `amount=` (voir `.env.example`) ; un lien qui n'est pas `revolut.me` est utilisé tel quel.
+- Termes de paiement en français partout (administration et espace client) : modes, statuts de règlement,
+  statut de paiement d'une commande (« Non payée », « Payée »…).
+- Le lien généré est stocké dans `metadata.paymentLink` (l'ancienne clé `revolutLink` reste lue).
+
 ## [0.9.0] — 2026-10-01
 
 ### Ajouté
