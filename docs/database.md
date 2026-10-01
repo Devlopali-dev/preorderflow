@@ -33,9 +33,9 @@ lui-même). Sujet et corps HTML en `{{placeholder}}`, substitués par regex au m
 
 ## Fichiers uploadés
 
-`Product.imageUrl`/`Product.documentUrl` (`String?`) : URL relative (`/uploads/products/xxx.jpg`)
-pour la photo (upload réel via `multer`, cf. `docs/architecture.md` §8) ou une URL externe pour le
-PDF de présentation. Même schéma pour `Campaign.imageUrl`/`Campaign.documentUrl`
+`ProductPhoto.url` (3 photos au plus par produit, ordonnées par `position`) : URL relative
+(`/uploads/products/xxx.jpg`, upload réel via `multer`, cf. `docs/architecture.md` §8) ;
+`Product.documentUrl` (`String?`) : URL externe pour le PDF de présentation. Même schéma pour `Campaign.imageUrl`/`Campaign.documentUrl`
 (`/uploads/campaigns/xxx.jpg`). Aucune infra de stockage objet (S3...) dans ce projet.
 
 ## Migrations

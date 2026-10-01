@@ -296,7 +296,8 @@ GET    /api/v1/colors                           # palette globale
 POST   /api/v1/colors                           # ADMIN uniquement — {name, hex}
 PATCH  /api/v1/colors/:id                       # ADMIN uniquement — nom/pastille/actif
 DELETE /api/v1/colors/:id                       # ADMIN uniquement — refusé (400) si une variante l'utilise
-POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8)
+POST   /api/v1/products/:id/photo               # multipart, stockage disque local (voir §8) — 3 photos max (400 au-delà)
+DELETE /api/v1/products/:id/photos/:photoId      # retire la photo (et son fichier), renumérote les suivantes
 
 GET    /api/v1/customers
 POST   /api/v1/customers                        # identité + addresses[] (jusqu'à 10)
@@ -401,7 +402,8 @@ ntfy, pas un email, elle ne passe jamais par `renderTemplate()`), avec sujet/cor
 `customized` et les placeholders détectés automatiquement. `PATCH`/`DELETE .../:template` sont
 `ADMIN` uniquement et audités (`SETTINGS_UPDATED`).
 
-**Photo produit uploadée** — `Product.imageUrl`/`Product.documentUrl` (`String?`). L'image passe
+**Photos produit uploadées** — `ProductPhoto` (jusqu'à 3 par produit, ordonnées par `position`, la
+première est la principale) et `Product.documentUrl` (`String?`). Les images passent
 par un vrai upload (`POST /products/:id/photo`, multipart via `multer`, stockage disque local sous
 `apps/api/uploads/products/`, servi en statique par `app.useStaticAssets`) ; le PDF de présentation
 reste un simple champ URL texte (seule la photo a été demandée en upload). Pas de S3/Cloudinary —

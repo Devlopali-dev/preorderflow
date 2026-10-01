@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
-import type { Color, Product, ProductVariant } from "@/lib/api";
+import type { Color, Product, ProductPhoto, ProductVariant } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { MAX_PRODUCT_PHOTOS } from "@/lib/product-photos";
 import { ColorLabel } from "@/components/color-label";
 import { ColorsManager } from "@/components/colors-manager";
 
@@ -21,7 +22,7 @@ export function ProductEditModal({
   const [name, setName] = useState(product.name);
   const [description, setDescription] = useState(product.description ?? "");
   const [price, setPrice] = useState(String(product.price));
-  const [imageUrl, setImageUrl] = useState(product.imageUrl);
+  const [photos, setPhotos] = useState<ProductPhoto[]>(product.photos ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
@@ -127,7 +128,27 @@ export function ProductEditModal({
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
       const updated = await res.json();
-      setImageUrl(updated.imageUrl);
+      setPhotos(updated.photos);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      e.target.value = "";
+      setSaving(false);
+    }
+  }
+
+  async function handleRemovePhoto(photoId: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/products/${product.id}/photos/${photoId}`, {
+        method: "DELETE",
+        headers: { ...getClientAuthHeaders() },
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      const updated = await res.json();
+      setPhotos(updated.photos);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
@@ -268,17 +289,43 @@ export function ProductEditModal({
           </Button>
           {paletteOpen && <ColorsManager colors={colors} apiUrl={apiUrl} onChanged={loadColors} />}
         </div>
-        <label className="flex flex-col gap-1 text-sm">
-          Photo
-          {imageUrl && (
-            <img src={`${apiUrl}${imageUrl}`} alt="" className="h-24 w-24 rounded object-cover" />
+        <div className="flex flex-col gap-2 text-sm">
+          <span className="form-label">
+            Photos ({photos.length}/{MAX_PRODUCT_PHOTOS})
+          </span>
+          {photos.length > 0 && (
+            <ul className="flex flex-wrap gap-3">
+              {photos.map((photo, index) => (
+                <li key={photo.id} className="flex flex-col items-center gap-1">
+                  <img
+                    src={`${apiUrl}${photo.url}`}
+                    alt={`Photo ${index + 1}`}
+                    className="h-24 w-24 rounded object-cover"
+                  />
+                  <Button
+                    variant="secondary"
+                    disabled={saving}
+                    aria-label={`Supprimer la photo ${index + 1}`}
+                    onClick={() => void handleRemovePhoto(photo.id)}
+                  >
+                    Supprimer
+                  </Button>
+                </li>
+              ))}
+            </ul>
           )}
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleUploadPhoto}
-          />
-        </label>
+          {photos.length < MAX_PRODUCT_PHOTOS && (
+            <label className="flex flex-col gap-1">
+              Ajouter une photo
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={saving}
+                onChange={handleUploadPhoto}
+              />
+            </label>
+          )}
+        </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>

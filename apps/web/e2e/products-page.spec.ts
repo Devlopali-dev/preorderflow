@@ -36,7 +36,7 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
   await page.getByLabel("SKU").fill(sku);
   await page.getByLabel("Description (optionnel)").fill("Créé par le test de la page produits");
   await page.getByLabel("Prix").fill("9.90");
-  await page.getByLabel("Photo (optionnel)").setInputFiles({
+  await page.getByLabel(/^Photos \(optionnel/).setInputFiles({
     name: "photo.png",
     mimeType: "image/png",
     buffer: TINY_PNG,
@@ -60,7 +60,8 @@ test("un produit créé avec photo et couleurs, puis archivé, passe dans les ar
 
   const products = await (await request.get(`${apiUrl}/api/v1/products`, { headers: auth })).json();
   const product = products.find((p: { sku: string }) => p.sku === sku);
-  expect(product.imageUrl).toMatch(/^\/uploads\/products\//);
+  expect(product.photos).toHaveLength(1);
+  expect(product.photos[0].url).toMatch(/^\/uploads\/products\//);
   expect(
     product.variants.map((v: { color: { name: string } | null }) => v.color?.name).sort(),
   ).toEqual([first.name, second.name].sort());

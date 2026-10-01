@@ -60,6 +60,13 @@ export interface Color {
 
 // Unité vendable et stockable d'un produit. `color` est null pour la variante
 // par défaut d'un produit sans couleur.
+// Photo d'un produit : 3 au plus, la première est la principale.
+export interface ProductPhoto {
+  id: string;
+  url: string;
+  position: number;
+}
+
 export interface ProductVariant {
   id: string;
   sku: string;
@@ -337,8 +344,8 @@ export interface Product {
   taxRate: string;
   weight: string | null;
   active: boolean;
-  imageUrl: string | null;
   documentUrl: string | null;
+  photos: ProductPhoto[];
   variants: ProductVariant[];
 }
 

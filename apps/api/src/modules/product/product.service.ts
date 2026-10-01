@@ -2,9 +2,13 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { prisma, Prisma } from "@preorderflow/database";
 import { nextAvailableSlug, slugifyName } from "../../common/slug";
 import { CreateProductDto, UpdateProductDto } from "./dto/create-product.dto";
+import { assertCanAddPhoto, ProductPhotoLimitError } from "./product-photos";
 
 // Variantes (couleurs) d'un produit, avec leur couleur pour l'affichage.
 const VARIANTS_INCLUDE = { include: { color: true }, orderBy: { sku: "asc" } } as const;
+
+// Photos d'un produit, dans l'ordre de la galerie (la première est la principale).
+const PHOTOS_INCLUDE = { orderBy: { position: "asc" } } as const;
 
 // « Rouge vif » -> « ROUGE-VIF » : suffixe de SKU sans accents ni espaces.
 function skuSuffix(colorName: string): string {
@@ -16,14 +20,14 @@ export class ProductService {
   async list() {
     return prisma.product.findMany({
       orderBy: { createdAt: "desc" },
-      include: { variants: VARIANTS_INCLUDE },
+      include: { variants: VARIANTS_INCLUDE, photos: PHOTOS_INCLUDE },
     });
   }
 
   async getById(id: string) {
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { variants: VARIANTS_INCLUDE },
+      include: { variants: VARIANTS_INCLUDE, photos: PHOTOS_INCLUDE },
     });
     if (!product) {
       throw new NotFoundException(`Produit "${id}" introuvable`);
@@ -42,7 +46,6 @@ export class ProductService {
         currency: dto.currency,
         taxRate: dto.taxRate,
         weight: dto.weight,
-        imageUrl: dto.imageUrl,
         documentUrl: dto.documentUrl,
         // Invariant : tout produit a une variante active. Sans couleur, c'est
         // la variante Standard, qui reprend le SKU du produit.
@@ -187,9 +190,9 @@ export class ProductService {
         taxRate: dto.taxRate,
         weight: dto.weight,
         active: dto.active,
-        imageUrl: dto.imageUrl,
         documentUrl: dto.documentUrl,
       },
+      include: { variants: VARIANTS_INCLUDE, photos: PHOTOS_INCLUDE },
     });
   }
 
@@ -198,5 +201,42 @@ export class ProductService {
   async archive(id: string) {
     await this.getById(id);
     return prisma.product.update({ where: { id }, data: { active: false } });
+  }
+
+  // Ajoute une photo (3 au maximum) et renvoie le produit à jour.
+  async addPhoto(id: string, url: string) {
+    await this.getById(id);
+    const count = await prisma.productPhoto.count({ where: { productId: id } });
+    try {
+      assertCanAddPhoto(count);
+    } catch (error) {
+      if (error instanceof ProductPhotoLimitError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+    await prisma.productPhoto.create({ data: { productId: id, url, position: count } });
+    return this.getById(id);
+  }
+
+  // Retire une photo, renumérote les suivantes et renvoie le produit à jour
+  // avec l'URL retirée (à effacer du disque par l'appelant).
+  async removePhoto(id: string, photoId: string) {
+    await this.getById(id);
+    const photo = await prisma.productPhoto.findFirst({ where: { id: photoId, productId: id } });
+    if (!photo) {
+      throw new NotFoundException(`Photo "${photoId}" introuvable`);
+    }
+    await prisma.productPhoto.delete({ where: { id: photo.id } });
+    const remaining = await prisma.productPhoto.findMany({
+      where: { productId: id },
+      orderBy: { position: "asc" },
+    });
+    await prisma.$transaction(
+      remaining.map((item, index) =>
+        prisma.productPhoto.update({ where: { id: item.id }, data: { position: index } }),
+      ),
+    );
+    return { product: await this.getById(id), removedUrl: photo.url };
   }
 }

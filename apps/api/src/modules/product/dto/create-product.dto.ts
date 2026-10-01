@@ -48,11 +48,6 @@ export class CreateProductDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  imageUrl?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
   documentUrl?: string;
 }
 
@@ -91,11 +86,6 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   active?: boolean;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

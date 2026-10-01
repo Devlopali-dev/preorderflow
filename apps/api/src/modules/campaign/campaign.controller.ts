@@ -26,6 +26,7 @@ import {
   UpdateCampaignStatusDto,
 } from "./dto/create-campaign.dto";
 import { isArchivedStatus } from "./campaign-status";
+import { deleteUploadedFiles } from "../../common/uploaded-files";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Public } from "../auth/public.decorator";
@@ -33,12 +34,6 @@ import { Roles } from "../auth/roles.decorator";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_DOCUMENT_TYPES = ["application/pdf"];
-
-// Retire du disque local des fichiers uploadés (PDF, images, vignettes).
-async function deleteUploadedFiles(urls: string[]): Promise<void> {
-  const files = urls.map((url) => join(process.cwd(), "uploads", url.replace(/^\/uploads\//, "")));
-  await Promise.all(files.map((file) => unlink(file).catch(() => undefined)));
-}
 
 @ApiTags("campaigns")
 @Controller("campaigns")

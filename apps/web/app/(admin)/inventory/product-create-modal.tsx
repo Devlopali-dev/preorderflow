@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { MAX_PRODUCT_PHOTOS } from "@/lib/product-photos";
 import { slugify } from "@/lib/slugify";
 import { ColorLabel } from "@/components/color-label";
 import { ColorsManager } from "@/components/colors-manager";
@@ -23,7 +24,7 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   const [skuEdited, setSkuEdited] = useState(false);
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [hasVariants, setHasVariants] = useState(false);
   const [colors, setColors] = useState<Color[]>([]);
   const [selectedColorIds, setSelectedColorIds] = useState<string[]>([]);
@@ -34,7 +35,7 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
   // couleur). On garde ce qui est déjà fait : un nouvel essai après un échec
   // partiel reprend où il s'est arrêté au lieu de créer un doublon.
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
-  const [photoUploaded, setPhotoUploaded] = useState(false);
+  const [uploadedPhotos, setUploadedPhotos] = useState(0);
   const [addedColorIds, setAddedColorIds] = useState<string[]>([]);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -82,6 +83,19 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
     );
   }
 
+  // Au plus 3 photos : les fichiers en trop sont écartés, avec un message.
+  function handlePickPhotos(e: ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const room = MAX_PRODUCT_PHOTOS - photos.length;
+    setPhotos((current) => [...current, ...picked.slice(0, room)]);
+    setError(
+      picked.length > room
+        ? `Un produit accepte ${MAX_PRODUCT_PHOTOS} photos au maximum : les fichiers en trop ont été écartés.`
+        : null,
+    );
+  }
+
   async function handleCreate() {
     setError(null);
     if (hasVariants && selectedColorIds.length === 0) {
@@ -108,16 +122,16 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
         setCreatedProductId(productId);
       }
 
-      if (photo && !photoUploaded) {
+      for (let index = uploadedPhotos; index < photos.length; index += 1) {
         const formData = new FormData();
-        formData.append("file", photo);
+        formData.append("file", photos[index]!);
         const res = await fetch(`${apiUrl}/api/v1/products/${productId}/photo`, {
           method: "POST",
           headers: { ...getClientAuthHeaders() },
           body: formData,
         });
         if (!res.ok) throw await failure(res);
-        setPhotoUploaded(true);
+        setUploadedPhotos(index + 1);
       }
 
       if (hasVariants) {
@@ -210,15 +224,38 @@ export function ProductCreateModal({ apiUrl, onClose }: { apiUrl: string; onClos
             onChange={(e: ChangeEvent<HTMLInputElement>) => setDescription(e.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Photo (optionnel)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={photoUploaded}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setPhoto(e.target.files?.[0] ?? null)}
-          />
-        </label>
+        <div className="flex flex-col gap-2 text-sm">
+          <label className="flex flex-col gap-1">
+            Photos (optionnel, {photos.length}/{MAX_PRODUCT_PHOTOS})
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              disabled={Boolean(createdProductId) || photos.length >= MAX_PRODUCT_PHOTOS}
+              onChange={handlePickPhotos}
+            />
+          </label>
+          {photos.length > 0 && (
+            <ul className="flex flex-col gap-1">
+              {photos.map((file, index) => (
+                <li
+                  key={`${file.name}-${index}`}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="truncate">{file.name}</span>
+                  <Button
+                    variant="secondary"
+                    disabled={index < uploadedPhotos}
+                    aria-label={`Retirer la photo ${file.name}`}
+                    onClick={() => setPhotos((current) => current.filter((_, i) => i !== index))}
+                  >
+                    Retirer
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <label className="flex items-center gap-2 text-sm">
           <input
