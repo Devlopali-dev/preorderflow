@@ -55,3 +55,11 @@
 ## Signalement d'une vulnérabilité
 
 Voir [`SECURITY.md`](../SECURITY.md).
+
+## Routes publiques et administrateur reconnu
+
+Une route `@Public()` n'exige pas de jeton, mais `JwtAuthGuard` reconnaît un administrateur quand il en
+fournit un valide (jeton admin, compte actif vérifié en base) : `request.user` est alors renseigné. Un jeton
+absent, invalide, expiré ou d'un client laisse la requête **anonyme**, sans erreur. C'est ce qui permet de
+cacher les campagnes en brouillon au public tout en laissant un administrateur les prévisualiser (404 pour un
+visiteur, jamais 403 : on ne confirme pas l'existence).

@@ -19,11 +19,22 @@ export class CampaignService {
 
   constructor(private readonly notificationService: NotificationService) {}
 
-  async list() {
+  // Un brouillon n'est visible que des administrateurs : jamais dans une réponse publique.
+  async list(includeDrafts = false) {
     return prisma.campaign.findMany({
+      where: includeDrafts ? undefined : { status: { not: "DRAFT" } },
       orderBy: { createdAt: "desc" },
       include: { media: { orderBy: { position: "asc" } } },
     });
+  }
+
+  // Lecture publique : un brouillon est introuvable (404, jamais « interdit ») pour un visiteur.
+  async getVisibleBySlugOrId(idOrSlug: string, includeDrafts = false) {
+    const campaign = await this.getBySlugOrId(idOrSlug);
+    if (campaign.status === "DRAFT" && !includeDrafts) {
+      throw new NotFoundException(`Campagne "${idOrSlug}" introuvable`);
+    }
+    return campaign;
   }
 
   async getBySlugOrId(idOrSlug: string) {
@@ -192,7 +203,8 @@ export class CampaignService {
       return { id: "ignored", campaignId: campaignSlugOrId, spam: true };
     }
 
-    const campaign = await this.getBySlugOrId(campaignSlugOrId);
+    // Formulaire public : un brouillon est introuvable pour lui.
+    const campaign = await this.getVisibleBySlugOrId(campaignSlugOrId);
     if (isArchivedStatus(campaign.status)) {
       throw new BadRequestException("Cette campagne est archivée : le recensement est fermé");
     }
@@ -267,8 +279,8 @@ export class CampaignService {
     return interest;
   }
 
-  async getStatistics(campaignSlugOrId: string) {
-    const campaign = await this.getBySlugOrId(campaignSlugOrId);
+  async getStatistics(campaignSlugOrId: string, includeDrafts = false) {
+    const campaign = await this.getVisibleBySlugOrId(campaignSlugOrId, includeDrafts);
     const interests = await prisma.campaignInterest.findMany({
       where: { campaignId: campaign.id },
       select: {

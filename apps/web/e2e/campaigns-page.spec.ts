@@ -103,7 +103,10 @@ test("une campagne se crée avec ses dates et ses images envoyées, comme dans l
   // La modale se ferme une fois la campagne créée et ses images envoyées.
   await expect(page.getByLabel("Nom", { exact: true })).toHaveCount(0);
 
-  const campaigns = await (await request.get(`${apiUrl}/api/v1/campaigns`)).json();
+  // Le brouillon qui vient d'être créé n'est visible que d'un administrateur : requête authentifiée.
+  const campaigns = await (
+    await request.get(`${apiUrl}/api/v1/campaigns`, { headers: auth })
+  ).json();
   const campaign = campaigns.find((c: { name: string }) => c.name === name);
   expect(campaign.media).toHaveLength(2);
   expect(campaign.startDate).toMatch(/^2026-11-01/);
@@ -164,7 +167,10 @@ test("les archives sont repliées, en lecture seule, réactivables et supprimabl
     .getByRole("button", { name: "Réactiver" })
     .click();
   await expect(page.getByText("Campagne archivée (lecture seule)")).toHaveCount(0);
-  const reactivated = await (await request.get(`${apiUrl}/api/v1/campaigns/${campaign.id}`)).json();
+  // Réactivée = brouillon : invisible du public, lecture avec le jeton admin.
+  const reactivated = await (
+    await request.get(`${apiUrl}/api/v1/campaigns/${campaign.id}`, { headers: auth })
+  ).json();
   expect(reactivated.status).toBe("DRAFT");
 
   // Annulée de nouveau, puis suppression définitive depuis la liste des archives.

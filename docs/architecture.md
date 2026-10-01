@@ -175,8 +175,10 @@ Il n'existe pas de champ qui fusionnerait ces valeurs. Le dashboard campagne cal
 
 ### 4.0 Formulaire public selon le statut
 
-La page publique d'une campagne suit son statut : `DRAFT` / `RECENSEMENT` → formulaire de **recensement**
-(inchangé, ne constitue pas une commande) ; `COMMANDES_OUVERTES` → formulaire d'**achat** (couleurs et
+La page publique d'une campagne suit son statut : `RECENSEMENT` → formulaire de **recensement**
+(inchangé, ne constitue pas une commande) ; `DRAFT` → **invisible du public** : la fiche, les statistiques et la
+liste l'excluent, et la page, le recensement et la commande renvoient 404 à un visiteur (jamais 403 : on ne
+confirme pas son existence). Un administrateur connecté le voit toujours (aperçu, sans formulaire) ; `COMMANDES_OUVERTES` → formulaire d'**achat** (couleurs et
 quantités, adresse de livraison) qui crée une vraie commande puis affiche le lien pour payer ; au-delà
 (commandes fermées, production, expédition, archives) → plus de formulaire, un message.
 

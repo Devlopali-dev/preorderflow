@@ -23,7 +23,8 @@ export class CampaignOrderService {
       return { ignored: true as const };
     }
 
-    const campaign = await this.campaignService.getBySlugOrId(campaignSlugOrId);
+    // Un brouillon est introuvable (404) pour un visiteur, comme sur sa page.
+    const campaign = await this.campaignService.getVisibleBySlugOrId(campaignSlugOrId);
     if (campaign.status !== "COMMANDES_OUVERTES") {
       throw new BadRequestException("Les commandes de cette campagne ne sont pas ouvertes");
     }

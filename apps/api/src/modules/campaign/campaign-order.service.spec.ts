@@ -24,18 +24,22 @@ function dto(overrides: Partial<CreatePublicOrderDto> = {}): CreatePublicOrderDt
 }
 
 describe("CampaignOrderService — commande publique", () => {
-  const getBySlugOrId = vi.fn();
+  const getVisibleBySlugOrId = vi.fn();
   const create = vi.fn();
   const createForOrder = vi.fn();
   const service = new CampaignOrderService(
-    { getBySlugOrId } as never,
+    { getVisibleBySlugOrId } as never,
     { create } as never,
     { createForOrder } as never,
   );
 
   beforeEach(() => {
-    for (const mock of [findMany, getBySlugOrId, create, createForOrder]) mock.mockReset();
-    getBySlugOrId.mockResolvedValue({ id: "c1", productId: "p1", status: "COMMANDES_OUVERTES" });
+    for (const mock of [findMany, getVisibleBySlugOrId, create, createForOrder]) mock.mockReset();
+    getVisibleBySlugOrId.mockResolvedValue({
+      id: "c1",
+      productId: "p1",
+      status: "COMMANDES_OUVERTES",
+    });
     findMany.mockResolvedValue([{ id: VARIANT_A }]);
     create.mockResolvedValue({
       id: "o1",
@@ -86,7 +90,7 @@ describe("CampaignOrderService — commande publique", () => {
       "TERMINEE",
       "ANNULEE",
     ]) {
-      getBySlugOrId.mockResolvedValue({ id: "c1", productId: "p1", status });
+      getVisibleBySlugOrId.mockResolvedValue({ id: "c1", productId: "p1", status });
       await expect(service.create("c1", dto())).rejects.toBeInstanceOf(BadRequestException);
     }
     expect(create).not.toHaveBeenCalled();
@@ -127,7 +131,7 @@ describe("CampaignOrderService — commande publique", () => {
   it("honeypot rempli : répond sans rien créer ni même lire la campagne", async () => {
     const result = await service.create("c1", dto({ website: "http://spam.example" }));
     expect(result).toEqual({ ignored: true });
-    expect(getBySlugOrId).not.toHaveBeenCalled();
+    expect(getVisibleBySlugOrId).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
     expect(createForOrder).not.toHaveBeenCalled();
   });

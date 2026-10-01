@@ -11,8 +11,9 @@ export default async function CampaignPage({ params }: { params: { slug: string 
   }
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
-  // DRAFT et RECENSEMENT : formulaire de recensement. COMMANDES_OUVERTES : formulaire d'achat.
-  // Ensuite (commandes fermées, production, expédition, archives) : plus de formulaire.
+  // RECENSEMENT : formulaire de recensement. COMMANDES_OUVERTES : formulaire d'achat. Ensuite
+  // (commandes fermées, production, expédition, archives) : plus de formulaire. DRAFT : la
+  // campagne n'est visible que d'un administrateur (l'API la cache au public) : aperçu seulement.
   const isOpenForOrders = campaign.status === "COMMANDES_OUVERTES";
   const isClosed = !["DRAFT", "RECENSEMENT", "COMMANDES_OUVERTES"].includes(campaign.status);
 
@@ -31,7 +32,12 @@ export default async function CampaignPage({ params }: { params: { slug: string 
             )}
           </div>
           {/* Le formulaire suit le statut de la campagne : recensement, achat, ou fermé. */}
-          {isOpenForOrders ? (
+          {campaign.status === "DRAFT" ? (
+            <div className="card p-4 text-sm" role="status">
+              Aperçu administrateur : cette campagne est un brouillon, invisible du public. Le
+              formulaire apparaîtra dès son passage en recensement.
+            </div>
+          ) : isOpenForOrders ? (
             <OrderForm
               campaignId={campaign.id}
               apiUrl={apiUrl}

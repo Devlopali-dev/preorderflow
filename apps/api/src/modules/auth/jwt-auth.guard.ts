@@ -25,11 +25,14 @@ export class JwtAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
+    const request = context.switchToHttp().getRequest<Request>();
     if (isPublic) {
+      // Route publique : accessible sans jeton, mais un administrateur connecté est reconnu
+      // quand il en fournit un valide (ex. voir une campagne en brouillon, invisible du public).
+      await this.attachStaffIfValid(request);
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<Request>();
     const token = extractBearerToken(request);
     if (!token) {
       throw new UnauthorizedException("Authentification requise");
@@ -65,6 +68,21 @@ export class JwtAuthGuard implements CanActivate {
     }
     request.user = { ...payload, role: admin.role };
     return true;
+  }
+
+  // Meilleur effort pour les routes publiques : jeton absent, invalide, expiré ou d'un client
+  // (même signature, rôle différent) → la requête reste simplement anonyme, jamais une erreur.
+  private async attachStaffIfValid(request: Request): Promise<void> {
+    const token = extractBearerToken(request);
+    if (!token) return;
+    try {
+      const payload = this.jwtService.verify<JwtPayload>(token);
+      if (!VALID_ADMIN_ROLES.has(payload.role)) return;
+      const admin = await this.admins.findActive(payload.sub);
+      if (admin) request.user = { ...payload, role: admin.role };
+    } catch {
+      // anonyme
+    }
   }
 }
 

@@ -9,6 +9,7 @@ import {
   Post,
   UploadedFile,
   UseInterceptors,
+  Req,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiConsumes, ApiTags } from "@nestjs/swagger";
@@ -16,6 +17,7 @@ import { Throttle } from "@nestjs/throttler";
 import { diskStorage } from "multer";
 import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
+import type { Request } from "express";
 import { extname, join } from "node:path";
 import { CampaignOrderService } from "./campaign-order.service";
 import { CampaignService } from "./campaign.service";
@@ -48,10 +50,11 @@ export class CampaignController {
   ) {}
 
   // Lecture publique : page vitrine de campagne (§19) + dashboard admin.
+  // Les brouillons n'apparaissent que pour un administrateur connecté (jeton reconnu même sur une route publique).
   @Public()
   @Get()
-  list() {
-    return this.campaignService.list();
+  list(@Req() req: Request) {
+    return this.campaignService.list(Boolean(req.user));
   }
 
   @Post()
@@ -69,8 +72,8 @@ export class CampaignController {
 
   @Public()
   @Get(":id")
-  getOne(@Param("id") id: string) {
-    return this.campaignService.getBySlugOrId(id);
+  getOne(@Param("id") id: string, @Req() req: Request) {
+    return this.campaignService.getVisibleBySlugOrId(id, Boolean(req.user));
   }
 
   @Patch(":id")
@@ -214,8 +217,8 @@ export class CampaignController {
 
   @Public()
   @Get(":id/statistics")
-  getStatistics(@Param("id") id: string) {
-    return this.campaignService.getStatistics(id);
+  getStatistics(@Param("id") id: string, @Req() req: Request) {
+    return this.campaignService.getStatistics(id, Boolean(req.user));
   }
 
   // Formulaire public de recensement — rate-limité en plus du throttler

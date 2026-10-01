@@ -97,15 +97,23 @@ export interface Campaign {
   product?: { price: string; currency: string; variants: CampaignVariantOption[] };
 }
 
+// Lecture publique, mais le jeton admin (cookie) est transmis s'il existe : un administrateur voit
+// aussi les campagnes en brouillon, introuvables (404) pour un visiteur.
 export async function getCampaign(slug: string): Promise<Campaign | null> {
-  const res = await fetch(`${API_URL}/api/v1/campaigns/${slug}`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/campaigns/${slug}`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   if (res.status === 404) return null;
   assertOk(res);
   return res.json();
 }
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  const res = await fetch(`${API_URL}/api/v1/campaigns`, { cache: "no-store" });
+  const res = await fetch(`${API_URL}/api/v1/campaigns`, {
+    cache: "no-store",
+    headers: authHeaders(),
+  });
   assertOk(res);
   return res.json();
 }

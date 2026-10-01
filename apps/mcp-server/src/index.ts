@@ -2,7 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { apiGet, apiGetPublic } from "./api-client.js";
+import { apiGet } from "./api-client.js";
 import {
   computeOrderStatistics,
   filterLowStockProducts,
@@ -39,7 +39,7 @@ server.registerTool(
     inputSchema: { campaignSlugOrId: z.string().describe("Slug ou id de la campagne") },
   },
   async ({ campaignSlugOrId }) => {
-    const stats = await apiGetPublic<CampaignStatistics>(
+    const stats = await apiGet<CampaignStatistics>(
       `/api/v1/campaigns/${campaignSlugOrId}/statistics`,
     );
     return jsonResult(stats);
