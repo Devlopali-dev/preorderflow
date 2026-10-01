@@ -36,7 +36,14 @@ const ORDER_PLAN: Array<{
   { status: "PAID", paymentStatus: "PAID", fulfillmentStatus: "UNFULFILLED" },
   { status: "PENDING_PAYMENT", paymentStatus: "UNPAID", fulfillmentStatus: "UNFULFILLED" },
   { status: "CANCELLED", paymentStatus: "UNPAID", fulfillmentStatus: "UNFULFILLED" },
+  // Brouillon : le client le voit dans son espace et choisit de payer maintenant ou plus tard.
+  { status: "DRAFT", paymentStatus: "UNPAID", fulfillmentStatus: "UNFULFILLED" },
 ];
+
+// Mode de règlement des commandes payées, en alternance (manuel Revolut, virement, espèces).
+const PAID_PROVIDERS = ["MANUAL", "BANK_TRANSFER", "CASH"] as const;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Une expédition par ligne, pour les 5 premières commandes.
 const SHIPMENT_CHAIN: ShipmentStatus[] = [
@@ -225,46 +232,89 @@ async function main() {
   });
 
   // --- Campagnes ---
-  const campaign1 = await prisma.campaign.upsert({
-    where: { slug: "stylo-1" },
-    update: {},
-    create: {
-      name: "Stylo #1",
-      slug: "stylo-1",
-      description: "Première campagne de recensement et de vente du stylo.",
-      status: "COMMANDES_OUVERTES",
-      startDate: new Date("2026-01-01"),
-      endDate: new Date("2026-03-01"),
-      productId: stylo.id,
+  // Dates relatives à aujourd'hui, pour que les statuts restent cohérents avec le passage
+  // automatique selon les dates (commandes ouvertes dès le début, fermées après la fin) quel
+  // que soit le jour où le seed est rejoué. Les campagnes de démo sont réalignées à chaque
+  // passage (`update`) : un statut balayé par le planificateur revient à son état de démo.
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const inDays = (days: number) => new Date(today.getTime() + days * DAY_MS);
+
+  const demoCampaign = (
+    slug: string,
+    data: {
+      name: string;
+      description: string;
+      status: "DRAFT" | "RECENSEMENT" | "COMMANDES_OUVERTES" | "COMMANDES_FERMEES" | "PRODUCTION";
+      startDate: Date;
+      endDate?: Date;
+      productId: string;
+      paymentLink?: string;
     },
+  ) => {
+    const fields = {
+      name: data.name,
+      description: data.description,
+      status: data.status,
+      startDate: data.startDate,
+      endDate: data.endDate ?? null,
+      paymentLink: data.paymentLink ?? null,
+    };
+    return prisma.campaign.upsert({
+      where: { slug },
+      update: fields,
+      create: { slug, productId: data.productId, ...fields },
+    });
+  };
+
+  // Commandes ouvertes : début passé, fin à venir. Lien de paiement propre à la campagne.
+  const campaign1 = await demoCampaign("stylo-1", {
+    name: "Stylo #1",
+    description: "Première campagne de recensement et de vente du stylo.",
+    status: "COMMANDES_OUVERTES",
+    startDate: inDays(-30),
+    endDate: inDays(30),
+    productId: stylo.id,
+    paymentLink: "https://revolut.me/demo-stylo?currency=EUR&amount=",
   });
 
-  const campaign2 = await prisma.campaign.upsert({
-    where: { slug: "gourde-inox-1" },
-    update: {},
-    create: {
-      name: "Gourde inox #1",
-      slug: "gourde-inox-1",
-      description: "Campagne de recensement pour la gourde inox.",
-      status: "RECENSEMENT",
-      startDate: new Date("2026-02-01"),
-      endDate: new Date("2026-04-15"),
-      productId: gourde.id,
-    },
+  // Recensement : le début est à venir (sinon le planificateur ouvrirait les commandes).
+  const campaign2 = await demoCampaign("gourde-inox-1", {
+    name: "Gourde inox #1",
+    description: "Campagne de recensement pour la gourde inox.",
+    status: "RECENSEMENT",
+    startDate: inDays(10),
+    endDate: inDays(40),
+    productId: gourde.id,
   });
 
-  // Une campagne brouillon, pour l'action « Passer à RECENSEMENT ».
-  await prisma.campaign.upsert({
-    where: { slug: "tote-bag-1" },
-    update: {},
-    create: {
-      name: "Tote bag #1",
-      slug: "tote-bag-1",
-      description: "Campagne en préparation pour le tote bag.",
-      status: "DRAFT",
-      startDate: new Date("2026-05-01"),
-      productId: tote.id,
-    },
+  // Brouillon, pour l'action « Passer à RECENSEMENT » : début à venir, sans date de fin.
+  await demoCampaign("tote-bag-1", {
+    name: "Tote bag #1",
+    description: "Campagne en préparation pour le tote bag.",
+    status: "DRAFT",
+    startDate: inDays(20),
+    productId: tote.id,
+  });
+
+  // Commandes fermées : date de fin dépassée (état que le planificateur produit tout seul).
+  await demoCampaign("stylo-0", {
+    name: "Stylo #0",
+    description: "Campagne précédente du stylo : commandes fermées après la date de fin.",
+    status: "COMMANDES_FERMEES",
+    startDate: inDays(-90),
+    endDate: inDays(-40),
+    productId: stylo.id,
+  });
+
+  // En production : les dates sont dépassées mais ce statut n'est jamais touché par le passage automatique.
+  await demoCampaign("tote-bag-0", {
+    name: "Tote bag #0",
+    description: "Campagne en production : le passage automatique ne la modifie pas.",
+    status: "PRODUCTION",
+    startDate: inDays(-70),
+    endDate: inDays(-30),
+    productId: tote.id,
   });
 
   // Archives : une campagne terminée et une annulée, avec leurs demandes de
@@ -424,14 +474,22 @@ async function main() {
     }
   }
 
-  // --- Commandes (10, à tous les stades) ---
+  // --- Commandes (à tous les stades, brouillon compris) ---
   const orders = [];
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= ORDER_PLAN.length; i++) {
     // Rejouable : une commande de démo déjà créée est reprise telle quelle.
     const number = `2026-${String(i).padStart(4, "0")}`;
     const existingOrder = await prisma.order.findUnique({ where: { number } });
     if (existingOrder) {
-      orders.push(existingOrder);
+      // Rejeu : rattache la commande à sa campagne d'origine si elle ne l'est pas encore.
+      const withCampaign =
+        !existingOrder.campaignId && i <= 8
+          ? await prisma.order.update({
+              where: { id: existingOrder.id },
+              data: { campaignId: campaign1.id },
+            })
+          : existingOrder;
+      orders.push(withCampaign);
       continue;
     }
 
@@ -449,6 +507,8 @@ async function main() {
       data: {
         number,
         customerId: customer.id,
+        // Les huit premières commandes viennent de la campagne Stylo #1 (son lien de paiement).
+        campaignId: i <= 8 ? campaign1.id : null,
         status: plan.status,
         paymentStatus: plan.paymentStatus,
         fulfillmentStatus: plan.fulfillmentStatus,
@@ -471,25 +531,29 @@ async function main() {
             },
           ],
         },
-        // Payée : paiement manuel confirmé. En attente ou annulée : virement
-        // jamais reçu (la commande annulée garde son paiement en lecture seule).
+        // Payée : règlement confirmé, mode en alternance (Revolut, virement, espèces). En
+        // attente ou annulée : virement jamais reçu (la commande annulée garde son paiement en
+        // lecture seule). Brouillon : aucun règlement, le client choisit dans son espace.
         payments: {
-          create: [
-            paid
-              ? {
-                  provider: "MANUAL",
-                  amount: total + 3,
-                  currency: "EUR",
-                  status: "PAID",
-                  paidAt: new Date(),
-                }
-              : {
-                  provider: "BANK_TRANSFER",
-                  amount: total + 3,
-                  currency: "EUR",
-                  status: "PENDING",
-                },
-          ],
+          create:
+            plan.status === "DRAFT"
+              ? []
+              : [
+                  paid
+                    ? {
+                        provider: PAID_PROVIDERS[i % PAID_PROVIDERS.length]!,
+                        amount: total + 3,
+                        currency: "EUR",
+                        status: "PAID",
+                        paidAt: new Date(),
+                      }
+                    : {
+                        provider: "BANK_TRANSFER",
+                        amount: total + 3,
+                        currency: "EUR",
+                        status: "PENDING",
+                      },
+                ],
         },
       },
     });
@@ -600,7 +664,7 @@ async function main() {
     products: 4,
     colors: colors.length + 1,
     variants: styloVariants.length + 3,
-    campaigns: 5,
+    campaigns: 7,
     customers: customers.length,
     orders: orders.length,
   });
