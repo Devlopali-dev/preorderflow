@@ -159,3 +159,57 @@ jobs:
           path: |
             api.log
             api-limited.log
+
+  # Image de PRODUCTION : construit et démarre la stack du déploiement Coolify
+  # (docker-compose.coolify.yml) puis vérifie qu'elle répond. Les tests ci-dessus ne passent jamais par
+  # ces Dockerfiles : une image qui ne démarre pas (moteur Prisma introuvable, build web qui échoue,
+  # migrations non appliquées…) n'était détectée qu'au déploiement.
+  docker-production:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and start the production stack
+        run: |
+          cat > ci.env <<'EOF'
+          POSTGRES_USER=pof
+          POSTGRES_PASSWORD=ci-test-password
+          POSTGRES_DB=pof
+          JWT_SECRET=ci-test-jwt-secret
+          MAGIC_LINK_SECRET=ci-test-magic-link-secret
+          SESSION_COOKIE_SECRET=ci-test-session-cookie-secret
+          WEB_URL=http://localhost:3200
+          CORS_ORIGIN=http://localhost:3200
+          NEXT_PUBLIC_API_URL=http://localhost:3201
+          EOF
+          cat > ci-ports.yml <<'EOF'
+          services:
+            api:
+              ports: ["3201:3001"]
+            web:
+              ports: ["3200:3000"]
+          EOF
+          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300
+
+      - name: Smoke test
+        run: |
+          set -e
+          curl -sf http://localhost:3201/health
+          # Migrations appliquées au démarrage, moteur Prisma chargé : une requête base répond 200.
+          curl -sf http://localhost:3201/api/v1/campaigns
+          # Rendu serveur de l'accueil (le serveur web appelle l'API par le réseau interne).
+          curl -sf http://localhost:3200/ > /dev/null
+          # L'URL publique de l'API est figée dans le JavaScript du navigateur au build.
+          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env exec -T web \
+            sh -c 'grep -rlq "localhost:3201" apps/web/.next/static'
+          # Les limites de débit sont actives en production (10 tentatives par minute sur le login).
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3201/api/v1/auth/login \
+              -H 'Content-Type: application/json' -d '{"email":"x@example.com","password":"mauvais"}')
+          done
+          test "$code" = "429"
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
+

@@ -7,6 +7,30 @@ correctifs.
 
 ## [Non publié]
 
+## [0.18.1] — 2026-10-02
+
+### Corrigé (déploiement)
+
+- **Image de production de l'API inutilisable.** Dans l'étape `runner`, l'argument `PRISMA_ENGINE_PATH` n'avait pas
+  de valeur (il n'était déclaré avec son défaut que dans une autre étape) et visait de toute façon le moteur
+  arm64 : « Unable to require(``) » à la première requête base, soit un 500 partout, et un conteneur qui
+  redémarrait en boucle. L'image installe maintenant OpenSSL, Prisma détecte seul le bon moteur, pour toute
+  architecture.
+- **Migrations absentes en production** : le conteneur de l'API applique `prisma migrate deploy` au démarrage.
+- **L'URL de l'API était figée à `localhost:3001` dans le site web** : `NEXT_PUBLIC_API_URL` est maintenant passée
+  en argument de build (Next.js la fige dans le JavaScript du navigateur).
+- **Build web fragile** : pnpm relançait une installation complète (+600 paquets) au milieu du build ; la
+  vérification des dépendances avant exécution est désactivée dans les deux Dockerfiles.
+
+### Ajouté
+
+- `docker-compose.coolify.yml` : stack de déploiement Coolify sans port publié sur l'hôte, variables explicites
+  (obligatoires signalées), sondes de santé, volume pour les fichiers uploadés. `TRUST_PROXY=1` par défaut.
+- Job CI `docker-production` : construit et démarre cette stack, puis vérifie santé, requête base (migrations),
+  rendu serveur, URL d'API figée et limites de débit actives.
+- `docs/deployment/coolify.md` réécrit pour le déploiement Docker Compose (domaines, variables, premier lancement,
+  sauvegardes, dépannage).
+
 ## [0.18.0] — 2026-10-02
 
 ### Corrigé (sécurité)

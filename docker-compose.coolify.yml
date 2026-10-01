@@ -1,0 +1,127 @@
+# Déploiement Coolify (Docker Compose) : à choisir comme « Docker Compose Location » de l'application.
+# Voir docs/deployment/coolify.md.
+#
+# Différences avec docker-compose.yml (usage local) :
+# - aucun port publié sur l'hôte : Traefik (Coolify) route le trafic vers les ports exposés, et un
+#   `ports:` ferait échouer le déploiement dès qu'un autre conteneur du serveur utilise le même port ;
+# - pas de `env_file: .env` : les variables sont listées ici et viennent de l'onglet Environment Variables
+#   de Coolify (un fichier .env n'existe pas dans le dépôt) ;
+# - sondes de santé, et un volume pour les fichiers uploadés (photos produit, aperçus de campagne).
+#
+# Domaines (onglet Configuration de l'application, un par service) :
+#   web -> https://app.mondomaine.fr         api -> https://api.mondomaine.fr
+#   NEXT_PUBLIC_API_URL doit valoir l'URL publique de l'API (https://api.mondomaine.fr) ; il est figé
+#   dans le JavaScript du navigateur au build : le modifier demande un nouveau déploiement.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER requis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB requis}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: production
+      API_PORT: "3001"
+      # Les services de ce fichier se joignent par leur nom, pas par localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      # Secrets : à définir dans Coolify, jamais de valeur par défaut.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET requis}
+      MAGIC_LINK_SECRET: ${MAGIC_LINK_SECRET:?MAGIC_LINK_SECRET requis}
+      SESSION_COOKIE_SECRET: ${SESSION_COOKIE_SECRET:?SESSION_COOKIE_SECRET requis}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      MAGIC_LINK_EXPIRES_IN: ${MAGIC_LINK_EXPIRES_IN:-15m}
+      # URL publique du site (liens des e-mails) et origine autorisée du navigateur (CORS).
+      WEB_URL: ${WEB_URL:?WEB_URL requis (https://app.mondomaine.fr)}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN requis (https://app.mondomaine.fr)}
+      # Traefik est le seul proxy devant l'API : lire l'IP réelle du visiteur (limites de débit par IP).
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      # Les limites de débit restent actives : RATE_LIMIT_DISABLED n'est volontairement pas transmis.
+      NOTIFICATION_EMAIL_PROVIDER: ${NOTIFICATION_EMAIL_PROVIDER:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      PREORDERFLOW_NTFY_URL: ${PREORDERFLOW_NTFY_URL:-https://ntfy.sh}
+      PREORDERFLOW_NTFY_TOPIC: ${PREORDERFLOW_NTFY_TOPIC:-}
+      PREORDERFLOW_NTFY_AUTH: ${PREORDERFLOW_NTFY_AUTH:-}
+      REVOLUT_PAYMENT_LINK: ${REVOLUT_PAYMENT_LINK:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:-}
+    volumes:
+      # Photos produit et aperçus de campagne : sans volume, perdus à chaque redéploiement.
+      - api_uploads:/app/apps/api/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/health > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args:
+        # Figé dans le JavaScript du navigateur au build : URL PUBLIQUE de l'API (https://api.mondomaine.fr).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL requis (URL publique de l'API)}
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      WEB_PORT: "3000"
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      # Le serveur Next appelle l'API par le réseau interne, pas par son URL publique.
+      API_URL: http://api:3001
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/login > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  redis_data:
+  api_uploads:

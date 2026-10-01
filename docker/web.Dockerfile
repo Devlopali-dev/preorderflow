@@ -5,6 +5,10 @@
 FROM node:22-alpine AS base
 RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
 ENV CI=true
+# pnpm 11 revérifie les dépendances avant chaque `pnpm run` : le build copie TOUT le workspace (`COPY . .`) alors
+# que l'étape `deps` n'a installé que les paquets de cette image, donc pnpm relançait une installation complète
+# (+600 paquets téléchargés) au milieu du build, lente et qui échoue dès que le réseau flanche.
+ENV npm_config_verify_deps_before_run=false
 WORKDIR /app
 
 FROM base AS deps
@@ -22,6 +26,10 @@ CMD ["pnpm", "--filter", "web", "dev"]
 
 FROM deps AS build
 COPY . .
+# NEXT_PUBLIC_API_URL est figé dans le JavaScript du navigateur AU BUILD (Next.js remplace les variables
+# NEXT_PUBLIC_*) : sans cet ARG, l'image visait toujours http://localhost:3001, injoignable en production.
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN pnpm --filter web build
 
 FROM base AS runner
