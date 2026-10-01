@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getCustomer } from "@/lib/api";
 import { GdprActions } from "./gdpr-actions";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 
 export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
   const customer = await getCustomer(params.id);
@@ -26,7 +27,7 @@ export default async function CustomerDetailPage({ params }: { params: { id: str
               <Link href={`/orders/${order.id}`} className="underline">
                 #{order.number}
               </Link>{" "}
-              — {order.status} — {order.total} {order.currency}
+              — {orderStatusLabel(order.status)} — {order.total} {order.currency}
             </li>
           ))}
           {customer.orders.length === 0 && <li className="opacity-60">Aucune commande</li>}

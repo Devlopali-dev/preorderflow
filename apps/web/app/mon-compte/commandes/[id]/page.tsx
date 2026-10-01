@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getCustomerOrder } from "@/lib/api";
 import { variantLabel } from "@/lib/variants";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 import { orderPaymentStatusLabel } from "@/lib/payment-labels";
 import { CustomerNav } from "../../customer-nav";
 import { PaymentChoice } from "./payment-choice";
@@ -21,7 +22,7 @@ export default async function CustomerOrderDetailPage({ params }: { params: { id
       <CustomerNav />
       <main className="mx-auto max-w-2xl p-8">
         <h1 className="text-2xl font-semibold">Commande #{order.number}</h1>
-        <p className="mt-1 text-sm opacity-70">Statut : {order.status}</p>
+        <p className="mt-1 text-sm opacity-70">Statut : {orderStatusLabel(order.status)}</p>
 
         <div className="mt-6">
           <h2 className="mb-2 font-medium">Articles</h2>

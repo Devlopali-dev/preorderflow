@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrder } from "@/lib/api";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 import { variantLabel } from "@/lib/variants";
 import { PaymentPanel } from "./payment-panel";
 import { FulfillmentPanel } from "./fulfillment-panel";
@@ -16,7 +17,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       <div>
         <h1 className="text-2xl font-semibold">Commande #{order.number}</h1>
         <p className="text-sm opacity-70">
-          {order.customer.firstName} {order.customer.lastName} — {order.status}
+          {order.customer.firstName} {order.customer.lastName} — {orderStatusLabel(order.status)}
         </p>
       </div>
 

@@ -38,11 +38,11 @@ test("le détail d'une commande permet de la préparer, l'expédier et la livrer
 
   await page.goto(`/orders/${order.id}`);
 
-  await page.getByRole("button", { name: "Passer à PROCESSING" }).click();
+  await page.getByRole("button", { name: "Passer en préparation" }).click();
   await page.getByRole("button", { name: "Confirmer" }).click();
-  await expect(page.getByRole("button", { name: "Passer à READY_TO_SHIP" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Marquer prête à expédier" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Passer à READY_TO_SHIP" }).click();
+  await page.getByRole("button", { name: "Marquer prête à expédier" }).click();
   await page.getByRole("button", { name: "Confirmer" }).click();
   await expect(page.getByPlaceholder("Numéro de suivi")).toBeVisible();
 

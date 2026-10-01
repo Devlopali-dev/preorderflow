@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCustomerOrders } from "@/lib/api";
 import { variantLabel } from "@/lib/variants";
 import { CustomerNav } from "./customer-nav";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 
 export default async function CustomerOrdersPage() {
   const orders = await getCustomerOrders();
@@ -29,7 +30,7 @@ export default async function CustomerOrdersPage() {
                     .join(", ")}
                 </p>
                 <p className="text-sm">
-                  Statut : {order.status} — {order.total} {order.currency}
+                  Statut : {orderStatusLabel(order.status)} — {order.total} {order.currency}
                 </p>
                 {order.shipment?.trackingNumber && (
                   <p className="text-sm opacity-70">Suivi : {order.shipment.trackingNumber}</p>

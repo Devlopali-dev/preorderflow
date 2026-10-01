@@ -1,5 +1,6 @@
 import { getCampaigns, getCustomers, getOrders, getProducts } from "@/lib/api";
 import { ORDER_PAYMENT_STATUS_BADGE, orderPaymentStatusLabel } from "@/lib/payment-labels";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { CreateOrderButton } from "./create-order-button";
 import { OrderActions } from "./order-actions";
@@ -53,7 +54,7 @@ export default async function OrdersPage() {
           <h1 className="text-2xl font-semibold">Commandes</h1>
           <p className="card-subtitle">
             {orders.length} commande{orders.length > 1 ? "s" : ""} -{" "}
-            <em>{ORDER_STATUSES.slice(0, FLOW_LENGTH).join(" → ")}</em>
+            <em>{ORDER_STATUSES.slice(0, FLOW_LENGTH).map(orderStatusLabel).join(" → ")}</em>
           </p>
         </div>
         <CreateOrderButton
@@ -76,7 +77,7 @@ export default async function OrdersPage() {
             header={
               <>
                 <span className={`badge ${ORDER_STATUS_BADGE[group.status] ?? "badge-default"}`}>
-                  {group.status}
+                  {orderStatusLabel(group.status)}
                 </span>
                 <span className="table-muted">{group.orders.length}</span>
               </>

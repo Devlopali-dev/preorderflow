@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "@preorderflow/ui";
 import type { OrderDetail } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 import { variantLabel } from "@/lib/variants";
 import { PaymentPanel } from "./[id]/payment-panel";
 import { FulfillmentPanel } from "./[id]/fulfillment-panel";
@@ -64,7 +65,7 @@ export function OrderDetailModal({
       {order && (
         <div className="flex flex-col gap-4 text-sm">
           <p className="opacity-70">
-            {order.customer.firstName} {order.customer.lastName} — {order.status}
+            {order.customer.firstName} {order.customer.lastName} — {orderStatusLabel(order.status)}
           </p>
 
           <div>

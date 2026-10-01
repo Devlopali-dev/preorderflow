@@ -38,10 +38,10 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
   await page.goto(`/orders/${order.id}`);
 
   // Préparation
-  await page.getByRole("button", { name: "Passer à PROCESSING" }).click();
+  await page.getByRole("button", { name: "Passer en préparation" }).click();
   await page.getByRole("button", { name: "Confirmer" }).click();
-  await expect(page.getByRole("button", { name: "Passer à READY_TO_SHIP" })).toBeVisible();
-  await page.getByRole("button", { name: "Passer à READY_TO_SHIP" }).click();
+  await expect(page.getByRole("button", { name: "Marquer prête à expédier" })).toBeVisible();
+  await page.getByRole("button", { name: "Marquer prête à expédier" }).click();
   await page.getByRole("button", { name: "Confirmer" }).click();
 
   // Expédition (avec tracking)

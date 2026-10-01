@@ -105,21 +105,22 @@ test("une commande livrée est en lecture seule : ni remboursement, ni bouton, n
   const row = page.locator("tr", { hasText: order.number });
   await expect(row).toBeVisible();
   await expect(row.getByRole("button", { name: "Rembourser" })).toHaveCount(0);
-  await expect(row.getByRole("button", { name: /^Passer à/ })).toHaveCount(0);
+  await expect(row.getByRole("button", { name: /^(Passer|Marquer)/ })).toHaveCount(0);
 
   await page.getByRole("button", { name: order.number, exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: /Commande #/ })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Rembourser" })).toHaveCount(0);
-  await expect(dialog.getByRole("button", { name: /^Passer à/ })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /^(Passer|Marquer)/ })).toHaveCount(0);
 });
 
 test("la page commandes rappelle l'ordre des statuts, en italique", async ({ page, request }) => {
   await loginAsAdmin(page, request);
   await page.goto("/orders");
-  const reminder = page.locator("em", { hasText: "DRAFT → PENDING_PAYMENT → PAID" });
-  await expect(reminder).toContainText("SHIPPED → DELIVERED");
-  await expect(reminder).not.toContainText("CANCELLED");
+  const reminder = page.locator("em", { hasText: "Brouillon → En attente de paiement → Payée" });
+  await expect(reminder).toContainText("En préparation → Prête à expédier → Expédiée → Livrée");
+  await expect(reminder).not.toContainText("Annulée");
+  await expect(reminder).not.toContainText("DRAFT");
   expect(await reminder.evaluate((el) => getComputedStyle(el).fontStyle)).toBe("italic");
 });
 

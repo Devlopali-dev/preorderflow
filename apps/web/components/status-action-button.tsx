@@ -15,6 +15,7 @@ export function StatusActionButton({
   statusEndpoint,
   target,
   label,
+  targetLabel,
   danger,
   onChanged,
 }: {
@@ -22,6 +23,8 @@ export function StatusActionButton({
   statusEndpoint: string;
   target: string;
   label: string;
+  // Statut cible tel qu'affiché dans la confirmation (par défaut, son code).
+  targetLabel?: string;
   danger?: boolean;
   onChanged?: () => void;
 }) {
@@ -58,7 +61,7 @@ export function StatusActionButton({
       {confirmOpen && (
         <ConfirmModal
           title="Changer le statut"
-          message={`Passer au statut ${target} ?`}
+          message={`Passer au statut ${targetLabel ?? target} ?`}
           confirmLabel="Confirmer"
           danger={danger}
           loading={saving}

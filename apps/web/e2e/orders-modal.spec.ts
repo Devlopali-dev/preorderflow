@@ -103,7 +103,7 @@ test("la modale d'une commande annulée a un paiement en lecture seule et ni pie
 
   // Plus de section « Statut » vide, ni de boutons de statut.
   await expect(dialog.getByRole("heading", { name: "Statut", exact: true })).toHaveCount(0);
-  await expect(dialog.getByRole("button", { name: /^Passer à/ })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /^(Passer|Marquer)/ })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Rembourser" })).toHaveCount(0);
 });
 
@@ -120,7 +120,7 @@ test("la modale d'une commande payée n'a qu'un seul bouton d'avancement, en pie
 
   await expect(dialog.getByRole("heading", { name: "Statut", exact: true })).toHaveCount(0);
   // Un seul bouton pour passer en préparation : le panneau Préparation n'a plus le sien.
-  const action = dialog.getByRole("button", { name: "Passer à PROCESSING" });
+  const action = dialog.getByRole("button", { name: "Passer en préparation" });
   await expect(action).toHaveCount(1);
   await expect(dialog.getByRole("button", { name: "Marquer en préparation" })).toHaveCount(0);
   await expect(dialog.getByRole("button", { name: "Rembourser" })).toBeVisible();
@@ -164,4 +164,30 @@ test("les cartes du dashboard mènent au groupe exact de la page commandes", asy
   await toPay.setStatus("CANCELLED");
   await toPrepare.setStatus("REFUNDED");
   await toShip.setStatus("REFUNDED");
+});
+
+test("les statuts de commande sont affichés en français : groupes, modale, bouton et confirmation", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const { order, setStatus } = await createOrder(request, token, ["PENDING_PAYMENT", "PAID"]);
+
+  await page.goto("/orders");
+  // Aucun code anglais dans les en-têtes de groupes, les badges ni le rappel.
+  const codes =
+    /\b(DRAFT|PENDING_PAYMENT|PAID|PROCESSING|READY_TO_SHIP|SHIPPED|DELIVERED|CANCELLED|REFUNDED)\b/;
+  await expect(page.locator("main")).not.toContainText(codes);
+  await expect(page.locator("#orders-PAID .badge").first()).toHaveText("Payée");
+
+  await page.getByRole("button", { name: order.number, exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Payée");
+  await expect(dialog).not.toContainText(codes);
+
+  // La confirmation du changement de statut parle français.
+  await dialog.getByRole("button", { name: "Passer en préparation" }).click();
+  await expect(page.getByText("Passer au statut En préparation ?")).toBeVisible();
+
+  await setStatus("REFUNDED");
 });

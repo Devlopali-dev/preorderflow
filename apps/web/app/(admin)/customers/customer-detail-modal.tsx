@@ -14,6 +14,7 @@ import {
   toCustomerPayload,
   type CustomerFormValue,
 } from "./customer-form";
+import { orderStatusLabel } from "@/lib/order-status-labels";
 
 // Les erreurs de validation de l'API arrivent en liste de messages.
 function messageOf(body: { message?: string | string[] } | null, status: number): string {
@@ -157,7 +158,7 @@ export function CustomerDetailModal({
                   <Link href={`/orders/${order.id}`} className="underline">
                     #{order.number}
                   </Link>{" "}
-                  — {order.status} — {order.total} {order.currency}
+                  — {orderStatusLabel(order.status)} — {order.total} {order.currency}
                 </li>
               ))}
               {customer.orders.length === 0 && <li className="opacity-60">Aucune commande</li>}

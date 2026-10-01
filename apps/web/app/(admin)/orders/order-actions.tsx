@@ -1,6 +1,7 @@
 "use client";
 
 import { StatusActionButton } from "@/components/status-action-button";
+import { orderStatusActionLabel, orderStatusLabel } from "@/lib/order-status-labels";
 
 // Reflète ALLOWED_TRANSITIONS côté API (order-status.ts) — l'API reste la
 // seule source de vérité si jamais ça diverge.
@@ -54,7 +55,8 @@ export function OrderActions({
           apiUrl={apiUrl}
           statusEndpoint={`orders/${orderId}/status`}
           target={next}
-          label={`Passer à ${next}`}
+          label={orderStatusActionLabel(next)}
+          targetLabel={orderStatusLabel(next)}
           onChanged={onChanged}
         />
       )}
@@ -63,7 +65,8 @@ export function OrderActions({
           apiUrl={apiUrl}
           statusEndpoint={`orders/${orderId}/status`}
           target="CANCELLED"
-          label="Annuler"
+          label={orderStatusActionLabel("CANCELLED")}
+          targetLabel={orderStatusLabel("CANCELLED")}
           danger
           onChanged={onChanged}
         />
@@ -73,7 +76,8 @@ export function OrderActions({
           apiUrl={apiUrl}
           statusEndpoint={`orders/${orderId}/status`}
           target="REFUNDED"
-          label="Rembourser"
+          label={orderStatusActionLabel("REFUNDED")}
+          targetLabel={orderStatusLabel("REFUNDED")}
           danger
           onChanged={onChanged}
         />
