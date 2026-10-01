@@ -4,7 +4,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, FormGroup, Input } from "@preorderflow/ui";
 
-export function LoginForm() {
+export function LoginForm({ notice }: { notice?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,6 +37,11 @@ export function LoginForm() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-8">
       <h1 className="text-2xl font-semibold">Connexion administrateur</h1>
+      {notice && (
+        <p role="status" className="text-sm opacity-80">
+          {notice}
+        </p>
+      )}
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <FormGroup label="Email" htmlFor="email">
           <Input

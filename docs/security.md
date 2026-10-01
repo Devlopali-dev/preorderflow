@@ -12,6 +12,7 @@
 ## Authentification
 
 - Admin : mot de passe hashé (bcrypt), session JWT, cookies `httpOnly` + `secure` en production.
+- Un jeton admin ne suffit pas : à chaque requête, le garde global vérifie en base que le compte existe et est actif, et prend le **rôle en base**, pas celui du jeton. Un admin supprimé, désactivé ou rétrogradé perd donc ses droits immédiatement, sans attendre l'expiration du jeton (401 « Session invalide »). Côté web, un 401 renvoie vers `/login` et efface le cookie périmé (`/api/auth/session-expired`).
 - Client : magic link à usage unique et expiration courte (`MAGIC_LINK_EXPIRES_IN`).
 - Premier lancement : `GET /auth/setup-status` (`{ needsSetup }`, public) et `POST /auth/setup`
   (public, même throttle que `/login`) permettent de créer le tout premier compte `ADMIN` tant
