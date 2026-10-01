@@ -70,6 +70,7 @@ export default async function OrdersPage() {
         {groups.map((group) => (
           <CollapsibleSection
             key={group.status}
+            id={`orders-${group.status}`}
             header={
               <>
                 <span className={`badge ${ORDER_STATUS_BADGE[group.status] ?? "badge-default"}`}>

@@ -16,6 +16,16 @@ const NEXT_STATUS: Record<string, string | undefined> = {
 const CANCELLABLE_FROM = ["DRAFT", "PENDING_PAYMENT"];
 const REFUNDABLE_FROM = ["PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"];
 
+// Y a-t-il au moins une action pour ce statut ? Sert à ne pas réserver un pied de
+// modale (ou un titre de section) vide pour une commande annulée ou remboursée.
+export function hasOrderActions(status: string): boolean {
+  return (
+    NEXT_STATUS[status] !== undefined ||
+    CANCELLABLE_FROM.includes(status) ||
+    REFUNDABLE_FROM.includes(status)
+  );
+}
+
 export function OrderActions({
   orderId,
   status,
@@ -31,7 +41,7 @@ export function OrderActions({
   const cancellable = CANCELLABLE_FROM.includes(status);
   const refundable = REFUNDABLE_FROM.includes(status);
 
-  if (!next && !cancellable && !refundable) return null;
+  if (!hasOrderActions(status)) return null;
 
   return (
     <div className="flex items-center justify-center gap-2">

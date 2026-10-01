@@ -7,7 +7,7 @@ import { getClientAuthHeaders } from "@/lib/auth";
 import { variantLabel } from "@/lib/variants";
 import { PaymentPanel } from "./[id]/payment-panel";
 import { FulfillmentPanel } from "./[id]/fulfillment-panel";
-import { OrderActions } from "./order-actions";
+import { hasOrderActions, OrderActions } from "./order-actions";
 
 export function OrderDetailModal({
   orderId,
@@ -46,6 +46,18 @@ export function OrderDetailModal({
       onClose={onClose}
       title={order ? `Commande #${order.number}` : "Commande"}
       size="lg"
+      // Les actions de statut sont en pied de modale, comme dans les autres
+      // modales ; aucun pied pour une commande sans action (annulée, remboursée).
+      footer={
+        order && hasOrderActions(order.status) ? (
+          <OrderActions
+            orderId={order.id}
+            status={order.status}
+            apiUrl={apiUrl}
+            onChanged={() => setRefreshKey((k) => k + 1)}
+          />
+        ) : undefined
+      }
     >
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!order && !error && <p className="text-sm opacity-70">Chargement…</p>}
@@ -66,16 +78,6 @@ export function OrderDetailModal({
               ))}
             </ul>
             <p className="mt-2 font-medium">Total : {order.total} €</p>
-          </div>
-
-          <div>
-            <h3 className="mb-1 font-medium">Statut</h3>
-            <OrderActions
-              orderId={order.id}
-              status={order.status}
-              apiUrl={apiUrl}
-              onChanged={() => setRefreshKey((k) => k + 1)}
-            />
           </div>
 
           <div>

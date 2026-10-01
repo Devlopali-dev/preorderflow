@@ -9,9 +9,19 @@ export default async function DashboardPage() {
     { label: "Campagnes actives", value: overview.activeCampaigns, href: "/campaigns" },
     { label: "Demandes de recensement", value: overview.totalInterests, href: "/campaigns" },
     { label: "Commandes", value: overview.totalOrders, href: "/orders" },
-    { label: "Commandes à payer", value: overview.ordersToPay, href: "/orders" },
-    { label: "Commandes à préparer", value: overview.ordersToPrepare, href: "/orders" },
-    { label: "Commandes à expédier", value: overview.ordersToShip, href: "/orders" },
+    // Ancres des groupes de la page commandes (id `orders-<statut>`) : le clic
+    // arrive directement sur le bon groupe.
+    {
+      label: "Commandes à payer",
+      value: overview.ordersToPay,
+      href: "/orders#orders-PENDING_PAYMENT",
+    },
+    { label: "Commandes à préparer", value: overview.ordersToPrepare, href: "/orders#orders-PAID" },
+    {
+      label: "Commandes à expédier",
+      value: overview.ordersToShip,
+      href: "/orders#orders-READY_TO_SHIP",
+    },
     { label: "Production en cours", value: overview.productionInProgress, href: "/production" },
     { label: "Livraisons en transit", value: overview.shipmentsInTransit, href: "/shipments" },
   ];
