@@ -225,7 +225,8 @@ test("commande publique d'un nouveau client : son adresse remonte dans l'admin",
   await loginAsAdmin(page, request);
   await page.goto("/customers");
   await page.getByRole("button", { name: "Nadia Nouvelle" }).click();
-  await expect(page.getByRole("dialog").getByText(/5 place Bellecour/)).toBeVisible();
+  // Une ligne par adresse du carnet : facturation et livraison.
+  await expect(page.getByRole("dialog").getByText(/5 place Bellecour/)).toHaveCount(2);
 
   for (const order of detail.orders) {
     await request.patch(`${apiUrl}/api/v1/orders/${order.id}/status`, {
