@@ -159,6 +159,7 @@
 /* Stat card */
 .card-stat .stat-label { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: var(--font-medium); }
 .card-stat .stat-value { font-size: var(--text-3xl); font-weight: var(--font-bold); color: var(--color-text); line-height: 1.1; margin: var(--space-1) 0; }
+.card-stat .stat-caption { font-size: var(--text-sm); color: var(--color-text-muted); }
 .card-stat .stat-delta { font-size: var(--text-sm); color: var(--color-success); display: flex; align-items: center; gap: var(--space-1); }
 .card-stat .stat-delta.down { color: var(--color-danger); }
 

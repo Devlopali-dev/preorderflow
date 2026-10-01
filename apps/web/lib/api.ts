@@ -107,6 +107,8 @@ export async function getCampaigns(): Promise<Campaign[]> {
 export interface DashboardOverview {
   activeCampaigns: number;
   totalInterests: number;
+  interestPeople: number;
+  interestQuantity: number;
   totalOrders: number;
   ordersToPay: number;
   ordersToPrepare: number;

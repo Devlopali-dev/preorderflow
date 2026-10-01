@@ -5,9 +5,14 @@ import { StatCard } from "@preorderflow/ui";
 export default async function DashboardPage() {
   const overview = await getDashboardOverview();
 
-  const cards: Array<{ label: string; value: number; href: string }> = [
+  const cards: Array<{ label: string; value: number; href: string; caption?: string }> = [
     { label: "Campagnes actives", value: overview.activeCampaigns, href: "/campaigns" },
-    { label: "Demandes de recensement", value: overview.totalInterests, href: "/campaigns" },
+    {
+      label: "Demandes de recensement",
+      value: overview.totalInterests,
+      href: "/campaigns",
+      caption: `${overview.interestPeople} personne${overview.interestPeople > 1 ? "s" : ""} · ${overview.interestQuantity} exemplaire${overview.interestQuantity > 1 ? "s" : ""}`,
+    },
     { label: "Commandes", value: overview.totalOrders, href: "/orders" },
     // Ancres des groupes de la page commandes (id `orders-<statut>`) : le clic
     // arrive directement sur le bon groupe.
@@ -32,7 +37,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {cards.map((card) => (
           <Link key={card.label} href={card.href} className="dashboard-card-link">
-            <StatCard label={card.label} value={card.value} />
+            <StatCard label={card.label} value={card.value} caption={card.caption} />
           </Link>
         ))}
       </div>
