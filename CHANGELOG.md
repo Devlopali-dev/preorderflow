@@ -7,6 +7,22 @@ correctifs.
 
 ## [Non publié]
 
+## [0.11.0] — 2026-10-01
+
+### Ajouté
+
+- **Jusqu'à 3 photos par produit**, dès la création : la modale « Nouveau produit » accepte plusieurs
+  fichiers (3 retenus au plus, les autres sont écartés avec un message, chaque photo peut être retirée avant
+  la création). La modale d'édition affiche la galerie, permet de supprimer une photo et d'en ajouter tant
+  qu'il reste de la place. L'API refuse la 4ᵉ photo (400) et ne laisse pas de fichier orphelin.
+- `DELETE /products/:id/photos/:photoId` retire la photo, efface son fichier et renumérote les suivantes.
+
+### Modifié (changement cassant)
+
+- `Product.imageUrl` est remplacé par `ProductPhoto` (migration `product_photos` : la photo existante devient
+  la photo principale). Les produits exposent `photos: [{ id, url, position }]` ; `imageUrl` n'est plus accepté
+  à la création ni à la mise à jour (400, `forbidNonWhitelisted`).
+
 ## [0.10.2] — 2026-10-01
 
 ### Modifié
