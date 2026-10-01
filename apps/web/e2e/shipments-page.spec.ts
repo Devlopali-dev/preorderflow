@@ -60,15 +60,19 @@ test("les expéditions sont groupées par statut, avec une action pour passer au
 
   // PENDING : une action pour passer au statut suivant.
   await page.goto("/shipments");
-  await expect(row().getByRole("button", { name: "Passer à LABEL_CREATED" })).toBeVisible();
-  await row().getByRole("button", { name: "Passer à LABEL_CREATED" }).click();
+  await expect(row().getByRole("button", { name: "Marquer étiquette créée" })).toBeVisible();
+  // Groupes, badges et confirmation sont en français, sans code anglais.
+  await expect(page.locator("main")).not.toContainText(/\b(PENDING|LABEL_CREATED|IN_TRANSIT)\b/);
+  await expect(page.locator("#main, main").getByText("En attente").first()).toBeVisible();
+  await row().getByRole("button", { name: "Marquer étiquette créée" }).click();
+  await expect(page.getByText("Passer au statut Étiquette créée ?")).toBeVisible();
   await page.getByRole("button", { name: "Confirmer" }).click();
-  await expect(row().getByRole("button", { name: "Passer à SHIPPED" })).toBeVisible();
+  await expect(row().getByRole("button", { name: "Marquer expédié" })).toBeVisible();
   expect(await statusOf()).toBe("LABEL_CREATED");
 
   // Un incident ne se signale qu'une fois le colis parti.
   await expect(row().getByRole("button", { name: "Signaler un incident" })).toHaveCount(0);
-  await row().getByRole("button", { name: "Passer à SHIPPED" }).click();
+  await row().getByRole("button", { name: "Marquer expédié" }).click();
   await page.getByRole("button", { name: "Confirmer" }).click();
   await expect(row().getByRole("button", { name: "Signaler un incident" })).toBeVisible();
 

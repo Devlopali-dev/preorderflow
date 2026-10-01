@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, Input } from "@preorderflow/ui";
 import type { OrderDetail } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
+import { shipmentStatusLabel } from "@/lib/shipment-status-labels";
 
 const NEXT_SHIPMENT_STATUS: Record<string, { label: string; status: string } | undefined> = {
   PENDING: { label: "Marquer comme expédiée", status: "SHIPPED" },
@@ -85,7 +86,7 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
               Suivre le colis
             </a>
           )}
-          <p>Statut expédition : {order.shipment.status}</p>
+          <p>Statut expédition : {shipmentStatusLabel(order.shipment.status)}</p>
           {NEXT_SHIPMENT_STATUS[order.shipment.status] && (
             <Button
               variant="secondary"

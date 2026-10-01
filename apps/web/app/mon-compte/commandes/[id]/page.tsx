@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getCustomerOrder } from "@/lib/api";
 import { variantLabel } from "@/lib/variants";
 import { orderStatusLabel } from "@/lib/order-status-labels";
+import { shipmentStatusLabel } from "@/lib/shipment-status-labels";
 import { orderPaymentStatusLabel } from "@/lib/payment-labels";
 import { CustomerNav } from "../../customer-nav";
 import { PaymentChoice } from "./payment-choice";
@@ -77,7 +78,7 @@ export default async function CustomerOrderDetailPage({ params }: { params: { id
                 Suivre le colis
               </a>
             )}
-            <p className="mt-1 text-sm">Statut : {order.shipment.status}</p>
+            <p className="mt-1 text-sm">Statut : {shipmentStatusLabel(order.shipment.status)}</p>
           </div>
         )}
       </main>

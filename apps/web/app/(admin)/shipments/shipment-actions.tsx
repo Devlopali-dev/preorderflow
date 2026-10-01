@@ -1,6 +1,7 @@
 "use client";
 
 import { StatusActionButton } from "@/components/status-action-button";
+import { shipmentStatusActionLabel, shipmentStatusLabel } from "@/lib/shipment-status-labels";
 
 // Reflète ALLOWED_TRANSITIONS côté API (shipment-status.ts) : le chemin normal
 // d'un colis. L'API reste la seule source de vérité si jamais ça diverge.
@@ -38,7 +39,8 @@ export function ShipmentActions({
           apiUrl={apiUrl}
           statusEndpoint={statusEndpoint}
           target={next}
-          label={`Passer à ${next}`}
+          label={shipmentStatusActionLabel(next)}
+          targetLabel={shipmentStatusLabel(next)}
         />
       )}
       {canReportException && (
@@ -46,7 +48,8 @@ export function ShipmentActions({
           apiUrl={apiUrl}
           statusEndpoint={statusEndpoint}
           target="EXCEPTION"
-          label="Signaler un incident"
+          label={shipmentStatusActionLabel("EXCEPTION")}
+          targetLabel={shipmentStatusLabel("EXCEPTION")}
           danger
         />
       )}

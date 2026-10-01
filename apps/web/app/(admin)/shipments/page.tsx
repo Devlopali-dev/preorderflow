@@ -1,4 +1,5 @@
 import { getShipments } from "@/lib/api";
+import { shipmentStatusLabel } from "@/lib/shipment-status-labels";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { ShipmentActions } from "./shipment-actions";
 
@@ -60,7 +61,7 @@ export default async function ShipmentsPage() {
               header={
                 <>
                   <span className={`badge ${STATUS_BADGE[group.status] ?? "badge-default"}`}>
-                    {group.status}
+                    {shipmentStatusLabel(group.status)}
                   </span>
                   <span className="table-muted">{group.shipments.length}</span>
                 </>

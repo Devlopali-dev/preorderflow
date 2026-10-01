@@ -68,7 +68,7 @@ test("scénario 3 : préparation, expédition, tracking, livraison", async ({ pa
 
   // Livraison
   await page.getByRole("button", { name: "Marquer livrée" }).click();
-  await expect(page.getByText("Statut expédition : DELIVERED")).toBeVisible();
+  await expect(page.getByText("Statut expédition : Livré")).toBeVisible();
 
   const deliveredOrderRes = await request.get(`${apiUrl}/api/v1/orders/${order.id}`, {
     headers: auth,
