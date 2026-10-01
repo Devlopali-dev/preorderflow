@@ -30,7 +30,6 @@ async function openCampaign(request: APIRequestContext, token: string, label: st
         name: `Campagne ${label} ${stamp}`,
         slug: `${label.toLowerCase()}-${stamp}`,
         productId: product.id,
-        indicativePrice: 2,
       },
     })
   ).json();

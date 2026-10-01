@@ -32,6 +32,9 @@ export class CampaignService {
         // uniquement (jamais de stock ni de SKU).
         product: {
           select: {
+            // Prix affiché sur la page publique : celui du produit, source unique.
+            price: true,
+            currency: true,
             variants: {
               where: { active: true },
               orderBy: { sku: "asc" },
@@ -54,7 +57,6 @@ export class CampaignService {
         slug: dto.slug,
         description: dto.description,
         productId: dto.productId,
-        indicativePrice: dto.indicativePrice,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,
@@ -81,7 +83,6 @@ export class CampaignService {
       data: {
         name: dto.name,
         description: dto.description,
-        indicativePrice: dto.indicativePrice,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,

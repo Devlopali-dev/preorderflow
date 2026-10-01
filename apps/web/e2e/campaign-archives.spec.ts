@@ -21,7 +21,6 @@ async function setup(request: APIRequestContext, label: string) {
         name: `Campagne ${label} ${stamp}`,
         slug: `${label.toLowerCase()}-${stamp}`,
         productId: product.id,
-        indicativePrice: 2,
       },
     })
   ).json();

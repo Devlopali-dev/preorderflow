@@ -236,8 +236,6 @@ async function main() {
       startDate: new Date("2026-01-01"),
       endDate: new Date("2026-03-01"),
       productId: stylo.id,
-      indicativePrice: 5,
-      currency: "EUR",
     },
   });
 
@@ -252,8 +250,6 @@ async function main() {
       startDate: new Date("2026-02-01"),
       endDate: new Date("2026-04-15"),
       productId: gourde.id,
-      indicativePrice: 15,
-      currency: "EUR",
     },
   });
 
@@ -268,8 +264,6 @@ async function main() {
       status: "DRAFT",
       startDate: new Date("2026-05-01"),
       productId: tote.id,
-      indicativePrice: 8,
-      currency: "EUR",
     },
   });
 
@@ -286,8 +280,6 @@ async function main() {
       startDate: new Date("2025-09-01"),
       endDate: new Date("2025-11-30"),
       productId: carnet.id,
-      indicativePrice: 4,
-      currency: "EUR",
     },
   });
   const archivedCancelled = await prisma.campaign.upsert({
@@ -301,8 +293,6 @@ async function main() {
       startDate: new Date("2025-10-01"),
       endDate: new Date("2025-12-15"),
       productId: gourde.id,
-      indicativePrice: 14,
-      currency: "EUR",
     },
   });
 

@@ -42,7 +42,6 @@ export function CampaignCreateModal({
   const [productId, setProductId] = useState(products.find((p) => p.active)?.id ?? "");
   const [archivedToConfirm, setArchivedToConfirm] = useState<Product | null>(null);
 
-  const [indicativePrice, setIndicativePrice] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [images, setImages] = useState<File[]>([]);
@@ -122,7 +121,6 @@ export function CampaignCreateModal({
             name,
             slug,
             productId,
-            indicativePrice: Number(indicativePrice),
             startDate: startDate ? new Date(startDate).toISOString() : undefined,
             endDate: endDate ? new Date(endDate).toISOString() : undefined,
           }),
@@ -220,17 +218,6 @@ export function CampaignCreateModal({
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Prix indicatif
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Prix indicatif"
-            value={indicativePrice}
-            disabled={created}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
-          />
         </label>
         <label className="text-sm">
           Début

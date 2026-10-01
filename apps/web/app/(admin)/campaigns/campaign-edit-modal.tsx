@@ -26,7 +26,6 @@ export function CampaignEditModal({
 }) {
   const router = useRouter();
   const [name, setName] = useState(campaign.name);
-  const [indicativePrice, setIndicativePrice] = useState(String(campaign.indicativePrice));
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
   const [media, setMedia] = useState(campaign.media ?? []);
@@ -48,7 +47,6 @@ export function CampaignEditModal({
         headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
         body: JSON.stringify({
           name,
-          indicativePrice: Number(indicativePrice),
           startDate: startDate ? new Date(startDate).toISOString() : undefined,
           endDate: endDate ? new Date(endDate).toISOString() : undefined,
         }),
@@ -217,17 +215,6 @@ export function CampaignEditModal({
             value={name}
             disabled={readOnly}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Prix indicatif
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Prix indicatif"
-            value={indicativePrice}
-            disabled={readOnly}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setIndicativePrice(e.target.value)}
           />
         </label>
         <label className="text-sm">

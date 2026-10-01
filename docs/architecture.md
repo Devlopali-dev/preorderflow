@@ -275,7 +275,7 @@ Chaque changement de statut crée un `ShipmentEvent` (append-only).
 GET    /api/v1/campaigns
 POST   /api/v1/campaigns
 GET    /api/v1/campaigns/:id
-PATCH  /api/v1/campaigns/:id                    # nom/prix/dates — pas le statut
+PATCH  /api/v1/campaigns/:id                    # nom/dates — pas le statut (le prix vient du produit)
 PATCH  /api/v1/campaigns/:id/status
 DELETE /api/v1/campaigns/:id                    # ADMIN — en cours : refusé (400) si des CampaignInterest existent ; archive : suppression définitive avec ses demandes
 POST   /api/v1/campaigns/:id/interests          # public, rate-limited — items: [{variantId, quantity}]

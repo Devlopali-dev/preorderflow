@@ -158,8 +158,7 @@ Une campagne possède :
 - statut
 - date de début
 - date de fin
-- produit associé
-- prix indicatif
+- produit associé (le prix affiché est celui du produit, source unique)
 - image
 - paramètres de recensement
 - timestamps

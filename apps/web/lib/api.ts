@@ -81,14 +81,12 @@ export interface Campaign {
   slug: string;
   description: string | null;
   status: string;
-  indicativePrice: string;
-  currency: string;
   imageUrl: string | null;
   documentUrl: string | null;
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];
-  product?: { variants: CampaignVariantOption[] };
+  product?: { price: string; currency: string; variants: CampaignVariantOption[] };
 }
 
 export async function getCampaign(slug: string): Promise<Campaign | null> {

@@ -64,8 +64,6 @@ model Campaign {
   endDate           DateTime?
   productId         String
   product           Product        @relation(fields: [productId], references: [id])
-  indicativePrice   Decimal        @db.Decimal(10, 2)
-  currency          String         @default("EUR")
   imageUrl          String?
   documentUrl       String?
   interestSettings  Json?          // ex: quantités max, message légal, seuils d'affichage

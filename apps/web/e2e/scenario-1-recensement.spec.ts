@@ -46,7 +46,6 @@ test("scénario 1 : campagne, recensement, statistiques", async ({ page, request
       slug,
       description: "Campagne créée par le scénario e2e 1.",
       productId: product.id,
-      indicativePrice: 5,
     },
   });
   expect(createRes.ok()).toBe(true);

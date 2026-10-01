@@ -7,7 +7,6 @@ import {
   IsEmail,
   IsInt,
   IsISO8601,
-  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -32,11 +31,6 @@ export class CreateCampaignDto {
   @ApiProperty()
   @IsUUID()
   productId!: string;
-
-  @ApiProperty()
-  @IsNumber()
-  @Min(0)
-  indicativePrice!: number;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -72,12 +66,6 @@ export class UpdateCampaignDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  indicativePrice?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()

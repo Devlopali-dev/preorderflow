@@ -83,7 +83,6 @@ export default async function AdminCampaignsPage() {
                 <thead>
                   <tr>
                     <th>Nom</th>
-                    <th>Prix indicatif</th>
                     <th style={{ textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
@@ -92,9 +91,6 @@ export default async function AdminCampaignsPage() {
                     <tr key={campaign.id}>
                       <td>
                         <CampaignNameButton campaign={campaign} apiUrl={apiUrl} isAdmin={isAdmin} />
-                      </td>
-                      <td>
-                        {campaign.indicativePrice} {campaign.currency}
                       </td>
                       <td className="text-center">
                         <div className="table-cell-actions justify-center">
@@ -129,7 +125,6 @@ export default async function AdminCampaignsPage() {
                   <tr>
                     <th>Nom</th>
                     <th style={{ textAlign: "center" }}>Statut</th>
-                    <th>Prix indicatif</th>
                     <th style={{ textAlign: "center" }}>Actions</th>
                   </tr>
                 </thead>
@@ -145,9 +140,6 @@ export default async function AdminCampaignsPage() {
                         >
                           {campaign.status}
                         </span>
-                      </td>
-                      <td>
-                        {campaign.indicativePrice} {campaign.currency}
                       </td>
                       <td className="text-center">
                         <div className="table-cell-actions justify-center">

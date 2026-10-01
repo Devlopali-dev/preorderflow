@@ -83,7 +83,6 @@ test("une campagne se crée avec ses dates et ses images envoyées, comme dans l
   await page.getByRole("button", { name: "Nouvelle campagne" }).click();
 
   await page.getByLabel("Nom", { exact: true }).fill(name);
-  await page.getByLabel("Prix indicatif").fill("4.5");
   await page.getByLabel("Début").fill("2026-11-01");
   await page.getByLabel("Fin (deadline)").fill("2026-12-15");
 
@@ -132,7 +131,7 @@ test("les archives sont repliées, en lecture seule, réactivables et supprimabl
   const campaign = await (
     await request.post(`${apiUrl}/api/v1/campaigns`, {
       headers: auth,
-      data: { name, slug: `archive-${stamp}`, productId: product.id, indicativePrice: 2 },
+      data: { name, slug: `archive-${stamp}`, productId: product.id },
     })
   ).json();
   const setStatus = (status: string) =>
@@ -155,7 +154,7 @@ test("les archives sont repliées, en lecture seule, réactivables et supprimabl
   await row.getByRole("button", { name }).click();
   await expect(page.getByText("Campagne archivée (lecture seule)")).toBeVisible();
   await expect(page.getByLabel("Nom", { exact: true })).toBeDisabled();
-  await expect(page.getByLabel("Prix indicatif")).toBeDisabled();
+  await expect(page.getByLabel("Début")).toBeDisabled();
   await expect(page.getByRole("button", { name: "Enregistrer" })).toHaveCount(0);
   await expect(page.getByText("Ajouter une image")).toHaveCount(0);
 
