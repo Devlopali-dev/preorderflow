@@ -90,7 +90,7 @@ test("une campagne se crée avec ses dates et ses images envoyées, comme dans l
   await expect(page.getByLabel("URL de l'image")).toHaveCount(0);
   await expect(page.getByLabel("URL du PDF de présentation")).toHaveCount(0);
   await page
-    .getByText("Ajouter une image")
+    .getByText("Ajouter une image ou un PDF")
     .locator("..")
     .locator("input")
     .setInputFiles([
@@ -196,11 +196,13 @@ test("nouvelle campagne : images et PDF en petits aperçus sur une ligne, bouton
   await page.goto("/campaigns");
   await page.getByRole("button", { name: "Nouvelle campagne" }).click();
   const dialog = page.getByRole("dialog");
-  const images = dialog.getByText("Ajouter une image").locator("..").locator("input");
-  const pdfInput = dialog.getByText("Ajouter un PDF").locator("..").locator("input");
+  // Un seul champ pour les images et le PDF.
+  await expect(dialog.getByText("Ajouter un PDF")).toHaveCount(0);
+  const input = dialog.getByText("Ajouter une image ou un PDF").locator("..").locator("input");
+  await expect(dialog.locator('input[type="file"]')).toHaveCount(1);
 
-  await images.setInputFiles(["a", "b", "c"].map((n) => png(`${n}.png`)));
-  await pdfInput.setInputFiles(pdf);
+  // Trois images et un PDF choisis d'un seul coup dans le même champ.
+  await input.setInputFiles([...["a", "b", "c"].map((n) => png(`${n}.png`)), pdf]);
   await expect(dialog.getByText("Aperçus (4/5)")).toBeVisible();
 
   // Trois images et le PDF : une seule ligne, chaque aperçu est petit, Retirer en dessous.
@@ -213,21 +215,66 @@ test("nouvelle campagne : images et PDF en petits aperçus sur une ligne, bouton
   expect(retirer!.y).toBeGreaterThan(boxes[0]!.y + boxes[0]!.height - 1);
   await expect(dialog.getByRole("img", { name: "Aperçu du PDF dossier.pdf" })).toContainText("PDF");
 
-  // Un seul PDF : le champ se bloque ; cinq aperçus au plus, le surplus est écarté avec un message.
-  await expect(pdfInput).toBeDisabled();
-  await images.setInputFiles(["d", "e", "f"].map((n) => png(`${n}.png`)));
+  // Un second PDF est écarté ; cinq aperçus au plus, le surplus est écarté avec un message.
+  await input.setInputFiles({ ...pdf, name: "autre.pdf" });
+  await expect(dialog.getByText(/un seul PDF/)).toBeVisible();
+  await expect(dialog.getByText("Aperçus (4/5)")).toBeVisible();
+  await input.setInputFiles(["d", "e", "f"].map((n) => png(`${n}.png`)));
   await expect(dialog.getByText("Aperçus (5/5)")).toBeVisible();
   await expect(dialog.getByText(/5 aperçus au maximum/)).toBeVisible();
-  await expect(images).toBeDisabled();
+  await expect(input).toBeDisabled();
 
   // Retirer libère une place, y compris celle du PDF.
   await dialog.getByRole("button", { name: "Retirer l'image d.png" }).click();
   await expect(dialog.getByText("Aperçus (4/5)")).toBeVisible();
-  await expect(images).toBeEnabled();
+  await expect(input).toBeEnabled();
   await dialog.getByRole("button", { name: "Retirer le PDF dossier.pdf" }).click();
   await expect(dialog.getByText("Aperçus (3/5)")).toBeVisible();
-  await expect(pdfInput).toBeEnabled();
+  // Le PDF retiré peut de nouveau être choisi.
+  await input.setInputFiles(pdf);
+  await expect(dialog.getByText("Aperçus (4/5)")).toBeVisible();
+  await dialog.getByRole("button", { name: "Retirer le PDF dossier.pdf" }).click();
   await expect(dialog.getByRole("img", { name: /^Aperçu du PDF/ })).toHaveCount(0);
 
   await dialog.getByRole("button", { name: "Annuler" }).click();
+});
+
+test("modale d'une campagne existante : un seul champ pour ajouter une image ou un PDF", async ({
+  page,
+  request,
+}) => {
+  const token = await loginAsAdmin(page, request);
+  const auth = authHeader(token);
+  const stamp = Date.now();
+  const product = await (
+    await request.post(`${apiUrl}/api/v1/products`, {
+      headers: auth,
+      data: { sku: `ONE-${stamp}`, name: `Champ unique ${stamp}`, price: 1 },
+    })
+  ).json();
+  const campaign = await (
+    await request.post(`${apiUrl}/api/v1/campaigns`, {
+      headers: auth,
+      data: { name: `Campagne champ ${stamp}`, slug: `champ-${stamp}`, productId: product.id },
+    })
+  ).json();
+
+  await page.goto("/campaigns");
+  await page.getByRole("button", { name: campaign.name, exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Ajouter un PDF")).toHaveCount(0);
+  await expect(dialog.locator('input[type="file"]')).toHaveCount(1);
+  await expect(dialog.locator('input[type="file"]')).toHaveAttribute("accept", /application\/pdf/);
+
+  await dialog.locator('input[type="file"]').setInputFiles([
+    { name: "a.png", mimeType: "image/png", buffer: TINY_PNG },
+    { name: "b.png", mimeType: "image/png", buffer: TINY_PNG },
+  ]);
+  await expect(dialog.getByText("Aperçus (2/5)")).toBeVisible();
+
+  await request.patch(`${apiUrl}/api/v1/campaigns/${campaign.id}/status`, {
+    headers: auth,
+    data: { status: "ANNULEE" },
+  });
+  await request.patch(`${apiUrl}/api/v1/products/${product.id}/archive`, { headers: auth });
 });

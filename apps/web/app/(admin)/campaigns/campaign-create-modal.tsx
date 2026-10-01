@@ -68,24 +68,30 @@ export function CampaignCreateModal({
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, [images]);
 
-  // Au plus 5 aperçus (images + PDF) : les fichiers en trop sont écartés, avec un message.
-  function handlePickImages(e: ChangeEvent<HTMLInputElement>) {
+  // Un seul champ pour les images et le PDF. Au plus 5 aperçus (images + PDF) dont un seul
+  // PDF : les fichiers en trop sont écartés, avec un message.
+  function handlePickFiles(e: ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    const room = MAX_MEDIA - mediaCount;
-    setImages((current) => [...current, ...picked.slice(0, room)]);
-    setError(
-      picked.length > room
-        ? `Une campagne accepte ${MAX_MEDIA} aperçus au maximum (images et PDF) : les fichiers en trop ont été écartés.`
-        : null,
-    );
-  }
+    const isPdf = (file: File) => file.type === "application/pdf";
+    const pickedPdfs = picked.filter(isPdf);
+    const pickedImages = picked.filter((file) => !isPdf(file));
 
-  function handlePickPdf(e: ChangeEvent<HTMLInputElement>) {
-    const picked = e.target.files?.[0] ?? null;
-    e.target.value = "";
-    if (picked) {
-      setPdf(picked);
+    const newPdf = pdf ? null : (pickedPdfs[0] ?? null);
+    const room = MAX_MEDIA - mediaCount - (newPdf ? 1 : 0);
+    const keptImages = pickedImages.slice(0, Math.max(0, room));
+
+    if (newPdf) setPdf(newPdf);
+    if (keptImages.length > 0) setImages((current) => [...current, ...keptImages]);
+
+    const extraPdfs = pickedPdfs.length - (newPdf ? 1 : 0);
+    if (extraPdfs > 0) {
+      setError("Une campagne accepte un seul PDF : les PDF en trop ont été écartés.");
+    } else if (pickedImages.length > keptImages.length) {
+      setError(
+        `Une campagne accepte ${MAX_MEDIA} aperçus au maximum (images et PDF) : les fichiers en trop ont été écartés.`,
+      );
+    } else {
       setError(null);
     }
   }
@@ -282,27 +288,16 @@ export function CampaignCreateModal({
           <span className="form-label">
             Aperçus ({images.length + (pdf ? 1 : 0)}/{MAX_MEDIA})
           </span>
-          <div className="flex flex-wrap gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="form-label">Ajouter une image</span>
-              <input
-                type="file"
-                multiple
-                accept="image/jpeg,image/png,image/webp"
-                disabled={created || mediaCount >= MAX_MEDIA}
-                onChange={handlePickImages}
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="form-label">Ajouter un PDF</span>
-              <input
-                type="file"
-                accept="application/pdf"
-                disabled={created || Boolean(pdf) || mediaCount >= MAX_MEDIA}
-                onChange={handlePickPdf}
-              />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1">
+            <span className="form-label">Ajouter une image ou un PDF</span>
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              disabled={created || mediaCount >= MAX_MEDIA}
+              onChange={handlePickFiles}
+            />
+          </label>
           {mediaCount > 0 && (
             // Petits aperçus sur une seule ligne, bouton Retirer dessous (comme pour un produit).
             <ul className="flex flex-nowrap gap-3">

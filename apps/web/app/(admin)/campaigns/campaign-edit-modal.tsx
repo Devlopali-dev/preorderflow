@@ -84,49 +84,32 @@ export function CampaignEditModal({
     }
   }
 
-  async function handleUploadPhoto(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Un seul champ pour les images et le PDF : chaque fichier part vers la route de son
+  // type, l'un après l'autre (l'API limite à 5 aperçus et refuse un second PDF).
+  async function handleUploadFiles(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
     setSaving(true);
     setError(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/photo`, {
-        method: "POST",
-        headers: { ...getClientAuthHeaders() },
-        body: formData,
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
-      const updated = await res.json();
-      setMedia(updated.media ?? []);
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const route = file.type === "application/pdf" ? "document" : "photo";
+        const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/${route}`, {
+          method: "POST",
+          headers: { ...getClientAuthHeaders() },
+          body: formData,
+        });
+        if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+        const updated = await res.json();
+        setMedia(updated.media ?? []);
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleUploadDocument(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/document`, {
-        method: "POST",
-        headers: { ...getClientAuthHeaders() },
-        body: formData,
-      });
-      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
-      const updated = await res.json();
-      setMedia(updated.media ?? []);
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setSaving(false);
     }
@@ -292,20 +275,16 @@ export function CampaignEditModal({
             </div>
           )}
           {!readOnly && (
-            <div className="flex flex-wrap gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="form-label">Ajouter une image</span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleUploadPhoto}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="form-label">Ajouter un PDF</span>
-                <input type="file" accept="application/pdf" onChange={handleUploadDocument} />
-              </label>
-            </div>
+            <label className="flex flex-col gap-1">
+              <span className="form-label">Ajouter une image ou un PDF</span>
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                disabled={saving}
+                onChange={handleUploadFiles}
+              />
+            </label>
           )}
         </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
