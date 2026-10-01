@@ -56,6 +56,14 @@ export class CampaignController {
     return this.campaignService.create(dto);
   }
 
+  // Déclenche tout de suite le passage automatique selon les dates (le planificateur le
+  // fait déjà toutes les minutes) : renvoie les campagnes modifiées.
+  @Roles("ADMIN")
+  @Post("apply-schedule")
+  applySchedule() {
+    return this.campaignService.applySchedule();
+  }
+
   @Public()
   @Get(":id")
   getOne(@Param("id") id: string) {

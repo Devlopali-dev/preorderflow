@@ -279,6 +279,10 @@ export function CampaignCreateModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
           />
         </label>
+        <p className="form-hint">
+          Le statut passe automatiquement à « commandes ouvertes » à la date de début, et à «
+          commandes fermées » après la date de fin (incluse).
+        </p>
         <CampaignPaymentLinkField
           value={paymentLink}
           onChange={setPaymentLink}

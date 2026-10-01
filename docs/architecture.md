@@ -189,6 +189,19 @@ pas être supprimée (`DELETE /campaigns/:id` refuse s'il existe un `CampaignInt
 si ANNULEE n'était pas atteignable au-delà de `COMMANDES_OUVERTES`, une campagne avancée resterait
 bloquée sans aucune sortie.
 
+**Passage automatique selon les dates.** Un planificateur (`CampaignScheduler`, au démarrage puis toutes
+les minutes ; `POST /campaigns/apply-schedule`, `ADMIN`, le déclenche à la demande) applique :
+
+- à partir de la date de début (`now >= startDate`), `DRAFT` ou `RECENSEMENT` → `COMMANDES_OUVERTES` ;
+- après la date de fin (`now > endDate`), `DRAFT`, `RECENSEMENT` ou `COMMANDES_OUVERTES` →
+  `COMMANDES_FERMÉES` (la fermeture l'emporte quand les deux dates sont dépassées).
+
+Une date saisie sans heure (minuit UTC) est **inclusive** pour la fin : la campagne se ferme à la fin de
+ce jour-là. `PRODUCTION`, `EXPÉDITION` et les archives ne sont jamais touchés, ni une campagne sans
+date. Chaque changement est conditionné à l'ancien statut (une action manuelle concurrente n'est pas
+écrasée), journalisé et notifié à l'admin. `CAMPAIGN_SCHEDULE_DISABLED=true` coupe le planificateur,
+`CAMPAIGN_SCHEDULE_INTERVAL_MS` règle sa période.
+
 **Archives.** `TERMINEE` et `ANNULEE` sont les statuts _archivés_ :
 
 - **lecture seule** : l'API refuse la modification, l'ajout ou le retrait d'aperçus et le

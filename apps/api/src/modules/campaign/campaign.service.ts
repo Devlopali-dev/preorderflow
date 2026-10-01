@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { prisma, CampaignStatus } from "@preorderflow/database";
 import { CreateCampaignDto, CreateInterestDto, UpdateCampaignDto } from "./dto/create-campaign.dto";
 import {
@@ -6,6 +6,7 @@ import {
   InvalidCampaignTransitionError,
   isArchivedStatus,
 } from "./campaign-status";
+import { automaticTargetStatus, SCHEDULED_STATUSES } from "./campaign-schedule";
 import { computeCampaignStatistics } from "./campaign-statistics";
 import { NotificationService } from "../notification/notification.service";
 
@@ -13,6 +14,8 @@ import { NotificationService } from "../notification/notification.service";
 export class CampaignService {
   // Nombre maximal d'aperçus (photos + PDF) affichés sur la page publique.
   static readonly MAX_MEDIA = 5;
+
+  private readonly logger = new Logger(CampaignService.name);
 
   constructor(private readonly notificationService: NotificationService) {}
 
@@ -127,6 +130,42 @@ export class CampaignService {
       prisma.campaign.delete({ where: { id: campaign.id } }),
     ]);
     return { id: campaign.id, name: campaign.name, deletedInterests: interestCount, files };
+  }
+
+  // Passage automatique selon les dates (cf. campaign-schedule.ts) : ouverture des commandes à la
+  // date de début, fermeture après la date de fin. Chaque changement est conditionné à
+  // l'ancien statut : une modification manuelle concurrente n'est jamais écrasée. Renvoie les
+  // campagnes modifiées.
+  async applySchedule(now: Date = new Date()) {
+    const candidates = await prisma.campaign.findMany({
+      where: {
+        status: { in: SCHEDULED_STATUSES },
+        OR: [{ startDate: { not: null } }, { endDate: { not: null } }],
+      },
+      select: { id: true, name: true, status: true, startDate: true, endDate: true },
+    });
+
+    const changed: Array<{ id: string; name: string; from: CampaignStatus; to: CampaignStatus }> =
+      [];
+    for (const campaign of candidates) {
+      const target = automaticTargetStatus(campaign, now);
+      if (!target) continue;
+      const result = await prisma.campaign.updateMany({
+        where: { id: campaign.id, status: campaign.status },
+        data: { status: target },
+      });
+      if (result.count !== 1) continue;
+      changed.push({ id: campaign.id, name: campaign.name, from: campaign.status, to: target });
+      this.logger.log(`Campagne « ${campaign.name} » : ${campaign.status} → ${target} (dates)`);
+      await this.notificationService
+        .notifyAdmin(
+          target === "COMMANDES_OUVERTES" ? "Commandes ouvertes" : "Commandes fermées",
+          `${campaign.name} — passage automatique selon les dates`,
+          [target === "COMMANDES_OUVERTES" ? "unlock" : "lock"],
+        )
+        .catch(() => undefined);
+    }
+    return changed;
   }
 
   async updateStatus(id: string, status: CampaignStatus) {
