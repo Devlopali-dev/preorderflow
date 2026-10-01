@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.17.1] — 2026-10-02
+
+### Modifié
+
+- **Accueil public.** Les campagnes sont séparées en deux sections, « Commandes ouvertes » (d'abord : on peut
+  acheter) puis « Recensement ». Chaque campagne est une card cliquable avec sa première image comme aperçu,
+  ou un cadre neutre quand elle n'en a pas. Un brouillon, une campagne fermée ou archivée n'y figure pas.
+
 ## [0.17.0] — 2026-10-02
 
 ### Ajouté
