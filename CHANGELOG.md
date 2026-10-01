@@ -7,6 +7,19 @@ correctifs.
 
 ## [Non publié]
 
+## [0.8.0] — 2026-10-01
+
+### Modifié (changement cassant)
+
+- **Le prix n'est plus porté par la campagne** : `Product.price` est la source unique. Retrait de
+  `Campaign.indicativePrice` et `Campaign.currency` (migrations `drop_campaign_indicative_price` et
+  `drop_campaign_currency`). Les prix et devises de campagne existants sont perdus ; les lignes de commande
+  gardent leur `unitPrice`.
+- API : `POST /campaigns` et `PATCH /campaigns/:id` refusent `indicativePrice` (400, `forbidNonWhitelisted`).
+  `GET /campaigns/:slug` renvoie `product.price` et `product.currency`.
+- La page publique affiche « Prix indicatif » avec le prix du produit ; les modales et tableaux de
+  campagnes n'ont plus de champ ni de colonne prix.
+
 ## [0.7.0] — 2026-10-01
 
 ### Ajouté
