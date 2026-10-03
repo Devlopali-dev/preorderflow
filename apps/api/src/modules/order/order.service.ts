@@ -8,7 +8,7 @@ import {
 } from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
-import { computeShippingAmount } from "./shipping-fee";
+import { resolveShippingAmount } from "./shipping-fee";
 import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { NotificationService } from "../notification/notification.service";
@@ -84,11 +84,20 @@ export class OrderService {
 
     // Montant explicite (saisie admin) prioritaire ; sinon frais paramétrés dans /settings.
     const itemsSubtotal = computeOrderTotals(lines).subtotal;
-    const shippingAmount =
-      dto.shippingAmount ??
-      computeShippingAmount(itemsSubtotal, await this.settingsService.getShippingConfig());
+    const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
+    const shippingAmount = resolveShippingAmount(
+      deliveryMethod,
+      itemsSubtotal,
+      await this.settingsService.getShippingConfig(),
+      dto.shippingAmount,
+    );
     const totals = computeOrderTotals(lines, shippingAmount);
-    const billingAddress = dto.billingAddress ?? dto.shippingAddress;
+    // Remise en main propre : pas d'adresse, le snapshot ne garde que l'identité du client.
+    const shippingAddress = dto.shippingAddress ?? {
+      firstName: dto.customerFirstName,
+      lastName: dto.customerLastName,
+    };
+    const billingAddress = dto.billingAddress ?? shippingAddress;
 
     const order = await prisma.$transaction(async (tx) => {
       // Le numéro est calculé dans la même transaction que l'insertion, sous
@@ -120,12 +129,13 @@ export class OrderService {
           status: "DRAFT",
           paymentStatus: "UNPAID",
           fulfillmentStatus: "UNFULFILLED",
+          deliveryMethod,
           subtotal: totals.subtotal,
           shippingAmount,
           taxAmount: totals.taxAmount,
           total: totals.total,
           billingAddress: billingAddress as object,
-          shippingAddress: dto.shippingAddress as object,
+          shippingAddress: shippingAddress as object,
           notes: dto.notes,
           items: {
             create: totals.items.map((item, index) => ({

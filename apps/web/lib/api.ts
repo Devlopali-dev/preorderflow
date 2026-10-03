@@ -297,6 +297,7 @@ export async function getNotificationTemplates(): Promise<NotificationTemplateDe
 }
 
 export interface OrderDetail extends OrderSummary {
+  deliveryMethod: "SHIPPING" | "PICKUP";
   subtotal: string;
   shippingAmount: string;
   taxAmount: string;

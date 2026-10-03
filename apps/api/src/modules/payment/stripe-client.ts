@@ -13,7 +13,9 @@ export function isStripeConfigured(): boolean {
 export function getStripeClient(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) {
-    throw new Error("STRIPE_SECRET_KEY non configurée — le paiement par carte n'est pas disponible.");
+    throw new Error(
+      "STRIPE_SECRET_KEY non configurée — le paiement par carte n'est pas disponible.",
+    );
   }
   client ??= new Stripe(key);
   return client;

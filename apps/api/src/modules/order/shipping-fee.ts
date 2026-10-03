@@ -11,3 +11,15 @@ export function computeShippingAmount(subtotal: number, config: ShippingConfig):
   }
   return Math.round(config.flatRate * 100) / 100;
 }
+
+// Remise en main propre : jamais de frais, quel que soit le barème ; un montant explicite
+// (saisie admin) ne s'applique qu'à une livraison.
+export function resolveShippingAmount(
+  deliveryMethod: "SHIPPING" | "PICKUP",
+  subtotal: number,
+  config: ShippingConfig,
+  explicitAmount?: number,
+): number {
+  if (deliveryMethod === "PICKUP") return 0;
+  return explicitAmount ?? computeShippingAmount(subtotal, config);
+}

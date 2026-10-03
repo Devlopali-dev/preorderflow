@@ -43,19 +43,44 @@ export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
 
 // Commande passée depuis la page publique d'une campagne dont les commandes sont ouvertes.
 // Les lignes (couleurs et quantités) vivent dans l'état du formulaire, comme pour le recensement.
-export const createPublicOrderSchema = z.object({
-  email: z.string().email("Adresse e-mail invalide"),
-  firstName: z.string().min(1, "Prénom requis").max(100),
-  lastName: z.string().min(1, "Nom requis").max(100),
-  phone: z.string().max(30).optional(),
-  address1: z.string().min(1, "Adresse requise").max(200),
-  address2: z.string().max(200).optional(),
-  postalCode: z.string().min(1, "Code postal requis").max(20),
-  city: z.string().min(1, "Ville requise").max(100),
-  country: z.string().length(2, "Code pays à 2 lettres (ex : FR)"),
-  notes: z.string().max(1000).optional(),
-  // champ honeypot anti-spam : doit rester vide
-  website: z.string().max(0).optional(),
-});
+export const deliveryMethodSchema = z.enum(["SHIPPING", "PICKUP"]);
+
+export type DeliveryMethod = z.infer<typeof deliveryMethodSchema>;
+
+export const createPublicOrderSchema = z
+  .object({
+    email: z.string().email("Adresse e-mail invalide"),
+    firstName: z.string().min(1, "Prénom requis").max(100),
+    lastName: z.string().min(1, "Nom requis").max(100),
+    phone: z.string().max(30).optional(),
+    deliveryMethod: deliveryMethodSchema,
+    // Adresse : obligatoire seulement pour une livraison (cf. superRefine).
+    address1: z.string().max(200).optional(),
+    address2: z.string().max(200).optional(),
+    postalCode: z.string().max(20).optional(),
+    city: z.string().max(100).optional(),
+    country: z.string().max(2).optional(),
+    notes: z.string().max(1000).optional(),
+    // champ honeypot anti-spam : doit rester vide
+    website: z.string().max(0).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.deliveryMethod !== "SHIPPING") return;
+    const required: Array<[keyof typeof value, string]> = [
+      ["address1", "Adresse requise"],
+      ["postalCode", "Code postal requis"],
+      ["city", "Ville requise"],
+    ];
+    for (const [field, message] of required) {
+      if (!value[field]) ctx.addIssue({ code: "custom", path: [field], message });
+    }
+    if (value.country?.length !== 2) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["country"],
+        message: "Code pays à 2 lettres (ex : FR)",
+      });
+    }
+  });
 
 export type CreatePublicOrderInput = z.infer<typeof createPublicOrderSchema>;

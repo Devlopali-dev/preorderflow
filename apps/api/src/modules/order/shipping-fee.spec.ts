@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeShippingAmount } from "./shipping-fee";
+import { computeShippingAmount, resolveShippingAmount } from "./shipping-fee";
 
 describe("computeShippingAmount", () => {
   it("applique le forfait sous le seuil", () => {
@@ -17,5 +17,22 @@ describe("computeShippingAmount", () => {
 
   it("vaut 0 quand aucun forfait n'est configuré", () => {
     expect(computeShippingAmount(10, { flatRate: 0, freeThreshold: null })).toBe(0);
+  });
+});
+
+describe("resolveShippingAmount", () => {
+  const config = { flatRate: 4.9, freeThreshold: 50 };
+
+  it("applique le barème pour une livraison", () => {
+    expect(resolveShippingAmount("SHIPPING", 20, config)).toBe(4.9);
+  });
+
+  it("préfère un montant explicite pour une livraison", () => {
+    expect(resolveShippingAmount("SHIPPING", 20, config, 7)).toBe(7);
+  });
+
+  it("est toujours gratuite en main propre", () => {
+    expect(resolveShippingAmount("PICKUP", 20, config)).toBe(0);
+    expect(resolveShippingAmount("PICKUP", 20, config, 7)).toBe(0);
   });
 });

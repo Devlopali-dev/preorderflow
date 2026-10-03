@@ -41,7 +41,11 @@ describe("ntfy-provider", () => {
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal("fetch", fetchSpy);
 
-    await sendNtfyNotification({ title: "Nouvelle commande", message: "2026-0001", tags: ["package"] });
+    await sendNtfyNotification({
+      title: "Nouvelle commande",
+      message: "2026-0001",
+      tags: ["package"],
+    });
 
     expect(fetchSpy).toHaveBeenCalledWith(
       "https://ntfy.sh/preorderflow-admin",
@@ -64,7 +68,9 @@ describe("ntfy-provider", () => {
     const expectedAuth = `Basic ${Buffer.from("jeff:secret").toString("base64")}`;
     expect(fetchSpy).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ headers: expect.objectContaining({ Authorization: expectedAuth }) }),
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: expectedAuth }),
+      }),
     );
   });
 });

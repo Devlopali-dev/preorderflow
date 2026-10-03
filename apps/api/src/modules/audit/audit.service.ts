@@ -3,7 +3,13 @@ import { prisma, AuditAction } from "@preorderflow/database";
 
 @Injectable()
 export class AuditService {
-  async log(userId: string, action: AuditAction, entityType: string, entityId: string, metadata?: object) {
+  async log(
+    userId: string,
+    action: AuditAction,
+    entityType: string,
+    entityId: string,
+    metadata?: object,
+  ) {
     await prisma.auditLog.create({
       data: { userId, action, entityType, entityId, metadata },
     });

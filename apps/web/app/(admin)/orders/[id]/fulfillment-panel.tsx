@@ -98,31 +98,40 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
           )}
         </div>
       ) : order.status === "READY_TO_SHIP" ? (
-        <div className="flex flex-col gap-2">
-          <Input
-            placeholder="Transporteur"
-            value={carrier}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCarrier(e.target.value)}
-          />
-          <Input
-            placeholder="Numéro de suivi"
-            value={trackingNumber}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setTrackingNumber(e.target.value)}
-          />
-          <Input
-            placeholder="URL de suivi"
-            value={trackingUrl}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setTrackingUrl(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <Button variant="primary" loading={isPending} onClick={() => createShipment()}>
-              Créer l'expédition
-            </Button>
-            <Button variant="secondary" loading={isPending} onClick={handleHandDelivery}>
+        order.deliveryMethod === "PICKUP" ? (
+          <div className="flex flex-col gap-2 text-sm">
+            <p>Le client a choisi la remise en main propre.</p>
+            <Button variant="primary" loading={isPending} onClick={handleHandDelivery}>
               Remise en main propre
             </Button>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <Input
+              placeholder="Transporteur"
+              value={carrier}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCarrier(e.target.value)}
+            />
+            <Input
+              placeholder="Numéro de suivi"
+              value={trackingNumber}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTrackingNumber(e.target.value)}
+            />
+            <Input
+              placeholder="URL de suivi"
+              value={trackingUrl}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setTrackingUrl(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button variant="primary" loading={isPending} onClick={() => createShipment()}>
+                Créer l'expédition
+              </Button>
+              <Button variant="secondary" loading={isPending} onClick={handleHandDelivery}>
+                Remise en main propre
+              </Button>
+            </div>
+          </div>
+        )
       ) : order.status === "PAID" || order.status === "PROCESSING" ? (
         <p className="text-sm opacity-60">La préparation avance avec le bouton de statut en bas.</p>
       ) : (
