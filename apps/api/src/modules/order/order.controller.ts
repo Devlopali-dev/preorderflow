@@ -25,7 +25,9 @@ export class OrderController {
   @Post()
   async create(@Body() dto: CreateOrderDto, @CurrentAdminId() adminId: string) {
     const order = await this.orderService.create(dto);
-    await this.auditService.log(adminId, "ORDER_CREATED", "Order", order.id, { number: order.number });
+    await this.auditService.log(adminId, "ORDER_CREATED", "Order", order.id, {
+      number: order.number,
+    });
     return order;
   }
 

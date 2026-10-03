@@ -5,6 +5,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsEmail,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -12,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 
@@ -85,10 +87,17 @@ export class CreatePublicOrderDto {
   @Type(() => PublicOrderItemDto)
   items!: PublicOrderItemDto[];
 
-  @ApiProperty({ type: PublicOrderAddressDto })
+  @ApiProperty({ enum: ["SHIPPING", "PICKUP"], required: false, default: "SHIPPING" })
+  @IsOptional()
+  @IsIn(["SHIPPING", "PICKUP"])
+  deliveryMethod?: "SHIPPING" | "PICKUP";
+
+  // Obligatoire sauf remise en main propre.
+  @ApiProperty({ type: PublicOrderAddressDto, required: false })
+  @ValidateIf((o: CreatePublicOrderDto) => o.deliveryMethod !== "PICKUP")
   @ValidateNested()
   @Type(() => PublicOrderAddressDto)
-  shippingAddress!: PublicOrderAddressDto;
+  shippingAddress?: PublicOrderAddressDto;
 
   @ApiProperty({ required: false })
   @IsOptional()

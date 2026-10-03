@@ -21,7 +21,9 @@ export class CustomerAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = this.jwtService.verify<CustomerSessionPayload>(header.slice("Bearer ".length));
+      const payload = this.jwtService.verify<CustomerSessionPayload>(
+        header.slice("Bearer ".length),
+      );
       if (payload.type !== "customer") {
         throw new Error("wrong token type");
       }

@@ -306,6 +306,13 @@ enum OrderFulfillmentStatus {
   DELIVERED
 }
 
+// Mode de remise : livraison à l'adresse du client ou remise en main propre
+// (sans adresse ni frais de livraison).
+enum DeliveryMethod {
+  SHIPPING
+  PICKUP
+}
+
 model Order {
   id                 String                  @id @default(uuid())
   number             String                  @unique // ex: 2026-0042
@@ -317,6 +324,7 @@ model Order {
   status             OrderStatus             @default(DRAFT)
   paymentStatus      OrderPaymentStatus      @default(UNPAID)
   fulfillmentStatus  OrderFulfillmentStatus  @default(UNFULFILLED)
+  deliveryMethod     DeliveryMethod          @default(SHIPPING)
   currency           String                  @default("EUR")
   subtotal           Decimal                 @db.Decimal(10, 2)
   shippingAmount     Decimal                 @db.Decimal(10, 2) @default(0)
@@ -604,6 +612,10 @@ model AppSettings {
   ntfyUrl         String?
   ntfyTopic       String?
   ntfyAuth        String?
+  // Frais de livraison : forfait appliqué à chaque commande, offert au-delà
+  // d'un sous-total HT seuil (null = jamais offert).
+  shippingFlatRate       Decimal  @default(0) @db.Decimal(10, 2)
+  freeShippingThreshold  Decimal? @db.Decimal(10, 2)
   updatedAt       DateTime @updatedAt
 
   @@map("app_settings")
