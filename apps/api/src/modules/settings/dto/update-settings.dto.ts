@@ -1,5 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsEmail, IsIn, IsInt, IsOptional, IsString, Min } from "class-validator";
+import {
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 // Tous les champs optionnels : un PATCH ne touche que ce qui est fourni.
 // Un secret (resendApiKey/smtpPassword/ntfyAuth) omis ou vide = inchangé,
@@ -70,6 +79,22 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   ntfyAuth?: string;
+
+  @ApiProperty({ required: false, description: "Forfait de livraison par commande" })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  shippingFlatRate?: number;
+
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: "Sous-total HT à partir duquel la livraison est offerte (null = jamais)",
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  freeShippingThreshold?: number | null;
 }
 
 // Teste avec les valeurs du formulaire (pas forcément encore enregistrées)
@@ -80,4 +105,3 @@ export class TestEmailSettingsDto extends UpdateSettingsDto {
   @IsEmail()
   to!: string;
 }
-

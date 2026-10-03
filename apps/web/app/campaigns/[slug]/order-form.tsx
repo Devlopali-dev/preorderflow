@@ -28,12 +28,14 @@ export function OrderForm({
   variants,
   unitPrice,
   currency,
+  shipping,
 }: {
   campaignId: string;
   apiUrl: string;
   variants: CampaignVariantOption[];
   unitPrice: string | null;
   currency: string | null;
+  shipping: { flatRate: number; freeThreshold: number | null } | null;
 }) {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -59,6 +61,13 @@ export function OrderForm({
 
   const totalQuantity = variants.reduce((sum, variant) => sum + (quantities[variant.id] ?? 0), 0);
   const subtotal = unitPrice === null ? null : (Number(unitPrice) * totalQuantity).toFixed(2);
+  // Même règle que l'API : forfait, offert au-delà du seuil (sous-total HT).
+  const shippingFee =
+    subtotal === null || shipping === null
+      ? null
+      : shipping.freeThreshold !== null && Number(subtotal) >= shipping.freeThreshold
+        ? 0
+        : shipping.flatRate;
 
   async function onSubmit(values: CreatePublicOrderInput) {
     setServerError(null);
@@ -151,6 +160,20 @@ export function OrderForm({
       {subtotal !== null && (
         <p className="text-sm" aria-live="polite">
           Sous-total : <strong data-testid="order-subtotal">{subtotal}</strong> {currency}
+        </p>
+      )}
+      {shippingFee !== null && (
+        <p className="text-sm" aria-live="polite">
+          Livraison :{" "}
+          <strong data-testid="order-shipping">
+            {shippingFee === 0 ? "offerte" : `${shippingFee.toFixed(2)} ${currency ?? ""}`}
+          </strong>
+          {shipping?.freeThreshold != null && shippingFee !== 0 && (
+            <span className="opacity-70">
+              {" "}
+              (offerte dès {shipping.freeThreshold.toFixed(2)} {currency} HT)
+            </span>
+          )}
         </p>
       )}
 

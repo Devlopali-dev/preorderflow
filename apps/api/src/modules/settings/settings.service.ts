@@ -4,6 +4,7 @@ import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.d
 import { UpdateTemplateDto } from "./dto/update-template.dto";
 import { createEmailProviderFromConfig } from "../notification/email-provider";
 import { sendNtfyNotificationWithConfig } from "../notification/ntfy-provider";
+import type { ShippingConfig } from "../order/shipping-fee";
 import { DEFAULT_TEMPLATES, TemplatePayloads } from "../notification/notification-templates";
 
 const SINGLETON_ID = "singleton";
@@ -59,6 +60,7 @@ export class SettingsService {
               ? smtpConfigured
               : false,
       },
+      shipping: await this.getShippingConfig(),
       ntfy: {
         configured: Boolean(row?.ntfyTopic || process.env.PREORDERFLOW_NTFY_TOPIC),
         url: row?.ntfyUrl ?? process.env.PREORDERFLOW_NTFY_URL ?? "https://ntfy.sh",
@@ -76,6 +78,14 @@ export class SettingsService {
       update: { ...dto },
     });
     return this.getPublicView();
+  }
+
+  async getShippingConfig(): Promise<ShippingConfig> {
+    const row = await this.getRow();
+    return {
+      flatRate: row?.shippingFlatRate.toNumber() ?? 0,
+      freeThreshold: row?.freeShippingThreshold?.toNumber() ?? null,
+    };
   }
 
   async getEmailConfig(): Promise<EffectiveEmailConfig> {

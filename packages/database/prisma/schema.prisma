@@ -604,6 +604,10 @@ model AppSettings {
   ntfyUrl         String?
   ntfyTopic       String?
   ntfyAuth        String?
+  // Frais de livraison : forfait appliqué à chaque commande, offert au-delà
+  // d'un sous-total HT seuil (null = jamais offert).
+  shippingFlatRate       Decimal  @default(0) @db.Decimal(10, 2)
+  freeShippingThreshold  Decimal? @db.Decimal(10, 2)
   updatedAt       DateTime @updatedAt
 
   @@map("app_settings")

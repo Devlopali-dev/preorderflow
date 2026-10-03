@@ -8,9 +8,11 @@ import {
 } from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
+import { computeShippingAmount } from "./shipping-fee";
 import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { NotificationService } from "../notification/notification.service";
+import { SettingsService } from "../settings/settings.service";
 
 // Statuts pour lesquels une commande "consomme" du stock réservé
 // (cf. docs/architecture.md §5.3 : réservation dès qu'un paiement existe).
@@ -22,7 +24,10 @@ const ORDER_ITEM_INCLUDE = { variant: { include: { product: true, color: true } 
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   async list() {
     return prisma.order.findMany({
@@ -77,7 +82,12 @@ export class OrderService {
       }
     }
 
-    const totals = computeOrderTotals(lines, dto.shippingAmount ?? 0);
+    // Montant explicite (saisie admin) prioritaire ; sinon frais paramétrés dans /settings.
+    const itemsSubtotal = computeOrderTotals(lines).subtotal;
+    const shippingAmount =
+      dto.shippingAmount ??
+      computeShippingAmount(itemsSubtotal, await this.settingsService.getShippingConfig());
+    const totals = computeOrderTotals(lines, shippingAmount);
     const billingAddress = dto.billingAddress ?? dto.shippingAddress;
 
     const order = await prisma.$transaction(async (tx) => {
@@ -111,7 +121,7 @@ export class OrderService {
           paymentStatus: "UNPAID",
           fulfillmentStatus: "UNFULFILLED",
           subtotal: totals.subtotal,
-          shippingAmount: dto.shippingAmount ?? 0,
+          shippingAmount,
           taxAmount: totals.taxAmount,
           total: totals.total,
           billingAddress: billingAddress as object,
