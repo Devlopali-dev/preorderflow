@@ -44,7 +44,6 @@ preorderflow/
 │   ├── database.md
 │   ├── api.md
 │   ├── deployment.md
-│   ├── deployment/coolify.md
 │   ├── development.md
 │   ├── security.md
 │   └── contributing.md
@@ -404,7 +403,7 @@ feat(api): audit log interceptor
 feat(auth): admin RBAC + magic link client
 test: unit (stock, statuts, totaux, stats)
 test: e2e (3 scénarios du cahier des charges)
-docs: database/api/deployment/security/coolify
+docs: database/api/deployment/security
 chore: seed dev
 ```
 

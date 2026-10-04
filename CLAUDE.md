@@ -60,7 +60,6 @@ Utilise cette stack sauf raison technique forte :
 - Docker
 - Docker Compose
 - Traefik compatible
-- déploiement compatible Coolify
 
 ### Tests
 
@@ -916,29 +915,6 @@ Prévoir :
 
 ---
 
-# 28. Coolify
-
-Le projet doit être compatible avec Coolify.
-
-Documenter dans :
-
-```text
-docs/deployment/coolify.md
-```
-
-La documentation doit expliquer :
-
-- création PostgreSQL ;
-- création Redis ;
-- variables d'environnement ;
-- domaine ;
-- HTTPS ;
-- migrations Prisma ;
-- backups ;
-- workers BullMQ.
-
----
-
 # 29. Tests
 
 Écrire des tests dès le développement.
@@ -1034,7 +1010,6 @@ docs/
 ├── database.md
 ├── api.md
 ├── deployment.md
-├── coolify.md
 ├── development.md
 ├── security.md
 └── contributing.md
@@ -1247,7 +1222,6 @@ Créer une suite E2E complète.
 Finaliser :
 
 - Docker ;
-- Coolify ;
 - sauvegardes ;
 - documentation ;
 - sécurité ;

@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+### Retiré
+
+- Tout ce qui concernait Coolify : `docs/deployment/coolify.md`, étape CI de déclenchement du déploiement
+  (secrets `COOLIFY_*`). `docker-compose.coolify.yml` et `docker-compose.coolify-image.yml` sont renommés
+  `docker-compose.prod.yml` et `docker-compose.prod-image.yml` (toujours utilisés par la CI).
+
 ## [0.18.3] — 2026-10-02
 
 ### Modifié

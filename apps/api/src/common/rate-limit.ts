@@ -25,7 +25,7 @@ export function throttlerModuleOptions(
 
 // Valeur de `TRUST_PROXY`, pour Express (`app.set("trust proxy", …)`).
 //
-// Derrière un reverse proxy (Traefik, Coolify), l'adresse de la connexion est celle du proxy : sans cette
+// Derrière un reverse proxy (Traefik), l'adresse de la connexion est celle du proxy : sans cette
 // option, tous les visiteurs partageraient la même limite. Elle indique à Express de lire l'IP réelle
 // dans `X-Forwarded-For`, en ne faisant confiance qu'aux sauts de proxy déclarés :
 // - vide / `false` : aucun proxy de confiance (par défaut, accès direct : l'en-tête est ignoré, donc
