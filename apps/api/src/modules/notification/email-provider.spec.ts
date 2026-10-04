@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConsoleEmailProvider, ResendEmailProvider, SmtpEmailProvider, createEmailProvider } from "./email-provider";
+import {
+  ConsoleEmailProvider,
+  ResendEmailProvider,
+  SmtpEmailProvider,
+  createEmailProvider,
+} from "./email-provider";
 
 const ENV_KEYS = [
   "NOTIFICATION_EMAIL_PROVIDER",

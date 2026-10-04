@@ -249,6 +249,7 @@ export interface Settings {
     active: boolean;
   };
   ntfy: { configured: boolean; url: string; topic: string | null };
+  shipping: { flatRate: number; freeThreshold: number | null };
   templates: string[];
 }
 
@@ -296,6 +297,7 @@ export async function getNotificationTemplates(): Promise<NotificationTemplateDe
 }
 
 export interface OrderDetail extends OrderSummary {
+  deliveryMethod: "SHIPPING" | "PICKUP";
   subtotal: string;
   shippingAmount: string;
   taxAmount: string;
@@ -504,4 +506,19 @@ export async function getCustomerOrder(id: string): Promise<CustomerOrderDetail 
   if (res.status === 404) return null;
   assertCustomerOk(res);
   return res.json();
+}
+
+export interface ShippingConfig {
+  flatRate: number;
+  freeThreshold: number | null;
+}
+
+// Barème public : en cas d'échec on n'affiche simplement pas les frais (l'API les applique quand même).
+export async function getShippingConfig(): Promise<ShippingConfig | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/settings/shipping`, { cache: "no-store" });
+    return res.ok ? res.json() : null;
+  } catch {
+    return null;
+  }
 }

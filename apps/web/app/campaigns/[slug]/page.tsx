@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getCampaign } from "@/lib/api";
+import { getCampaign, getShippingConfig } from "@/lib/api";
 import { InterestForm } from "./interest-form";
 import { OrderForm } from "./order-form";
 import { MediaGallery } from "./media-gallery";
@@ -15,6 +15,7 @@ export default async function CampaignPage({ params }: { params: { slug: string 
   // (commandes fermées, production, expédition, archives) : plus de formulaire. DRAFT : la
   // campagne n'est visible que d'un administrateur (l'API la cache au public) : aperçu seulement.
   const isOpenForOrders = campaign.status === "COMMANDES_OUVERTES";
+  const shipping = isOpenForOrders ? await getShippingConfig() : null;
   const isClosed = !["DRAFT", "RECENSEMENT", "COMMANDES_OUVERTES"].includes(campaign.status);
 
   return (
@@ -44,6 +45,7 @@ export default async function CampaignPage({ params }: { params: { slug: string 
               variants={campaign.product?.variants ?? []}
               unitPrice={campaign.product?.price ?? null}
               currency={campaign.product?.currency ?? null}
+              shipping={shipping}
             />
           ) : isClosed ? (
             <div className="card p-4 text-sm" role="status">

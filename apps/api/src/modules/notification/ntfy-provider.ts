@@ -66,7 +66,9 @@ export async function sendNtfyNotificationWithConfig(
     headers: {
       Title: title,
       ...(tags && tags.length > 0 ? { Tags: tags.join(",") } : {}),
-      ...(config.auth ? { Authorization: `Basic ${Buffer.from(config.auth).toString("base64")}` } : {}),
+      ...(config.auth
+        ? { Authorization: `Basic ${Buffer.from(config.auth).toString("base64")}` }
+        : {}),
     },
     body: message,
   });

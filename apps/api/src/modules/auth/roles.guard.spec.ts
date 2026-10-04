@@ -15,7 +15,9 @@ function makeContext(user?: { role?: string }): ExecutionContext {
 
 describe("RolesGuard", () => {
   it("laisse passer si aucun rôle n'est requis", () => {
-    const reflector = { getAllAndOverride: vi.fn().mockReturnValue(undefined) } as unknown as Reflector;
+    const reflector = {
+      getAllAndOverride: vi.fn().mockReturnValue(undefined),
+    } as unknown as Reflector;
     const guard = new RolesGuard(reflector);
     expect(guard.canActivate(makeContext({ role: "OPERATOR" }))).toBe(true);
   });

@@ -43,6 +43,8 @@ export class CampaignOrderService {
       throw new BadRequestException("Couleur inconnue pour cette campagne");
     }
 
+    const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
+
     const order = await this.orderService.create(
       {
         customerEmail: dto.email,
@@ -50,7 +52,8 @@ export class CampaignOrderService {
         customerLastName: dto.lastName,
         customerPhone: dto.phone,
         items: dto.items,
-        shippingAddress: {
+        deliveryMethod,
+        shippingAddress: dto.shippingAddress && {
           firstName: dto.firstName,
           lastName: dto.lastName,
           ...dto.shippingAddress,
@@ -65,12 +68,14 @@ export class CampaignOrderService {
 
     // L'adresse remonte dans le carnet du client (donc dans l'admin), sans jamais modifier un
     // client qui en a déjà une.
-    await saveAddressIfNone(order.customerId, {
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-      phone: dto.phone,
-      ...dto.shippingAddress,
-    });
+    if (dto.shippingAddress) {
+      await saveAddressIfNone(order.customerId, {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        phone: dto.phone,
+        ...dto.shippingAddress,
+      });
+    }
 
     const payment = await this.paymentService.createForOrder(order.id, { provider: "MANUAL" });
     const metadata = payment.metadata as { paymentLink?: string } | null;
