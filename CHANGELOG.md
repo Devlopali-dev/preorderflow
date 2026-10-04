@@ -10,8 +10,9 @@ correctifs.
 ### Retiré
 
 - Tout ce qui concernait Coolify : `docs/deployment/coolify.md`, étape CI de déclenchement du déploiement
-  (secrets `COOLIFY_*`). `docker-compose.coolify.yml` et `docker-compose.coolify-image.yml` sont renommés
-  `docker-compose.prod.yml` et `docker-compose.prod-image.yml` (toujours utilisés par la CI).
+  (secrets `COOLIFY_*`). `docker-compose.coolify.yml` est renommé `docker-compose.prod.yml` (utilisé par la CI).
+- Publication des images sur GHCR : job CI `publish-images` et `docker-compose.coolify-image.yml`.
+  La variable de dépôt `NEXT_PUBLIC_API_URL` n'est plus nécessaire à la CI.
 
 ## [0.18.3] — 2026-10-02
 
