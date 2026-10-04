@@ -10,6 +10,7 @@ import {
   IsString,
   IsUUID,
   Min,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
 
@@ -90,10 +91,17 @@ export class CreateOrderDto {
   @Type(() => CreateOrderItemDto)
   items!: CreateOrderItemDto[];
 
-  @ApiProperty({ type: OrderAddressDto })
+  @ApiProperty({ enum: ["SHIPPING", "PICKUP"], required: false, default: "SHIPPING" })
+  @IsOptional()
+  @IsIn(["SHIPPING", "PICKUP"])
+  deliveryMethod?: "SHIPPING" | "PICKUP";
+
+  // Obligatoire sauf remise en main propre.
+  @ApiProperty({ type: OrderAddressDto, required: false })
+  @ValidateIf((o: CreateOrderDto) => o.deliveryMethod !== "PICKUP")
   @ValidateNested()
   @Type(() => OrderAddressDto)
-  shippingAddress!: OrderAddressDto;
+  shippingAddress?: OrderAddressDto;
 
   @ApiProperty({ type: OrderAddressDto, required: false })
   @IsOptional()

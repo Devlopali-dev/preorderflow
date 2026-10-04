@@ -28,12 +28,14 @@ export function OrderForm({
   variants,
   unitPrice,
   currency,
+  shipping,
 }: {
   campaignId: string;
   apiUrl: string;
   variants: CampaignVariantOption[];
   unitPrice: string | null;
   currency: string | null;
+  shipping: { flatRate: number; freeThreshold: number | null } | null;
 }) {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -44,11 +46,12 @@ export function OrderForm({
   );
   const {
     register,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CreatePublicOrderInput>({
     resolver: zodResolver(createPublicOrderSchema),
-    defaultValues: { country: "FR" },
+    defaultValues: { country: "FR", deliveryMethod: "SHIPPING" },
   });
 
   function setQuantity(variantId: string, quantity: number) {
@@ -59,6 +62,16 @@ export function OrderForm({
 
   const totalQuantity = variants.reduce((sum, variant) => sum + (quantities[variant.id] ?? 0), 0);
   const subtotal = unitPrice === null ? null : (Number(unitPrice) * totalQuantity).toFixed(2);
+  const isPickup = watch("deliveryMethod") === "PICKUP";
+  // Même règle que l'API : forfait, offert au-delà du seuil (sous-total HT) ; rien en main propre.
+  const shippingFee =
+    subtotal === null || shipping === null
+      ? null
+      : isPickup
+        ? 0
+        : shipping.freeThreshold !== null && Number(subtotal) >= shipping.freeThreshold
+          ? 0
+          : shipping.flatRate;
 
   async function onSubmit(values: CreatePublicOrderInput) {
     setServerError(null);
@@ -70,6 +83,10 @@ export function OrderForm({
       return;
     }
     const { address1, address2, postalCode, city, country, ...rest } = values;
+    const shippingAddress =
+      values.deliveryMethod === "PICKUP"
+        ? undefined
+        : { address1, address2: address2 || undefined, postalCode, city, country };
     try {
       const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaignId}/orders`, {
         method: "POST",
@@ -77,7 +94,7 @@ export function OrderForm({
         body: JSON.stringify({
           ...rest,
           items,
-          shippingAddress: { address1, address2: address2 || undefined, postalCode, city, country },
+          shippingAddress,
         }),
       });
       if (!res.ok) {
@@ -153,6 +170,24 @@ export function OrderForm({
           Sous-total : <strong data-testid="order-subtotal">{subtotal}</strong> {currency}
         </p>
       )}
+      {shippingFee !== null && (
+        <p className="text-sm" aria-live="polite">
+          Livraison :{" "}
+          <strong data-testid="order-shipping">
+            {isPickup
+              ? "remise en main propre, sans frais"
+              : shippingFee === 0
+                ? "offerte"
+                : `${shippingFee.toFixed(2)} ${currency ?? ""}`}
+          </strong>
+          {shipping?.freeThreshold != null && shippingFee !== 0 && !isPickup && (
+            <span className="opacity-70">
+              {" "}
+              (offerte dès {shipping.freeThreshold.toFixed(2)} {currency} HT)
+            </span>
+          )}
+        </p>
+      )}
 
       <FormGroup label="Email" htmlFor="email" error={errors.email?.message}>
         <Input id="email" type="email" {...register("email")} />
@@ -171,26 +206,40 @@ export function OrderForm({
         <Input id="phone" {...register("phone")} />
       </FormGroup>
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-1 text-sm font-medium">Adresse de livraison</legend>
-        <FormGroup label="Adresse" htmlFor="address1" error={errors.address1?.message}>
-          <Input id="address1" {...register("address1")} />
-        </FormGroup>
-        <FormGroup label="Complément d'adresse (optionnel)" htmlFor="address2">
-          <Input id="address2" {...register("address2")} />
-        </FormGroup>
-        <div className="flex gap-4">
-          <FormGroup label="Code postal" htmlFor="postalCode" error={errors.postalCode?.message}>
-            <Input id="postalCode" {...register("postalCode")} />
-          </FormGroup>
-          <FormGroup label="Ville" htmlFor="city" error={errors.city?.message}>
-            <Input id="city" {...register("city")} />
-          </FormGroup>
-          <FormGroup label="Pays" htmlFor="country" error={errors.country?.message}>
-            <Input id="country" maxLength={2} {...register("country")} />
-          </FormGroup>
-        </div>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">Mode de remise</legend>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="radio" value="SHIPPING" {...register("deliveryMethod")} />
+          Me faire livrer
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="radio" value="PICKUP" {...register("deliveryMethod")} />
+          Remise en main propre
+        </label>
       </fieldset>
+
+      {!isPickup && (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-1 text-sm font-medium">Adresse de livraison</legend>
+          <FormGroup label="Adresse" htmlFor="address1" error={errors.address1?.message}>
+            <Input id="address1" {...register("address1")} />
+          </FormGroup>
+          <FormGroup label="Complément d'adresse (optionnel)" htmlFor="address2">
+            <Input id="address2" {...register("address2")} />
+          </FormGroup>
+          <div className="flex gap-4">
+            <FormGroup label="Code postal" htmlFor="postalCode" error={errors.postalCode?.message}>
+              <Input id="postalCode" {...register("postalCode")} />
+            </FormGroup>
+            <FormGroup label="Ville" htmlFor="city" error={errors.city?.message}>
+              <Input id="city" {...register("city")} />
+            </FormGroup>
+            <FormGroup label="Pays" htmlFor="country" error={errors.country?.message}>
+              <Input id="country" maxLength={2} {...register("country")} />
+            </FormGroup>
+          </div>
+        </fieldset>
+      )}
 
       <FormGroup label="Remarque (optionnel)" htmlFor="notes">
         <Textarea id="notes" {...register("notes")} />

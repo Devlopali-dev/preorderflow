@@ -8,9 +8,11 @@ import {
 } from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
+import { resolveShippingAmount } from "./shipping-fee";
 import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { NotificationService } from "../notification/notification.service";
+import { SettingsService } from "../settings/settings.service";
 
 // Statuts pour lesquels une commande "consomme" du stock réservé
 // (cf. docs/architecture.md §5.3 : réservation dès qu'un paiement existe).
@@ -22,7 +24,10 @@ const ORDER_ITEM_INCLUDE = { variant: { include: { product: true, color: true } 
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   async list() {
     return prisma.order.findMany({
@@ -77,8 +82,22 @@ export class OrderService {
       }
     }
 
-    const totals = computeOrderTotals(lines, dto.shippingAmount ?? 0);
-    const billingAddress = dto.billingAddress ?? dto.shippingAddress;
+    // Montant explicite (saisie admin) prioritaire ; sinon frais paramétrés dans /settings.
+    const itemsSubtotal = computeOrderTotals(lines).subtotal;
+    const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
+    const shippingAmount = resolveShippingAmount(
+      deliveryMethod,
+      itemsSubtotal,
+      await this.settingsService.getShippingConfig(),
+      dto.shippingAmount,
+    );
+    const totals = computeOrderTotals(lines, shippingAmount);
+    // Remise en main propre : pas d'adresse, le snapshot ne garde que l'identité du client.
+    const shippingAddress = dto.shippingAddress ?? {
+      firstName: dto.customerFirstName,
+      lastName: dto.customerLastName,
+    };
+    const billingAddress = dto.billingAddress ?? shippingAddress;
 
     const order = await prisma.$transaction(async (tx) => {
       // Le numéro est calculé dans la même transaction que l'insertion, sous
@@ -110,12 +129,13 @@ export class OrderService {
           status: "DRAFT",
           paymentStatus: "UNPAID",
           fulfillmentStatus: "UNFULFILLED",
+          deliveryMethod,
           subtotal: totals.subtotal,
-          shippingAmount: dto.shippingAmount ?? 0,
+          shippingAmount,
           taxAmount: totals.taxAmount,
           total: totals.total,
           billingAddress: billingAddress as object,
-          shippingAddress: dto.shippingAddress as object,
+          shippingAddress: shippingAddress as object,
           notes: dto.notes,
           items: {
             create: totals.items.map((item, index) => ({

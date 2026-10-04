@@ -4,6 +4,7 @@ import { AdminProfileForm } from "./admin-profile-form";
 import { BusinessInfoForm } from "./business-info-form";
 import { EmailSettingsForm } from "./email-settings-form";
 import { NtfySettingsForm } from "./ntfy-settings-form";
+import { ShippingSettingsForm } from "./shipping-settings-form";
 import { TemplateButton } from "./template-button";
 
 export default async function SettingsPage() {
@@ -27,6 +28,11 @@ export default async function SettingsPage() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Informations</h2>
         <BusinessInfoForm settings={settings} apiUrl={apiUrl} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Frais de livraison</h2>
+        <ShippingSettingsForm settings={settings} apiUrl={apiUrl} />
       </section>
 
       <section>

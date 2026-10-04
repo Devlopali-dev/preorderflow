@@ -6,6 +6,7 @@ import { SettingsService } from "./settings.service";
 import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.dto";
 import { UpdateTemplateDto } from "./dto/update-template.dto";
 import { AuditService } from "../audit/audit.service";
+import { Public } from "../auth/public.decorator";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Roles } from "../auth/roles.decorator";
 import type { TemplatePayloads } from "../notification/notification-templates";
@@ -25,6 +26,13 @@ export class SettingsController {
   async get() {
     const view = await this.settingsService.getPublicView();
     return { ...view, templates: Object.values(NotificationTemplate) };
+  }
+
+  // Barème de livraison : non sensible, affiché aux visiteurs sur le formulaire de commande.
+  @Public()
+  @Get("shipping")
+  getShipping() {
+    return this.settingsService.getShippingConfig();
   }
 
   @Roles("ADMIN")
