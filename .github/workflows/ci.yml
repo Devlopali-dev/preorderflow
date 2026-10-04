@@ -192,24 +192,136 @@ jobs:
           docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300
 
       - name: Smoke test
-        run: |
-          set -e
-          curl -sf http://localhost:3201/health
-          # Migrations appliquées au démarrage, moteur Prisma chargé : une requête base répond 200.
-          curl -sf http://localhost:3201/api/v1/campaigns
-          # Rendu serveur de l'accueil (le serveur web appelle l'API par le réseau interne).
-          curl -sf http://localhost:3200/ > /dev/null
-          # L'URL publique de l'API est figée dans le JavaScript du navigateur au build.
-          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env exec -T web \
-            sh -c 'grep -rlq "localhost:3201" apps/web/.next/static'
-          # Les limites de débit sont actives en production (10 tentatives par minute sur le login).
-          for i in $(seq 1 12); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3201/api/v1/auth/login \
-              -H 'Content-Type: application/json' -d '{"email":"x@example.com","password":"mauvais"}')
-          done
-          test "$code" = "429"
+        env:
+          SMOKE_EXPECT_API_URL: http://localhost:3201
+        run: ./scripts/smoke-production.sh -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env
 
       - name: Logs on failure
         if: failure()
         run: docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
+
+  # Publication des images de PRODUCTION sur GHCR (ghcr.io/<propriétaire>/preorderflow-api et -web), que Coolify
+  # tire avec docker-compose.coolify-image.yml au lieu de les construire sur le serveur. Uniquement sur main,
+  # une fois la CI verte. L'image est d'abord poussée sous un tag `sha-…`, VÉRIFIÉE (démarrage + smoke test),
+  # et seulement ensuite promue en `latest` et en `<version>` : un `latest` cassé n'est jamais publié.
+  publish-images:
+    needs: [build-and-test, docker-production]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      # URL publique de l'API, figée dans l'image web au build : variable de dépôt (Settings -> Variables).
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image names
+        id: meta
+        run: |
+          if [ -z "$NEXT_PUBLIC_API_URL" ]; then
+            echo "::error::La variable de dépôt NEXT_PUBLIC_API_URL est vide (Settings -> Secrets and variables -> Actions -> Variables) : l'image web ne pourrait pas joindre l'API."
+            exit 1
+          fi
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "repo=ghcr.io/${owner}/preorderflow" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "sha=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image (sha tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api.Dockerfile
+          target: runner
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.repo }}-api:${{ steps.meta.outputs.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build and push web image (sha tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/web.Dockerfile
+          target: runner
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+          tags: ${{ steps.meta.outputs.repo }}-web:${{ steps.meta.outputs.sha }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # On teste l'artefact PUBLIÉ, tiré depuis le registre, avec le fichier Compose que Coolify utilisera.
+      - name: Start the published images
+        env:
+          IMAGE_REPO: ${{ steps.meta.outputs.repo }}
+          IMAGE_TAG: ${{ steps.meta.outputs.sha }}
+        run: |
+          cat > ci.env <<'EOF'
+          POSTGRES_USER=pof
+          POSTGRES_PASSWORD=ci-test-password
+          POSTGRES_DB=pof
+          JWT_SECRET=ci-test-jwt-secret
+          MAGIC_LINK_SECRET=ci-test-magic-link-secret
+          SESSION_COOKIE_SECRET=ci-test-session-cookie-secret
+          WEB_URL=http://localhost:3200
+          CORS_ORIGIN=http://localhost:3200
+          EOF
+          cat > ci-ports.yml <<'EOF'
+          services:
+            api:
+              ports: ["3201:3001"]
+            web:
+              ports: ["3200:3000"]
+          EOF
+          docker compose -f docker-compose.coolify-image.yml -f ci-ports.yml --env-file ci.env up -d --wait --wait-timeout 300
+
+      - name: Smoke test the published images
+        env:
+          SMOKE_EXPECT_API_URL: ${{ env.NEXT_PUBLIC_API_URL }}
+          IMAGE_REPO: ${{ steps.meta.outputs.repo }}
+          IMAGE_TAG: ${{ steps.meta.outputs.sha }}
+        run: ./scripts/smoke-production.sh -f docker-compose.coolify-image.yml -f ci-ports.yml --env-file ci.env
+
+      - name: Logs on failure
+        if: failure()
+        env:
+          IMAGE_REPO: ${{ steps.meta.outputs.repo }}
+          IMAGE_TAG: ${{ steps.meta.outputs.sha }}
+        run: docker compose -f docker-compose.coolify-image.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
+
+      # Les images ont passé le smoke test : promotion en `latest` et `<version>` (même digest, aucune reconstruction).
+      - name: Promote to latest and version tags
+        run: |
+          for image in api web; do
+            docker buildx imagetools create \
+              -t "${{ steps.meta.outputs.repo }}-${image}:latest" \
+              -t "${{ steps.meta.outputs.repo }}-${image}:${{ steps.meta.outputs.version }}" \
+              "${{ steps.meta.outputs.repo }}-${image}:${{ steps.meta.outputs.sha }}"
+          done
+
+      # Déploiement automatique, facultatif : ignoré tant que les secrets COOLIFY_DEPLOY_WEBHOOK et COOLIFY_TOKEN
+      # n'existent pas (Coolify -> application -> Webhooks -> « Deploy Webhook »).
+      - name: Trigger Coolify deployment
+        env:
+          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+        run: |
+          if [ -z "$COOLIFY_DEPLOY_WEBHOOK" ]; then
+            echo "COOLIFY_DEPLOY_WEBHOOK absent : déploiement à lancer depuis Coolify."
+            exit 0
+          fi
+          curl -fsS -H "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_DEPLOY_WEBHOOK"
 
