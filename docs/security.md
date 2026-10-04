@@ -31,7 +31,7 @@
   `Retry-After` et un message en français. Vérifié sur les vraies routes par `rate-limit.spec.ts` (seconde API
   de la CI, limites actives).
 - `RATE_LIMIT_DISABLED=true` coupe les limites (suite E2E, développement) : **jamais en production**.
-- **IP réelle du visiteur.** Derrière un reverse proxy (Traefik/Coolify), l'adresse de la connexion est celle du
+- **IP réelle du visiteur.** Derrière un reverse proxy (Traefik), l'adresse de la connexion est celle du
   proxy : sans `TRUST_PROXY=1`, tous les visiteurs partageraient la même limite. Accès direct : laisser
   `TRUST_PROXY` vide, l'en-tête `X-Forwarded-For` est alors ignoré (impossible de contourner la limite en le
   falsifiant). Le serveur Next retransmet l'`X-Forwarded-For` reçu pour ses appels à l'API (rendu serveur,

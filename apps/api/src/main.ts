@@ -14,7 +14,7 @@ async function bootstrap() {
   // plus octet pour octet, la vérification échouerait systématiquement.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
 
-  // Arrêt propre sur SIGTERM/SIGINT (redéploiement Coolify, `docker stop`) : Nest ferme le serveur et appelle les
+  // Arrêt propre sur SIGTERM/SIGINT (redéploiement, `docker stop`) : Nest ferme le serveur et appelle les
   // `onModuleDestroy` (minuteur des campagnes…). Sans cela, un processus qui est le PID 1 d'un conteneur ignore
   // SIGTERM et n'est arrêté de force qu'après le délai de grâce de Docker (10 s, code 137).
   app.enableShutdownHooks();
@@ -24,7 +24,7 @@ async function bootstrap() {
   // ce dossier doit être un volume Docker persistant (sinon perdu au rebuild).
   app.useStaticAssets(join(__dirname, "..", "uploads"), { prefix: "/uploads" });
 
-  // Derrière Traefik/Coolify : lire l'IP réelle du visiteur (limites de débit par IP). Voir TRUST_PROXY.
+  // Derrière Traefik : lire l'IP réelle du visiteur (limites de débit par IP). Voir TRUST_PROXY.
   app.set("trust proxy", parseTrustProxy(process.env.TRUST_PROXY));
 
   app.use(helmet());

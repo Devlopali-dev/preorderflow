@@ -39,7 +39,7 @@ Détails complets dans [`docs/architecture.md`](docs/architecture.md).
 - [API](docs/api.md)
 - [Développement](docs/development.md)
 - [Sécurité](docs/security.md)
-- [Déploiement](docs/deployment.md) · [Coolify](docs/deployment/coolify.md)
+- [Déploiement](docs/deployment.md)
 - [Contribuer](CONTRIBUTING.md)
 
 ## Licence

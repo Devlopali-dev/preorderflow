@@ -1,9 +1,8 @@
-# Déploiement Coolify à partir d'IMAGES PUBLIÉES (GHCR) : à choisir comme « Docker Compose Location »
-# (/docker-compose.coolify-image.yml). Rien n'est construit sur le serveur : Coolify télécharge les images
+# Déploiement à partir d'IMAGES PUBLIÉES (GHCR). Rien n'est construit sur le serveur : les images sont
 # construites, testées et publiées par la CI (job publish-images de .github/workflows/ci.yml).
-# Voir docs/deployment/coolify.md.
+# Voir docs/deployment.md.
 #
-# Pour construire sur le serveur à la place (secours), utiliser docker-compose.coolify.yml.
+# Pour construire sur le serveur à la place (secours), utiliser docker-compose.prod.yml.
 #
 # - IMAGE_TAG : version à déployer (`latest`, `0.18.2` ou `sha-abc1234`). Revenir en arrière = changer ce tag.
 # - Les paquets GHCR doivent être publics (une fois : GitHub -> Packages -> Package settings -> Change visibility).

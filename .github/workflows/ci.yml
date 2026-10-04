@@ -160,8 +160,8 @@ jobs:
             api.log
             api-limited.log
 
-  # Image de PRODUCTION : construit et démarre la stack du déploiement Coolify
-  # (docker-compose.coolify.yml) puis vérifie qu'elle répond. Les tests ci-dessus ne passent jamais par
+  # Image de PRODUCTION : construit et démarre la stack de production
+  # (docker-compose.prod.yml) puis vérifie qu'elle répond. Les tests ci-dessus ne passent jamais par
   # ces Dockerfiles : une image qui ne démarre pas (moteur Prisma introuvable, build web qui échoue,
   # migrations non appliquées…) n'était détectée qu'au déploiement.
   docker-production:
@@ -189,19 +189,19 @@ jobs:
             web:
               ports: ["3200:3000"]
           EOF
-          docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300
+          docker compose -f docker-compose.prod.yml -f ci-ports.yml --env-file ci.env up -d --build --wait --wait-timeout 300
 
       - name: Smoke test
         env:
           SMOKE_EXPECT_API_URL: http://localhost:3201
-        run: ./scripts/smoke-production.sh -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env
+        run: ./scripts/smoke-production.sh -f docker-compose.prod.yml -f ci-ports.yml --env-file ci.env
 
       - name: Logs on failure
         if: failure()
-        run: docker compose -f docker-compose.coolify.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
+        run: docker compose -f docker-compose.prod.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
 
-  # Publication des images de PRODUCTION sur GHCR (ghcr.io/<propriétaire>/preorderflow-api et -web), que Coolify
-  # tire avec docker-compose.coolify-image.yml au lieu de les construire sur le serveur. Uniquement sur main,
+  # Publication des images de PRODUCTION sur GHCR (ghcr.io/<propriétaire>/preorderflow-api et -web), qu'on
+  # peut tirer avec docker-compose.prod-image.yml au lieu de les construire sur le serveur. Uniquement sur main,
   # une fois la CI verte. L'image est d'abord poussée sous un tag `sha-…`, VÉRIFIÉE (démarrage + smoke test),
   # et seulement ensuite promue en `latest` et en `<version>` : un `latest` cassé n'est jamais publié.
   publish-images:
@@ -263,7 +263,7 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
-      # On teste l'artefact PUBLIÉ, tiré depuis le registre, avec le fichier Compose que Coolify utilisera.
+      # On teste l'artefact PUBLIÉ, tiré depuis le registre, avec le fichier Compose de production.
       - name: Start the published images
         env:
           IMAGE_REPO: ${{ steps.meta.outputs.repo }}
@@ -286,21 +286,21 @@ jobs:
             web:
               ports: ["3200:3000"]
           EOF
-          docker compose -f docker-compose.coolify-image.yml -f ci-ports.yml --env-file ci.env up -d --wait --wait-timeout 300
+          docker compose -f docker-compose.prod-image.yml -f ci-ports.yml --env-file ci.env up -d --wait --wait-timeout 300
 
       - name: Smoke test the published images
         env:
           SMOKE_EXPECT_API_URL: ${{ env.NEXT_PUBLIC_API_URL }}
           IMAGE_REPO: ${{ steps.meta.outputs.repo }}
           IMAGE_TAG: ${{ steps.meta.outputs.sha }}
-        run: ./scripts/smoke-production.sh -f docker-compose.coolify-image.yml -f ci-ports.yml --env-file ci.env
+        run: ./scripts/smoke-production.sh -f docker-compose.prod-image.yml -f ci-ports.yml --env-file ci.env
 
       - name: Logs on failure
         if: failure()
         env:
           IMAGE_REPO: ${{ steps.meta.outputs.repo }}
           IMAGE_TAG: ${{ steps.meta.outputs.sha }}
-        run: docker compose -f docker-compose.coolify-image.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
+        run: docker compose -f docker-compose.prod-image.yml -f ci-ports.yml --env-file ci.env logs --no-color --tail=200
 
       # Les images ont passé le smoke test : promotion en `latest` et `<version>` (même digest, aucune reconstruction).
       - name: Promote to latest and version tags
@@ -311,17 +311,3 @@ jobs:
               -t "${{ steps.meta.outputs.repo }}-${image}:${{ steps.meta.outputs.version }}" \
               "${{ steps.meta.outputs.repo }}-${image}:${{ steps.meta.outputs.sha }}"
           done
-
-      # Déploiement automatique, facultatif : ignoré tant que les secrets COOLIFY_DEPLOY_WEBHOOK et COOLIFY_TOKEN
-      # n'existent pas (Coolify -> application -> Webhooks -> « Deploy Webhook »).
-      - name: Trigger Coolify deployment
-        env:
-          COOLIFY_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
-          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-        run: |
-          if [ -z "$COOLIFY_DEPLOY_WEBHOOK" ]; then
-            echo "COOLIFY_DEPLOY_WEBHOOK absent : déploiement à lancer depuis Coolify."
-            exit 0
-          fi
-          curl -fsS -H "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_DEPLOY_WEBHOOK"
-

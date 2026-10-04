@@ -1,14 +1,13 @@
-# Déploiement Coolify (Docker Compose) : à choisir comme « Docker Compose Location » de l'application.
-# Voir docs/deployment/coolify.md.
+# Stack de production (Docker Compose), construite sur le serveur. Voir docs/deployment.md.
 #
 # Différences avec docker-compose.yml (usage local) :
-# - aucun port publié sur l'hôte : Traefik (Coolify) route le trafic vers les ports exposés, et un
+# - aucun port publié sur l'hôte : le reverse proxy (Traefik) route le trafic vers les ports exposés, et un
 #   `ports:` ferait échouer le déploiement dès qu'un autre conteneur du serveur utilise le même port ;
-# - pas de `env_file: .env` : les variables sont listées ici et viennent de l'onglet Environment Variables
-#   de Coolify (un fichier .env n'existe pas dans le dépôt) ;
+# - pas de `env_file: .env` : les variables sont listées ici et viennent de l'environnement de
+#   déploiement (un fichier .env n'existe pas dans le dépôt) ;
 # - sondes de santé, et un volume pour les fichiers uploadés (photos produit, aperçus de campagne).
 #
-# Domaines (onglet Configuration de l'application, un par service) :
+# Domaines (un par service, à router depuis le reverse proxy) :
 #   web -> https://app.mondomaine.fr         api -> https://api.mondomaine.fr
 #   NEXT_PUBLIC_API_URL doit valoir l'URL publique de l'API (https://api.mondomaine.fr) ; il est figé
 #   dans le JavaScript du navigateur au build : le modifier demande un nouveau déploiement.

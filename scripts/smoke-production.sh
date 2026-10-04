@@ -2,7 +2,7 @@
 # Smoke test d'une stack de production (api + web) déjà démarrée : utilisé par la CI pour l'image construite
 # (job docker-production) et pour l'image PUBLIÉE (job publish-images), pour qu'il n'y ait qu'un endroit à tenir.
 #
-# Usage : scripts/smoke-production.sh <arguments de `docker compose`>   (ex. -f docker-compose.coolify.yml --env-file ci.env)
+# Usage : scripts/smoke-production.sh <arguments de `docker compose`>   (ex. -f docker-compose.prod.yml --env-file ci.env)
 #
 # Variables : SMOKE_API_URL (défaut http://localhost:3201), SMOKE_WEB_URL (défaut http://localhost:3200),
 #             SMOKE_EXPECT_API_URL = URL d'API censée être figée dans le JavaScript du navigateur (défaut : SMOKE_API_URL).

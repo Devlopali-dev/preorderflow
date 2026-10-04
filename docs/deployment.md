@@ -30,13 +30,8 @@ qui utiliserait l'upload de photo.
 
 ## Sauvegardes
 
-- PostgreSQL : dump régulier (`pg_dump`) planifié en dehors de l'application — voir
-  `docs/deployment/coolify.md` pour le cas Coolify.
+- PostgreSQL : dump régulier (`pg_dump`) planifié en dehors de l'application.
 - Aucune donnée n'est source de vérité côté Redis (uniquement jobs BullMQ) : pas de sauvegarde
   Redis nécessaire au-delà de la persistance par défaut.
 - Volume `apps/api/uploads/` : à inclure dans la stratégie de sauvegarde si l'upload de photo est
   utilisé (aucune trace en base ne permet de reconstruire les fichiers perdus).
-
-## Coolify
-
-Voir [`docs/deployment/coolify.md`](deployment/coolify.md).
