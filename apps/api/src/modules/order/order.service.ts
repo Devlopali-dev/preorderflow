@@ -8,7 +8,12 @@ import {
 } from "@preorderflow/database";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { computeOrderTotals } from "./order-totals";
-import { resolveShippingAmount } from "./shipping-fee";
+import {
+  type CarrierCode,
+  parcelWeightGrams,
+  resolveCarrier,
+  resolveShippingAmount,
+} from "./shipping-fee";
 import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { NotificationService } from "../notification/notification.service";
@@ -72,6 +77,8 @@ export class OrderService {
         quantity: item.quantity,
         unitPrice: variant.product.price.toNumber(),
         taxRate: variant.product.taxRate.toNumber(),
+        // Poids produit en kg en base ; le barème La Poste raisonne en grammes.
+        weightGrams: (variant.product.weight?.toNumber() ?? 0) * 1000,
       };
     });
 
@@ -85,11 +92,24 @@ export class OrderService {
     // Montant explicite (saisie admin) prioritaire ; sinon frais paramétrés dans /settings.
     const itemsSubtotal = computeOrderTotals(lines).subtotal;
     const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
+    const shippingConfig = await this.settingsService.getShippingConfig();
+    const weightGrams = parcelWeightGrams(
+      lines.reduce((sum, line) => sum + line.quantity * line.weightGrams, 0),
+      shippingConfig,
+    );
+    let carrier: CarrierCode | null;
+    try {
+      carrier = resolveCarrier(deliveryMethod, weightGrams, shippingConfig, dto.carrier);
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
     const shippingAmount = resolveShippingAmount(
       deliveryMethod,
       itemsSubtotal,
-      await this.settingsService.getShippingConfig(),
+      shippingConfig,
       dto.shippingAmount,
+      carrier,
+      weightGrams,
     );
     const totals = computeOrderTotals(lines, shippingAmount);
     // Remise en main propre : pas d'adresse, le snapshot ne garde que l'identité du client.
@@ -130,6 +150,7 @@ export class OrderService {
           paymentStatus: "UNPAID",
           fulfillmentStatus: "UNFULFILLED",
           deliveryMethod,
+          carrier,
           subtotal: totals.subtotal,
           shippingAmount,
           taxAmount: totals.taxAmount,

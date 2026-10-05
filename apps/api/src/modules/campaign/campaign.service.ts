@@ -76,6 +76,8 @@ export class CampaignService {
             // Prix affiché sur la page publique : celui du produit, source unique.
             price: true,
             currency: true,
+            // Poids unitaire (kg) : sert au calcul des frais La Poste côté formulaire.
+            weight: true,
             variants: {
               where: { active: true },
               orderBy: { sku: "asc" },

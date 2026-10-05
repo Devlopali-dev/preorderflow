@@ -6,8 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createPublicOrderSchema, type CreatePublicOrderInput } from "@preorderflow/types";
 import { Button, FormGroup, Input, Textarea } from "@preorderflow/ui";
 import { PaymentQrCode } from "@/components/payment-qr-code";
-import type { CampaignVariantOption } from "@/lib/api";
+import type { CampaignVariantOption, ShippingConfig } from "@/lib/api";
+import { CARRIER_LABELS, type CarrierCode, carrierRate, carriersFor } from "@/lib/shipping-tariffs";
 import { VariantQuantities, MAX_QUANTITY } from "./variant-quantities";
+
+// Précisions affichées à côté du transporteur (le libellé seul ne dit pas tout).
+const CARRIER_HINTS: Partial<Record<CarrierCode, string>> = {
+  LA_POSTE_SUIVIE: "avec suivi",
+  LA_POSTE_VERTE: "sans suivi",
+};
 
 type Confirmation =
   | {
@@ -27,6 +34,7 @@ export function OrderForm({
   apiUrl,
   variants,
   unitPrice,
+  unitWeightKg,
   currency,
   shipping,
 }: {
@@ -34,8 +42,9 @@ export function OrderForm({
   apiUrl: string;
   variants: CampaignVariantOption[];
   unitPrice: string | null;
+  unitWeightKg: string | null;
   currency: string | null;
-  shipping: { flatRate: number; freeThreshold: number | null } | null;
+  shipping: ShippingConfig | null;
 }) {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -63,15 +72,30 @@ export function OrderForm({
   const totalQuantity = variants.reduce((sum, variant) => sum + (quantities[variant.id] ?? 0), 0);
   const subtotal = unitPrice === null ? null : (Number(unitPrice) * totalQuantity).toFixed(2);
   const isPickup = watch("deliveryMethod") === "PICKUP";
-  // Même règle que l'API : forfait, offert au-delà du seuil (sous-total HT) ; rien en main propre.
+  // Même règle que l'API : le poids de l'envoi (articles + emballage) détermine les transporteurs
+  // possibles et leur tarif ; le choix du client retombe sur le premier transporteur disponible
+  // s'il ne l'est plus.
+  const weightGrams =
+    totalQuantity * Number(unitWeightKg ?? 0) * 1000 + (shipping?.packagingWeightGrams ?? 0);
+  // Barème indisponible (API des réglages en échec) : pas de choix, l'API retient un défaut.
+  const tariffs = shipping?.tariffs ?? null;
+  const allowedCarriers = tariffs === null ? [] : carriersFor(tariffs, weightGrams);
+  const requestedCarrier = watch("carrier");
+  const carrier: CarrierCode | null =
+    requestedCarrier && allowedCarriers.includes(requestedCarrier)
+      ? requestedCarrier
+      : (allowedCarriers[0] ?? null);
+  // Offert au-delà du seuil (sous-total HT) ; rien en main propre.
   const shippingFee =
-    subtotal === null || shipping === null
+    subtotal === null || shipping === null || tariffs === null
       ? null
       : isPickup
         ? 0
         : shipping.freeThreshold !== null && Number(subtotal) >= shipping.freeThreshold
           ? 0
-          : shipping.flatRate;
+          : carrier === null
+            ? null
+            : carrierRate(tariffs, carrier, weightGrams);
 
   async function onSubmit(values: CreatePublicOrderInput) {
     setServerError(null);
@@ -93,6 +117,7 @@ export function OrderForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...rest,
+          carrier: values.deliveryMethod === "PICKUP" ? undefined : (carrier ?? undefined),
           items,
           shippingAddress,
         }),
@@ -217,6 +242,35 @@ export function OrderForm({
           Remise en main propre
         </label>
       </fieldset>
+
+      {!isPickup && shipping !== null && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">Transporteur</legend>
+          {allowedCarriers.length === 0 && (
+            <p className="text-sm text-red-600">
+              Cette quantité est trop lourde pour être expédiée : réduisez-la.
+            </p>
+          )}
+          {allowedCarriers.map((code) => (
+            <label key={code} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                value={code}
+                checked={carrier === code}
+                {...register("carrier")}
+                data-testid={`carrier-${code}`}
+              />
+              <span>
+                {CARRIER_LABELS[code]}
+                {CARRIER_HINTS[code] ? ` (${CARRIER_HINTS[code]})` : ""} :{" "}
+                <strong>
+                  {carrierRate(shipping.tariffs, code, weightGrams)!.toFixed(2)} {currency ?? ""}
+                </strong>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
 
       {!isPickup && (
         <fieldset className="flex flex-col gap-3">

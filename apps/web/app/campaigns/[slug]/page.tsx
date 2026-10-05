@@ -44,6 +44,7 @@ export default async function CampaignPage({ params }: { params: { slug: string 
               apiUrl={apiUrl}
               variants={campaign.product?.variants ?? []}
               unitPrice={campaign.product?.price ?? null}
+              unitWeightKg={campaign.product?.weight ?? null}
               currency={campaign.product?.currency ?? null}
               shipping={shipping}
             />

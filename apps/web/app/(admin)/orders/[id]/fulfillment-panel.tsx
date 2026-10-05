@@ -6,6 +6,7 @@ import { Button, Input } from "@preorderflow/ui";
 import type { OrderDetail } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { shipmentStatusLabel } from "@/lib/shipment-status-labels";
+import { CARRIER_LABELS } from "@/lib/shipping-tariffs";
 
 const NEXT_SHIPMENT_STATUS: Record<string, { label: string; status: string } | undefined> = {
   PENDING: { label: "Marquer comme expédiée", status: "SHIPPED" },
@@ -19,7 +20,9 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [carrier, setCarrier] = useState("Colissimo");
+  const [carrier, setCarrier] = useState(
+    order.carrier ? CARRIER_LABELS[order.carrier] : "Colissimo",
+  );
   const [trackingNumber, setTrackingNumber] = useState("");
   const [trackingUrl, setTrackingUrl] = useState("");
 

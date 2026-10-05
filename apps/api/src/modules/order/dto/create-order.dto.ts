@@ -13,6 +13,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { CARRIER_CODES, type CarrierCode } from "../shipping-tariffs";
 
 export class OrderAddressDto {
   @ApiProperty()
@@ -95,6 +96,15 @@ export class CreateOrderDto {
   @IsOptional()
   @IsIn(["SHIPPING", "PICKUP"])
   deliveryMethod?: "SHIPPING" | "PICKUP";
+
+  @ApiProperty({
+    enum: CARRIER_CODES,
+    required: false,
+    description: "Transporteur choisi ; doit couvrir le poids de l'envoi",
+  })
+  @IsOptional()
+  @IsIn(CARRIER_CODES)
+  carrier?: CarrierCode;
 
   // Obligatoire sauf remise en main propre.
   @ApiProperty({ type: OrderAddressDto, required: false })

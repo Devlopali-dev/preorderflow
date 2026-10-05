@@ -95,6 +95,15 @@ export class UpdateSettingsDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   freeShippingThreshold?: number | null;
+
+  @ApiProperty({
+    required: false,
+    description: "Poids de l'enveloppe et du calage (g), ajouté au poids des articles",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  packagingWeightGrams?: number;
 }
 
 // Teste avec les valeurs du formulaire (pas forcément encore enregistrées)

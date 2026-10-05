@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
+import { CARRIER_CODES, type CarrierCode } from "../../order/shipping-tariffs";
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -91,6 +92,11 @@ export class CreatePublicOrderDto {
   @IsOptional()
   @IsIn(["SHIPPING", "PICKUP"])
   deliveryMethod?: "SHIPPING" | "PICKUP";
+
+  @ApiProperty({ enum: CARRIER_CODES, required: false })
+  @IsOptional()
+  @IsIn(CARRIER_CODES)
+  carrier?: CarrierCode;
 
   // Obligatoire sauf remise en main propre.
   @ApiProperty({ type: PublicOrderAddressDto, required: false })

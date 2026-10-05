@@ -1,4 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import {
+  BadGatewayException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { NotificationTemplate } from "@preorderflow/database";
@@ -33,6 +42,25 @@ export class SettingsController {
   @Get("shipping")
   getShipping() {
     return this.settingsService.getShippingConfig();
+  }
+
+  // Appelle un service externe : throttle dédié, comme les autres actions qui sortent de l'API.
+  @Roles("ADMIN")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post("shipping/sync-tariffs")
+  async syncTariffs(@CurrentAdminId() adminId: string) {
+    let result;
+    try {
+      result = await this.settingsService.syncLaPosteTariffs();
+    } catch (error) {
+      throw new BadGatewayException(
+        `Synchronisation des tarifs La Poste impossible : ${(error as Error).message}`,
+      );
+    }
+    await this.auditService.log(adminId, "SETTINGS_UPDATED", "AppSettings", "singleton", {
+      fieldsChanged: ["carrierTariffs"],
+    });
+    return result;
   }
 
   @Roles("ADMIN")

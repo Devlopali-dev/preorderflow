@@ -4,7 +4,9 @@ import { TestEmailSettingsDto, UpdateSettingsDto } from "./dto/update-settings.d
 import { UpdateTemplateDto } from "./dto/update-template.dto";
 import { createEmailProviderFromConfig } from "../notification/email-provider";
 import { sendNtfyNotificationWithConfig } from "../notification/ntfy-provider";
+import { fetchLaPosteTariffs } from "../order/laposte-tariffs";
 import type { ShippingConfig } from "../order/shipping-fee";
+import { type CarrierTariffs, DEFAULT_TARIFFS } from "../order/shipping-tariffs";
 import { DEFAULT_TEMPLATES, TemplatePayloads } from "../notification/notification-templates";
 
 const SINGLETON_ID = "singleton";
@@ -85,7 +87,24 @@ export class SettingsService {
     return {
       flatRate: row?.shippingFlatRate.toNumber() ?? 0,
       freeThreshold: row?.freeShippingThreshold?.toNumber() ?? null,
+      packagingWeightGrams: row?.packagingWeightGrams ?? 10,
+      // Tarifs La Poste synchronisés par-dessus le barème par défaut du code.
+      tariffs: { ...DEFAULT_TARIFFS, ...((row?.carrierTariffs ?? {}) as Partial<CarrierTariffs>) },
+      tariffsSyncedAt: row?.carrierTariffsSyncedAt?.toISOString() ?? null,
     };
+  }
+
+  // Interroge l'API La Poste et remplace les tarifs La Poste / Colissimo. En cas d'échec ou de
+  // barème incohérent, l'exception remonte et l'ancien barème reste en place.
+  async syncLaPosteTariffs() {
+    const tariffs = await fetchLaPosteTariffs();
+    const syncedAt = new Date();
+    await prisma.appSettings.upsert({
+      where: { id: SINGLETON_ID },
+      create: { id: SINGLETON_ID, carrierTariffs: tariffs, carrierTariffsSyncedAt: syncedAt },
+      update: { carrierTariffs: tariffs, carrierTariffsSyncedAt: syncedAt },
+    });
+    return this.getShippingConfig();
   }
 
   async getEmailConfig(): Promise<EffectiveEmailConfig> {

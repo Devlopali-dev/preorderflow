@@ -53,6 +53,7 @@ export class CampaignOrderService {
         customerPhone: dto.phone,
         items: dto.items,
         deliveryMethod,
+        carrier: dto.carrier,
         shippingAddress: dto.shippingAddress && {
           firstName: dto.firstName,
           lastName: dto.lastName,

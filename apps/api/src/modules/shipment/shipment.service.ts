@@ -3,6 +3,7 @@ import { prisma, ShipmentStatus } from "@preorderflow/database";
 import { CreateShipmentDto } from "./dto/create-shipment.dto";
 import { assertValidShipmentTransition, InvalidShipmentTransitionError } from "./shipment-status";
 import { OrderService } from "../order/order.service";
+import { CARRIER_LABELS } from "../order/shipping-tariffs";
 import { NotificationService } from "../notification/notification.service";
 
 // Statuts d'expédition qui font avancer le fulfillment de la commande.
@@ -50,7 +51,8 @@ export class ShipmentService {
     return prisma.shipment.create({
       data: {
         orderId: order.id,
-        carrier: dto.carrier,
+        // Saisie admin prioritaire ; sinon le transporteur choisi par le client à la commande.
+        carrier: dto.carrier ?? (order.carrier ? CARRIER_LABELS[order.carrier] : undefined),
         trackingNumber: dto.trackingNumber,
         trackingUrl: dto.trackingUrl,
         weight: dto.weight,

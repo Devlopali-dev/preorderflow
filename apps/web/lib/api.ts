@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AUTH_COOKIE_NAME } from "./auth";
 import { CUSTOMER_AUTH_COOKIE_NAME } from "./customer-auth";
 import { forwardedForHeader } from "./forwarded-ip";
+import type { CarrierCode, CarrierTariffs } from "./shipping-tariffs";
 
 // Un 401 de l'API veut dire « session invalide » (jeton expiré, compte supprimé
 // ou désactivé, base réinitialisée), pas une panne : on renvoie vers la
@@ -101,7 +102,13 @@ export interface Campaign {
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];
-  product?: { price: string; currency: string; variants: CampaignVariantOption[] };
+  product?: {
+    price: string;
+    currency: string;
+    // Poids unitaire en kg (peut être absent).
+    weight: string | null;
+    variants: CampaignVariantOption[];
+  };
 }
 
 // Lecture publique, mais le jeton admin (cookie) est transmis s'il existe : un administrateur voit
@@ -249,7 +256,7 @@ export interface Settings {
     active: boolean;
   };
   ntfy: { configured: boolean; url: string; topic: string | null };
-  shipping: { flatRate: number; freeThreshold: number | null };
+  shipping: ShippingConfig;
   templates: string[];
 }
 
@@ -298,6 +305,7 @@ export async function getNotificationTemplates(): Promise<NotificationTemplateDe
 
 export interface OrderDetail extends OrderSummary {
   deliveryMethod: "SHIPPING" | "PICKUP";
+  carrier: CarrierCode | null;
   subtotal: string;
   shippingAmount: string;
   taxAmount: string;
@@ -511,6 +519,11 @@ export async function getCustomerOrder(id: string): Promise<CustomerOrderDetail 
 export interface ShippingConfig {
   flatRate: number;
   freeThreshold: number | null;
+  packagingWeightGrams: number;
+  // Barème par transporteur : défaut du code ou tarifs La Poste synchronisés.
+  tariffs: CarrierTariffs;
+  // Date de la dernière synchro La Poste (ISO) ; null = barème par défaut.
+  tariffsSyncedAt: string | null;
 }
 
 // Barème public : en cas d'échec on n'affiche simplement pas les frais (l'API les applique quand même).

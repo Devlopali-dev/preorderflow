@@ -47,6 +47,17 @@ export const deliveryMethodSchema = z.enum(["SHIPPING", "PICKUP"]);
 
 export type DeliveryMethod = z.infer<typeof deliveryMethodSchema>;
 
+export const carrierSchema = z.enum([
+  "LA_POSTE_SUIVIE",
+  "LA_POSTE_VERTE",
+  "COLISSIMO_RETRAIT",
+  "COLISSIMO_DOMICILE",
+  "MONDIAL_RELAY_POINT",
+  "MONDIAL_RELAY_DOMICILE",
+]);
+
+export type Carrier = z.infer<typeof carrierSchema>;
+
 export const createPublicOrderSchema = z
   .object({
     email: z.string().email("Adresse e-mail invalide"),
@@ -54,6 +65,8 @@ export const createPublicOrderSchema = z
     lastName: z.string().min(1, "Nom requis").max(100),
     phone: z.string().max(30).optional(),
     deliveryMethod: deliveryMethodSchema,
+    // Transporteur choisi ; l'API refuse celui qui n'est pas autorisé pour la quantité.
+    carrier: carrierSchema.optional(),
     // Adresse : obligatoire seulement pour une livraison (cf. superRefine).
     address1: z.string().max(200).optional(),
     address2: z.string().max(200).optional(),

@@ -313,6 +313,16 @@ enum DeliveryMethod {
   PICKUP
 }
 
+// Transporteur choisi par le client à la commande, selon la quantité totale.
+enum Carrier {
+  LA_POSTE_SUIVIE
+  LA_POSTE_VERTE
+  COLISSIMO_RETRAIT
+  COLISSIMO_DOMICILE
+  MONDIAL_RELAY_POINT
+  MONDIAL_RELAY_DOMICILE
+}
+
 model Order {
   id                 String                  @id @default(uuid())
   number             String                  @unique // ex: 2026-0042
@@ -325,7 +335,8 @@ model Order {
   paymentStatus      OrderPaymentStatus      @default(UNPAID)
   fulfillmentStatus  OrderFulfillmentStatus  @default(UNFULFILLED)
   deliveryMethod     DeliveryMethod          @default(SHIPPING)
-  currency           String                  @default("EUR")
+  carrier            Carrier?
+  currency          String                  @default("EUR")
   subtotal           Decimal                 @db.Decimal(10, 2)
   shippingAmount     Decimal                 @db.Decimal(10, 2) @default(0)
   taxAmount          Decimal                 @db.Decimal(10, 2) @default(0)
@@ -616,7 +627,15 @@ model AppSettings {
   // d'un sous-total HT seuil (null = jamais offert).
   shippingFlatRate       Decimal  @default(0) @db.Decimal(10, 2)
   freeShippingThreshold  Decimal? @db.Decimal(10, 2)
-  updatedAt       DateTime @updatedAt
+  // Les tarifs des transporteurs (La Poste, Colissimo, Mondial Relay) suivent le barème par
+  // poids du code (shipping-tariffs.ts) ; packagingWeightGrams = emballage + calage, ajouté au
+  // poids des articles.
+  packagingWeightGrams   Int      @default(10)
+  // Tarifs La Poste / Colissimo synchronisés depuis data.laposte.fr (bouton dans /settings) :
+  // { CODE: [[poidsMaxG, prix], ...] }. null = barème par défaut du code.
+  carrierTariffs         Json?
+  carrierTariffsSyncedAt DateTime?
+  updatedAt      DateTime @updatedAt
 
   @@map("app_settings")
 }
