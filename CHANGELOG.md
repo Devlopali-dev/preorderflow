@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.21.0] — 2026-10-05
+
+### Modifié
+
+- **Commande publique** : chaque tarif transporteur est affiché « à partir de X € » (le tarif de départ,
+  le prix exact dépendant du poids de la commande) — la ligne « Livraison » totale reste inchangée.
+- **Commande publique** : la remise en main propre reste le mode de livraison sélectionné par défaut.
+
 ## [0.20.0] — 2026-10-05
 
 ### Ajouté
