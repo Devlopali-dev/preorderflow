@@ -22,6 +22,7 @@ export function ProductColorPicker({
   disabled,
   onToggle,
   onSelect,
+  onCreated,
   onChanged,
 }: {
   colors: Color[];
@@ -34,6 +35,8 @@ export function ProductColorPicker({
   disabled?: boolean;
   onToggle: (colorId: string) => void;
   onSelect: (colorId: string) => void;
+  // Couleur que le picker vient de créer (avant le rechargement de la liste).
+  onCreated?: (colorId: string) => void | Promise<void>;
   // Recharge la liste des couleurs (les nouvelles couleurs actives sont sélectionnées d'office).
   onChanged: () => void | Promise<void>;
 }) {
@@ -80,8 +83,13 @@ export function ProductColorPicker({
   async function pick(item: { name: string; hex: string; color?: Color }) {
     const { color } = item;
     if (!color) {
-      // Créée puis sélectionnée d'office au rechargement de la liste.
-      if (await call(`${apiUrl}/api/v1/colors`, "POST", { name: item.name, hex: item.hex })) {
+      // Créée, signalée au parent, puis liste rechargée.
+      const created = await call(`${apiUrl}/api/v1/colors`, "POST", {
+        name: item.name,
+        hex: item.hex,
+      });
+      if (created) {
+        await onCreated?.(created.id);
         await onChanged();
       }
     } else if (!color.active) {
@@ -95,8 +103,10 @@ export function ProductColorPicker({
   }
 
   async function handleCreate() {
-    if (await call(`${apiUrl}/api/v1/colors`, "POST", { name, hex })) {
+    const created = await call(`${apiUrl}/api/v1/colors`, "POST", { name, hex });
+    if (created) {
       setName("");
+      await onCreated?.(created.id);
       await onChanged();
     }
   }

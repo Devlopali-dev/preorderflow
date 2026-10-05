@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color, Product, ProductPhoto, ProductVariant } from "@/lib/api";
@@ -63,30 +63,20 @@ export function ProductEditModal({
     await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", { colorId });
   }
 
-  // Palette globale, rechargée quand on la modifie ici. Une couleur qu'on vient
-  // de créer est ajoutée d'office au produit (comme à la création) ; le premier
-  // chargement n'ajoute rien.
-  const knownColorIds = useRef<Set<string> | null>(null);
+  // Palette globale, rechargée quand on la modifie ici. Une couleur créée par
+  // le picker est ajoutée d'office au produit (onCreated), comme à la création.
   const loadColors = useCallback(async () => {
     try {
       const res = await fetch(`${apiUrl}/api/v1/colors`, {
         headers: { ...getClientAuthHeaders() },
       });
-      const all: Color[] = res.ok ? await res.json() : [];
-      setColors(all);
-
-      const known = knownColorIds.current;
-      const created = known
-        ? all.filter((color) => color.active && !known.has(color.id)).map((color) => color.id)
-        : [];
-      knownColorIds.current = new Set(all.map((color) => color.id));
-      for (const colorId of created) await handleAddVariant(colorId);
+      setColors(res.ok ? await res.json() : []);
     } catch {
       setColors([]);
     } finally {
       setColorsLoaded(true);
     }
-  }, [apiUrl, product.id]);
+  }, [apiUrl]);
 
   useEffect(() => {
     void loadColors();
@@ -269,6 +259,7 @@ export function ProductEditModal({
           disabled={saving}
           onToggle={(colorId) => void handleToggleColor(colorId)}
           onSelect={(colorId) => void handleSelectColor(colorId)}
+          onCreated={handleAddVariant}
           onChanged={loadColors}
         />
         <div className="flex flex-col gap-2 text-sm">

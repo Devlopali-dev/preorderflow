@@ -86,11 +86,13 @@ test("commandes ouvertes : formulaire d'achat, commande réelle et lien pour pay
   await expect(page.getByTestId("order-subtotal")).toHaveText("6.00");
 
   // Transporteur : tous ceux qui couvrent le poids sont proposés, le client choisit la Lettre Verte
-  // (barème par défaut : 1,52 € jusqu'à 20 g).
+  // (premier palier du barème en vigueur : 1,52 € par défaut, ou le tarif La Poste synchronisé).
+  const shippingConfig = await (await request.get(`${apiUrl}/api/v1/settings/shipping`)).json();
+  const [, lettreVerteRate] = shippingConfig.tariffs.LA_POSTE_VERTE[0] as [number, number];
   await expect(page.getByTestId("carrier-LA_POSTE_SUIVIE")).toBeVisible();
   await expect(page.getByTestId("carrier-MONDIAL_RELAY_POINT")).toBeVisible();
   await page.getByTestId("carrier-LA_POSTE_VERTE").check();
-  await expect(page.getByTestId("order-shipping")).toHaveText("1.52 EUR");
+  await expect(page.getByTestId("order-shipping")).toHaveText(`${lettreVerteRate.toFixed(2)} EUR`);
 
   // Validation côté formulaire : rien n'est envoyé tant que l'adresse manque.
   await page.getByLabel("Email", { exact: true }).fill("client6@example.com");
@@ -108,7 +110,12 @@ test("commandes ouvertes : formulaire d'achat, commande réelle et lien pour pay
   // campagne avec le montant en centimes.
   await expect(page.getByText(/Merci, votre commande/)).toBeVisible();
   const link = page.getByRole("link", { name: "Payer avec Revolut" });
-  await expect(link).toHaveAttribute("href", /revolut\.me\/test-achat.*amount=752$/);
+  // 2 × 3 € + frais de port, en centimes.
+  const totalCents = Math.round((6 + lettreVerteRate) * 100);
+  await expect(link).toHaveAttribute(
+    "href",
+    new RegExp(`revolut\\.me/test-achat.*amount=${totalCents}$`),
+  );
   await expect(page.getByAltText("QR code de paiement")).toBeVisible();
   await expect(page.getByText(/nom et prénom/)).toBeVisible();
   await expect(page.getByText(/remarque/)).toBeVisible();
@@ -125,7 +132,7 @@ test("commandes ouvertes : formulaire d'achat, commande réelle et lien pour pay
   expect(detail.payments).toHaveLength(1);
   expect(detail.payments[0]).toMatchObject({ provider: "MANUAL", status: "PENDING" });
   expect(detail.carrier).toBe("LA_POSTE_VERTE");
-  expect(Number(detail.shippingAmount)).toBe(1.52);
+  expect(Number(detail.shippingAmount)).toBe(lettreVerteRate);
   expect(detail.shippingAddress).toMatchObject({ city: "Lyon", address1: "12 rue des Lilas" });
   const after = await (
     await request.get(`${apiUrl}/api/v1/customers/${known.id}`, { headers: auth })
