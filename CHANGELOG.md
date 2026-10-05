@@ -7,6 +7,34 @@ correctifs.
 
 ## [Non publié]
 
+## [0.19.0] — 2026-10-05
+
+### Ajouté
+
+- **Livraison.** Frais de livraison paramétrables (forfait et seuil de gratuité), choix entre livraison et remise en
+  main propre à la commande.
+- **Choix du transporteur par le client** à la commande publique, avec un barème par transporteur (La Poste lettre
+  verte et suivie, Colissimo retrait et domicile, Mondial Relay point relais et domicile) calculé selon le poids de la
+  commande. Les tarifs La Poste se
+  synchronisent depuis l'API publique de La Poste ; le barème par défaut sert tant qu'aucune synchro n'a eu lieu.
+  Le transporteur choisi est conservé sur la commande et proposé par défaut à l'expédition. Migrations de base de
+  données incluses (réglages de livraison, mode de remise, transporteur, tarifs).
+- **Page campagne** : les photos du produit s'affichent avec celles de la campagne (la photo principale en grand), dans
+  une galerie aux tuiles alignées sur le formulaire. Un clic ouvre la photo dans une visionneuse interne (Échap, flèches
+  pour parcourir) au lieu d'un nouvel onglet ; les PDF restent ouverts dans un nouvel onglet. L'API publique d'une
+  campagne renvoie les photos du produit.
+- **En-tête public** partagé (accueil et page campagne) avec lien vers l'accueil.
+- Tests e2e : commande publique avec choix du transporteur, photos du produit et visionneuse.
+  Les identifiants admin de la suite sont surchargeables (`E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD`).
+
+### Modifié
+
+- **Modale d'un produit existant** : les couleurs se gèrent comme à la création, avec la palette (`ProductColorPicker`).
+  Un clic sur une couleur l'ajoute au produit, un second la retire ; une couleur créée depuis la palette est ajoutée
+  d'office. La liste de gestion (désactiver, supprimer une couleur de la palette globale) n'existe plus dans l'interface
+  (l'API reste inchangée).
+- Les tests e2e lisent les frais de port dans le barème en vigueur au lieu d'une valeur en dur.
+
 ### Retiré
 
 - Tout ce qui concernait Coolify : `docs/deployment/coolify.md`, étape CI de déclenchement du déploiement
