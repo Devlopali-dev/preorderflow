@@ -64,7 +64,7 @@ export default async function CampaignPage({ params }: { params: { slug: string 
             )}
           </div>
 
-          <MediaGallery media={campaign.media} />
+          <MediaGallery photos={campaign.product?.photos ?? []} media={campaign.media} />
         </div>
       </main>
     </>

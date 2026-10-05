@@ -78,6 +78,11 @@ export class CampaignService {
             currency: true,
             // Poids unitaire (kg) : sert au calcul des frais La Poste côté formulaire.
             weight: true,
+            // Photos du produit (3 au plus), affichées avec celles de la campagne.
+            photos: {
+              orderBy: { position: "asc" },
+              select: { id: true, url: true, position: true },
+            },
             variants: {
               where: { active: true },
               orderBy: { sku: "asc" },

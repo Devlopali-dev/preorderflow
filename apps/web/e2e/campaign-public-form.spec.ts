@@ -46,6 +46,50 @@ async function campaignAt(
   return { campaign, product, cleanup };
 }
 
+test("la page campagne affiche les photos du produit, la principale en premier", async ({
+  page,
+  request,
+}) => {
+  const token = await getAdminToken(request);
+  const { campaign, product, cleanup } = await campaignAt(request, token, "G", "RECENSEMENT");
+  // PNG 1×1 : assez pour tester l'affichage sans fichier de fixture.
+  const tinyPng = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  for (const name of ["un.png", "deux.png"]) {
+    const res = await request.post(`${apiUrl}/api/v1/products/${product.id}/photo`, {
+      headers: authHeader(token),
+      multipart: { file: { name, mimeType: "image/png", buffer: tinyPng } },
+    });
+    expect(res.status()).toBe(201);
+  }
+
+  await page.goto(`/campaigns/${campaign.slug}`);
+  const photos = page.getByAltText("Photo du produit");
+  await expect(photos).toHaveCount(2);
+  // La première photo est la principale : affichée en grand, avant les autres.
+  await expect(photos.first()).toHaveClass(/aspect-\[4\/3\]/);
+  await expect(photos.last()).toHaveClass(/aspect-\[3\/4\]/);
+
+  // Un clic agrandit la photo dans la page (visionneuse interne), sans nouvel onglet.
+  let popup = false;
+  page.context().on("page", () => {
+    popup = true;
+  });
+  await photos.first().click();
+  const viewer = page.getByRole("dialog", { name: "Visionneuse de photos" });
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByText("1 / 2")).toBeVisible();
+  await viewer.getByRole("button", { name: "Photo suivante" }).click();
+  await expect(viewer.getByText("2 / 2")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(viewer).toHaveCount(0);
+  expect(popup).toBe(false);
+
+  await cleanup();
+});
+
 test("recensement : la page garde le formulaire de recensement, sans achat", async ({
   page,
   request,

@@ -107,6 +107,8 @@ export interface Campaign {
     currency: string;
     // Poids unitaire en kg (peut être absent).
     weight: string | null;
+    // Photos du produit, la première est la principale.
+    photos: ProductPhoto[];
     variants: CampaignVariantOption[];
   };
 }
