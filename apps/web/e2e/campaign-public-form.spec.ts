@@ -129,6 +129,10 @@ test("commandes ouvertes : formulaire d'achat, commande réelle et lien pour pay
   await page.getByLabel("Quelle quantité souhaitez-vous commander ?").fill("2");
   await expect(page.getByTestId("order-subtotal")).toHaveText("6.00");
 
+  // Mode de remise : « main propre » par défaut, on choisit la livraison.
+  await expect(page.getByLabel("Remise en main propre")).toBeChecked();
+  await page.getByLabel("Me faire livrer").check();
+
   // Transporteur : tous ceux qui couvrent le poids sont proposés, le client choisit la Lettre Verte
   // (premier palier du barème en vigueur : 1,52 € par défaut, ou le tarif La Poste synchronisé).
   const shippingConfig = await (await request.get(`${apiUrl}/api/v1/settings/shipping`)).json();
@@ -252,6 +256,7 @@ test("commande publique d'un nouveau client : son adresse remonte dans l'admin",
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Prénom").fill("Nadia");
   await page.getByLabel("Nom", { exact: true }).fill("Nouvelle");
+  await page.getByLabel("Me faire livrer").check();
   await page.getByLabel("Adresse", { exact: true }).fill("5 place Bellecour");
   await page.getByLabel("Complément d'adresse (optionnel)").fill("Bâtiment B");
   await page.getByLabel("Code postal").fill("69002");

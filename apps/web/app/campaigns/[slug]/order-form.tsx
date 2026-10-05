@@ -60,7 +60,7 @@ export function OrderForm({
     formState: { errors, isSubmitting },
   } = useForm<CreatePublicOrderInput>({
     resolver: zodResolver(createPublicOrderSchema),
-    defaultValues: { country: "FR", deliveryMethod: "SHIPPING" },
+    defaultValues: { country: "FR", deliveryMethod: "PICKUP" },
   });
 
   function setQuantity(variantId: string, quantity: number) {

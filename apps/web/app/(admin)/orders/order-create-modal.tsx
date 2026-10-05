@@ -40,8 +40,8 @@ export function OrderCreateModal({
   // ne se commandent plus.
   const variantOptions = allOptions.filter((option) => !option.archived);
   const archivedOptions = allOptions.filter((option) => option.archived);
-  const [variantId, setVariantId] = useState(variantOptions[0]?.id ?? "");
-  const [quantity, setQuantity] = useState("1");
+  // Panier : variantId → quantité. Une variante absente n'est pas commandée.
+  const [lines, setLines] = useState<Record<string, number>>({});
   const [address1, setAddress1] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
@@ -53,6 +53,22 @@ export function OrderCreateModal({
   const [error, setError] = useState<string | null>(null);
 
   const isExistingCustomer = customerId !== NEW_CUSTOMER;
+  const selectedItems = Object.entries(lines).map(([variantId, quantity]) => ({
+    variantId,
+    quantity,
+  }));
+
+  function setLineQuantity(id: string, value: number) {
+    setLines((prev) => ({ ...prev, [id]: Math.max(1, Math.floor(value) || 1) }));
+  }
+
+  function removeLine(id: string) {
+    setLines((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
 
   function handleSelectCustomer(e: ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value;
@@ -70,6 +86,10 @@ export function OrderCreateModal({
   }
 
   async function handleCreate() {
+    if (selectedItems.length === 0) {
+      setError("Ajoutez au moins un produit à la commande.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -84,7 +104,7 @@ export function OrderCreateModal({
           customerFirstName,
           customerLastName,
           campaignId: campaignId || undefined,
-          items: [{ variantId, quantity: Number(quantity) }],
+          items: selectedItems,
           shippingAddress: {
             firstName: customerFirstName,
             lastName: customerLastName,
@@ -178,46 +198,53 @@ export function OrderCreateModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerLastName(e.target.value)}
           />
         </label>
-        <div className="flex gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Produit
-            <select
-              className="select"
-              value={variantId}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setVariantId(e.target.value)}
-            >
-              {variantOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-              {archivedOptions.length > 0 && (
-                <>
-                  <option disabled>──────────</option>
-                  {archivedOptions.map((option) => (
-                    <option
-                      key={option.id}
-                      value={option.id}
-                      disabled
-                      style={{ fontStyle: "italic" }}
+        <fieldset className="flex flex-col gap-1 text-sm">
+          <legend className="mb-1">Produits</legend>
+          <ul className="flex max-h-56 flex-col divide-y overflow-y-auto rounded border">
+            {variantOptions.map((option) => {
+              const quantity = lines[option.id];
+              return (
+                <li key={option.id} className="flex items-center gap-2 px-3 py-2">
+                  <span className="flex-1">{option.label}</span>
+                  {quantity === undefined ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => setLineQuantity(option.id, 1)}
+                      aria-label={`Ajouter ${option.label}`}
                     >
-                      {option.label} (archivé)
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </label>
-          <label className="flex w-20 flex-col gap-1 text-sm">
-            Qté
-            <Input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setQuantity(e.target.value)}
-            />
-          </label>
-        </div>
+                      Ajouter
+                    </Button>
+                  ) : (
+                    <>
+                      <Input
+                        type="number"
+                        min={1}
+                        className="w-20"
+                        aria-label={`Quantité ${option.label}`}
+                        value={quantity}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                          setLineQuantity(option.id, Number(e.target.value))
+                        }
+                      />
+                      <Button
+                        variant="secondary"
+                        onClick={() => removeLine(option.id)}
+                        aria-label={`Retirer ${option.label}`}
+                      >
+                        Retirer
+                      </Button>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+            {archivedOptions.map((option) => (
+              <li key={option.id} className="flex items-center gap-2 px-3 py-2 italic opacity-60">
+                {option.label} (archivé)
+              </li>
+            ))}
+          </ul>
+        </fieldset>
         <label className="flex flex-col gap-1 text-sm">
           Adresse
           <Input
