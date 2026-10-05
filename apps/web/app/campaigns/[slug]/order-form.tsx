@@ -60,7 +60,7 @@ export function OrderForm({
     formState: { errors, isSubmitting },
   } = useForm<CreatePublicOrderInput>({
     resolver: zodResolver(createPublicOrderSchema),
-    defaultValues: { country: "FR", deliveryMethod: "SHIPPING" },
+    defaultValues: { country: "FR", deliveryMethod: "PICKUP" },
   });
 
   function setQuantity(variantId: string, quantity: number) {
@@ -264,7 +264,8 @@ export function OrderForm({
                 {CARRIER_LABELS[code]}
                 {CARRIER_HINTS[code] ? ` (${CARRIER_HINTS[code]})` : ""} :{" "}
                 <strong>
-                  {carrierRate(shipping.tariffs, code, weightGrams)!.toFixed(2)} {currency ?? ""}
+                  à partir de {carrierRate(shipping.tariffs, code, weightGrams)!.toFixed(2)}{" "}
+                  {currency ?? ""}
                 </strong>
               </span>
             </label>
