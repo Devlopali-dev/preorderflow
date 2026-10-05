@@ -234,12 +234,12 @@ export function OrderForm({
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">Mode de remise</legend>
         <label className="flex items-center gap-2 text-sm">
-          <input type="radio" value="SHIPPING" {...register("deliveryMethod")} />
-          Me faire livrer
-        </label>
-        <label className="flex items-center gap-2 text-sm">
           <input type="radio" value="PICKUP" {...register("deliveryMethod")} />
           Remise en main propre
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="radio" value="SHIPPING" {...register("deliveryMethod")} />
+          Me faire livrer
         </label>
       </fieldset>
 
@@ -264,7 +264,8 @@ export function OrderForm({
                 {CARRIER_LABELS[code]}
                 {CARRIER_HINTS[code] ? ` (${CARRIER_HINTS[code]})` : ""} :{" "}
                 <strong>
-                  {carrierRate(shipping.tariffs, code, weightGrams)!.toFixed(2)} {currency ?? ""}
+                  à partir de {carrierRate(shipping.tariffs, code, weightGrams)!.toFixed(2)}{" "}
+                  {currency ?? ""}
                 </strong>
               </span>
             </label>
