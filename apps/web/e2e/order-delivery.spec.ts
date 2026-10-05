@@ -142,30 +142,17 @@ test("nouvelle commande : les produits archivés sont en fin de liste, en italiq
 
   await page.goto("/orders");
   await page.getByRole("button", { name: "Nouvelle commande" }).click();
-  const select = page
-    .getByRole("dialog")
-    .locator("label", { hasText: /^Produit/ })
-    .locator("select");
+  const dialog = page.getByRole("dialog");
 
-  // Les options se rendent après l'ouverture de la modale : attendre la dernière.
-  await expect(select.locator("option", { hasText: name })).toHaveCount(1);
-  const options = await select.locator("option").evaluateAll((els) =>
-    els.map((el) => ({
-      text: el.textContent ?? "",
-      disabled: (el as HTMLOptionElement).disabled,
-      italic: getComputedStyle(el).fontStyle === "italic",
-    })),
-  );
-  const index = options.findIndex((o) => o.text.includes(name));
-  expect(index).toBeGreaterThan(0);
-  expect(options[index]).toMatchObject({ disabled: true, italic: true });
-  expect(options[index].text).toContain("(archivé)");
-  // Séparateur juste avant la zone archivée ; rien d'actif après.
-  expect(options[index - 1].text).toMatch(/─/);
-  expect(options.slice(index - 1).every((o) => o.disabled)).toBe(true);
-  // La sélection par défaut est un produit commandable.
-  const selected = await select.evaluate(
-    (el) => (el as HTMLSelectElement).selectedOptions[0].disabled,
-  );
-  expect(selected).toBe(false);
+  // La liste se rend après l'ouverture de la modale : attendre la ligne archivée.
+  const archivedRow = dialog.locator("li", { hasText: name });
+  await expect(archivedRow).toHaveCount(1);
+  await expect(archivedRow).toContainText("(archivé)");
+  expect(await archivedRow.evaluate((el) => getComputedStyle(el).fontStyle)).toBe("italic");
+  // Non sélectionnable : aucun bouton d'ajout sur la ligne archivée.
+  await expect(archivedRow.getByRole("button")).toHaveCount(0);
+  // Archivés en fin de liste ; les autres produits restent ajoutables.
+  const lastRow = dialog.locator("fieldset li").last();
+  await expect(lastRow).toContainText("(archivé)");
+  await expect(dialog.getByRole("button", { name: /^Ajouter / }).first()).toBeVisible();
 });
