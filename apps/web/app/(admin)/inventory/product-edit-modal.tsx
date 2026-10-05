@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Color, Product, ProductPhoto, ProductVariant } from "@/lib/api";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { MAX_PRODUCT_PHOTOS } from "@/lib/product-photos";
-import { ColorLabel } from "@/components/color-label";
-import { ColorsManager } from "@/components/colors-manager";
+import { ProductColorPicker } from "@/components/product-color-picker";
 
 export function ProductEditModal({
   product,
@@ -27,27 +26,7 @@ export function ProductEditModal({
   const [error, setError] = useState<string | null>(null);
   const [variants, setVariants] = useState<ProductVariant[]>(product.variants);
   const [colors, setColors] = useState<Color[]>([]);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-
-  // Palette globale : chargée à l'ouverture pour proposer les couleurs pas
-  // encore utilisées par ce produit, et rechargée quand on la modifie ici.
-  const loadColors = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiUrl}/api/v1/colors`, {
-        headers: { ...getClientAuthHeaders() },
-      });
-      setColors(res.ok ? await res.json() : []);
-    } catch {
-      setColors([]);
-    }
-  }, [apiUrl]);
-
-  useEffect(() => {
-    void loadColors();
-  }, [loadColors]);
-
-  const usedColorIds = new Set(variants.map((variant) => variant.colorId));
-  const availableColors = colors.filter((color) => color.active && !usedColorIds.has(color.id));
+  const [colorsLoaded, setColorsLoaded] = useState(false);
 
   // Recharge les variantes depuis l'API : l'ajout d'une première couleur peut
   // retirer la variante par défaut inutilisée, à ne pas deviner côté client.
@@ -82,6 +61,54 @@ export function ProductEditModal({
   // Choisir une couleur dans la liste l'ajoute aussitôt : pas de second geste.
   async function handleAddVariant(colorId: string) {
     await variantRequest(`${apiUrl}/api/v1/products/${product.id}/variants`, "POST", { colorId });
+  }
+
+  // Palette globale, rechargée quand on la modifie ici. Une couleur qu'on vient
+  // de créer est ajoutée d'office au produit (comme à la création) ; le premier
+  // chargement n'ajoute rien.
+  const knownColorIds = useRef<Set<string> | null>(null);
+  const loadColors = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/colors`, {
+        headers: { ...getClientAuthHeaders() },
+      });
+      const all: Color[] = res.ok ? await res.json() : [];
+      setColors(all);
+
+      const known = knownColorIds.current;
+      const created = known
+        ? all.filter((color) => color.active && !known.has(color.id)).map((color) => color.id)
+        : [];
+      knownColorIds.current = new Set(all.map((color) => color.id));
+      for (const colorId of created) await handleAddVariant(colorId);
+    } catch {
+      setColors([]);
+    } finally {
+      setColorsLoaded(true);
+    }
+  }, [apiUrl, product.id]);
+
+  useEffect(() => {
+    void loadColors();
+  }, [loadColors]);
+
+  // Couleurs actuellement proposées : celles des variantes actives.
+  const selectedColorIds = variants
+    .filter((variant) => variant.active && variant.colorId)
+    .map((variant) => variant.colorId as string);
+
+  // Un clic sur une couleur de la palette l'ajoute, un second la désactive.
+  function handleToggleColor(colorId: string) {
+    const variant = variants.find((item) => item.colorId === colorId);
+    if (!variant) return handleAddVariant(colorId);
+    return handleToggleVariant(variant);
+  }
+
+  // Couleur réactivée dans la palette : à proposer aussi sur ce produit.
+  function handleSelectColor(colorId: string) {
+    const variant = variants.find((item) => item.colorId === colorId);
+    if (!variant) return handleAddVariant(colorId);
+    if (!variant.active) return handleToggleVariant(variant);
   }
 
   function handleToggleVariant(variant: ProductVariant) {
@@ -233,62 +260,17 @@ export function ProductEditModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setPrice(e.target.value)}
           />
         </label>
-        <div className="flex flex-col gap-2 text-sm">
-          <span>Couleurs</span>
-          <p className="text-xs opacity-60">
-            Désactiver une couleur la retire. Elle reste visible en inactive tant qu&apos;elle a du
-            stock ou de l&apos;historique (commandes, production, recensement).
-          </p>
-          <ul className="flex flex-col gap-1">
-            {variants.map((variant) => (
-              <li key={variant.id} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <ColorLabel
-                    name={variant.color?.name ?? "Standard (sans couleur)"}
-                    hex={variant.color?.hex}
-                    inactive={!variant.active || variant.color?.active === false}
-                  />
-                  <span className="opacity-60">{variant.sku}</span>
-                </span>
-                {/* Standard (sans couleur) : la variante de repli, jamais désactivable. */}
-                {variant.color !== null && (
-                  <Button
-                    variant="secondary"
-                    disabled={saving}
-                    onClick={() => handleToggleVariant(variant)}
-                  >
-                    {variant.active ? "Désactiver" : "Activer"}
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-          {/* Toujours sur l'invite : la couleur choisie est ajoutée puis disparaît de la liste. */}
-          <select
-            className="select"
-            aria-label="Ajouter une couleur"
-            value=""
-            disabled={saving}
-            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-              if (e.target.value) void handleAddVariant(e.target.value);
-            }}
-          >
-            <option value="">Ajouter une couleur…</option>
-            {availableColors.map((color) => (
-              <option key={color.id} value={color.id}>
-                {color.name}
-              </option>
-            ))}
-          </select>
-          <Button
-            variant="secondary"
-            aria-expanded={paletteOpen}
-            onClick={() => setPaletteOpen((open) => !open)}
-          >
-            {paletteOpen ? "Masquer la palette de couleurs" : "Gérer la palette de couleurs"}
-          </Button>
-          {paletteOpen && <ColorsManager colors={colors} apiUrl={apiUrl} onChanged={loadColors} />}
-        </div>
+        <ProductColorPicker
+          colors={colors}
+          selectedColorIds={selectedColorIds}
+          lockedColorIds={[]}
+          apiUrl={apiUrl}
+          loaded={colorsLoaded}
+          disabled={saving}
+          onToggle={(colorId) => void handleToggleColor(colorId)}
+          onSelect={(colorId) => void handleSelectColor(colorId)}
+          onChanged={loadColors}
+        />
         <div className="flex flex-col gap-2 text-sm">
           <span className="form-label">
             Photos ({photos.length}/{MAX_PRODUCT_PHOTOS})

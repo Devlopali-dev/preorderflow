@@ -35,7 +35,10 @@ export default async function globalSetup(): Promise<void> {
   const res = await fetch(`${API_URL}/api/v1/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "admin@preorderflow.dev", password: "password123" }),
+    body: JSON.stringify({
+      email: process.env.E2E_ADMIN_EMAIL ?? "admin@preorderflow.dev",
+      password: process.env.E2E_ADMIN_PASSWORD ?? "password123",
+    }),
   });
   if (!res.ok) {
     throw new Error(`Connexion admin impossible pour les tests E2E (${res.status})`);

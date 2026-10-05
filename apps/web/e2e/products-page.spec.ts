@@ -1,4 +1,4 @@
-import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { authHeader, isStableColor, loginAsAdmin } from "./helpers";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -99,113 +99,12 @@ async function openPaletteFromNewProductModal(page: Page) {
   await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
 }
 
-// Palette de la modale d'un produit existant (liste de gestion : désactiver, supprimer).
-async function openPaletteFromProductModal(page: Page, request: APIRequestContext, token: string) {
-  const products = await (
-    await request.get(`${apiUrl}/api/v1/products`, { headers: authHeader(token) })
-  ).json();
-  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
-  await page.goto("/inventory");
-  await page.getByRole("button", { name: product.name, exact: true }).click();
-  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
-}
-
 test("la palette de couleurs n'est plus dans les paramètres", async ({ page, request }) => {
   await loginAsAdmin(page, request);
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Paramètres" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Couleurs" })).toHaveCount(0);
   await expect(page.getByText("Palette de base")).toHaveCount(0);
-});
-
-test("la palette se gère aussi depuis la modale d'un produit existant", async ({
-  page,
-  request,
-}) => {
-  const token = await loginAsAdmin(page, request);
-  const products = await (
-    await request.get(`${apiUrl}/api/v1/products`, { headers: authHeader(token) })
-  ).json();
-  const product = products.find((p: { sku: string }) => p.sku === "STYLO-001");
-
-  await page.goto("/inventory");
-  await page.getByRole("button", { name: product.name, exact: true }).click();
-  await page.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
-  await expect(page.getByRole("group", { name: "Palette de base" })).toBeVisible();
-  await expect(page.getByPlaceholder("Nom (ex : Rouge)")).toBeVisible();
-});
-
-// Couleur temporaire créée puis supprimée par le test : on ne touche pas aux
-// couleurs partagées du seed, que d'autres specs utilisent en parallèle.
-test("une couleur inactive est en italique avec un badge d'avertissement", async ({
-  page,
-  request,
-}) => {
-  const token = await loginAsAdmin(page, request);
-  const auth = authHeader(token);
-  const name = `Inactive-${Date.now()}`;
-
-  const created = await (
-    await request.post(`${apiUrl}/api/v1/colors`, { headers: auth, data: { name, hex: "#654321" } })
-  ).json();
-  await request.patch(`${apiUrl}/api/v1/colors/${created.id}`, {
-    headers: auth,
-    data: { active: false },
-  });
-
-  try {
-    await openPaletteFromProductModal(page, request, token);
-    const row = page.locator("li", { hasText: name });
-    await expect(row.locator("span.italic", { hasText: name })).toBeVisible();
-    await expect(row.locator(".badge-warning", { hasText: "inactive" })).toBeVisible();
-  } finally {
-    await request.delete(`${apiUrl}/api/v1/colors/${created.id}`, { headers: auth });
-  }
-});
-
-test("modale d'un produit existant : la palette de base ajoute et retire une couleur en un clic", async ({
-  page,
-  request,
-}) => {
-  const token = await loginAsAdmin(page, request);
-  const auth = authHeader(token);
-  const bordeaux = async () =>
-    (
-      (await (await request.get(`${apiUrl}/api/v1/colors`, { headers: auth })).json()) as Array<{
-        id: string;
-        name: string;
-        active: boolean;
-      }>
-    ).find((c) => c.name === "Bordeaux");
-
-  // État de départ propre si un run précédent a été interrompu.
-  const leftover = await bordeaux();
-  if (leftover) await request.delete(`${apiUrl}/api/v1/colors/${leftover.id}`, { headers: auth });
-
-  await openPaletteFromProductModal(page, request, token);
-  const presets = page.getByRole("group", { name: "Palette de base" });
-  const button = presets.getByRole("button", { name: /Bordeaux/ });
-
-  // Des couleurs au-delà de bleu / noir / rouge sont proposées, non enfoncées.
-  await expect(presets.getByRole("button")).not.toHaveCount(3);
-  await expect(button).toHaveAttribute("aria-pressed", "false");
-
-  // Un clic ajoute la couleur à la palette, sans passer par le champ « Nouvelle couleur ».
-  await button.click();
-  await expect(button).toHaveAttribute("aria-pressed", "true");
-  expect((await bordeaux())?.active).toBe(true);
-
-  // Un second clic la retire (supprimée : aucun produit ne l'utilise).
-  await button.click();
-  await expect(button).toHaveAttribute("aria-pressed", "false");
-  expect(await bordeaux()).toBeUndefined();
-
-  // Une couleur utilisée par un produit se désactive au lieu d'être supprimée : on le
-  // lit sur l'infobulle, sans toucher à la couleur partagée du seed.
-  await expect(presets.getByRole("button", { name: /Rouge/ })).toHaveAttribute(
-    "title",
-    /utilisée par un produit/,
-  );
 });
 
 test("création d'un produit : un clic sur la palette ajoute la couleur aux couleurs proposées, sans case à cocher", async ({
@@ -301,7 +200,7 @@ test("une couleur créée via la palette est sélectionnée d'office à la créa
   await request.delete(`${apiUrl}/api/v1/colors/${created.id}`, { headers: auth });
 });
 
-test("choisir une couleur dans la modale d'un produit l'ajoute aussitôt, sans bouton Ajouter", async ({
+test("cliquer une couleur de la palette dans la modale d'un produit l'ajoute aussitôt, un second clic la retire", async ({
   page,
   request,
 }) => {
@@ -325,19 +224,26 @@ test("choisir une couleur dans la modale d'un produit l'ajoute aussitôt, sans b
   await page.getByRole("button", { name, exact: true }).click();
   const dialog = page.getByRole("dialog");
 
-  await expect(dialog.getByRole("button", { name: "Ajouter", exact: true })).toHaveCount(0);
-  await dialog.getByLabel("Ajouter une couleur").selectOption({ label: color.name });
+  await dialog.getByRole("button", { name: "Gérer la palette de couleurs" }).click();
+  const button = dialog
+    .getByRole("group", { name: "Palette de couleurs" })
+    .getByRole("button", { name: new RegExp(color.name) });
 
-  // La couleur apparaît dans la liste du produit et disparaît de la liste déroulante.
-  await expect(dialog.locator("li", { hasText: color.name })).toBeVisible();
+  // Un clic ajoute la couleur au produit : elle apparaît dans les couleurs proposées.
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
   await expect(
-    dialog.getByLabel("Ajouter une couleur").locator("option", { hasText: color.name }),
-  ).toHaveCount(0);
+    dialog.getByRole("list", { name: "Couleurs proposées" }).getByText(color.name),
+  ).toBeVisible();
 
   const variants = (
     await (await request.get(`${apiUrl}/api/v1/products/${product.id}`, { headers: auth })).json()
   ).variants as Array<{ color: { name: string } | null }>;
   expect(variants.map((v) => v.color?.name)).toEqual([color.name]);
+
+  // Un second clic la retire (aucun historique : la variante est supprimée).
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "false");
 
   await request.patch(`${apiUrl}/api/v1/products/${product.id}/archive`, { headers: auth });
 });

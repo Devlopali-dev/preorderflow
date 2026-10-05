@@ -20,7 +20,10 @@ export function getAdminToken(request: APIRequestContext): Promise<string> {
 
   adminTokenPromise ??= (async () => {
     const res = await request.post(`${API_URL}/api/v1/auth/login`, {
-      data: { email: "admin@preorderflow.dev", password: "password123" },
+      data: {
+        email: process.env.E2E_ADMIN_EMAIL ?? "admin@preorderflow.dev",
+        password: process.env.E2E_ADMIN_PASSWORD ?? "password123",
+      },
     });
     if (!res.ok()) {
       throw new Error(`Connexion admin impossible (${res.status()})`);

@@ -7,12 +7,12 @@ import { getClientAuthHeaders } from "@/lib/auth";
 import { COLOR_PRESETS } from "@/lib/color-presets";
 import { ColorLabel } from "@/components/color-label";
 
-// Choix des couleurs d'un NOUVEAU produit : un clic sur une couleur de la palette
+// Choix des couleurs d'un produit (création et modification) : un clic sur une couleur de la palette
 // l'ajoute aux « couleurs proposées », un second clic la retire. Pas de cases à
 // cocher. Une couleur absente de la base est créée au premier clic (les variantes
 // référencent une couleur de la palette globale), une couleur désactivée est
-// réactivée. Supprimer ou désactiver une couleur se fait depuis la modale d'un
-// produit existant, pas ici.
+// réactivée. Le parent décide de ce que « sélectionner » veut dire (liste locale
+// à la création, variantes du produit à la modification).
 export function ProductColorPicker({
   colors,
   selectedColorIds,
