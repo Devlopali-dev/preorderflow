@@ -7,6 +7,18 @@ correctifs.
 
 ## [Non publié]
 
+## [0.20.0] — 2026-10-05
+
+### Ajouté
+
+- **Création de commande (admin)** : on peut ajouter plusieurs produits (quantité par ligne) dans une même commande,
+  avec un panier — chaque ligne se retire individuellement et la commande exige au moins un produit.
+
+### Modifié
+
+- **Commande publique** : la remise en main propre est le mode de livraison sélectionné par défaut.
+- Tests e2e : le formulaire public vérifie le mode de remise par défaut et passe explicitement en livraison.
+
 ## [0.19.0] — 2026-10-05
 
 ### Ajouté
