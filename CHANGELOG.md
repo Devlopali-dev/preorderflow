@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.22.0] — 2026-10-05
+
+### Ajouté
+
+- **Commandes (admin)** : bouton « a payé » dans les actions des commandes en attente de paiement —
+  il confirme le paiement en attente directement depuis la liste (nouveau endpoint
+  `POST /api/v1/orders/:id/payments/confirm`), sans avoir à ouvrir la commande.
+
 ## [0.21.0] — 2026-10-05
 
 ### Modifié

@@ -1,6 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@preorderflow/ui";
 import { StatusActionButton } from "@/components/status-action-button";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { getClientAuthHeaders } from "@/lib/auth";
 import { orderStatusActionLabel, orderStatusLabel } from "@/lib/order-status-labels";
 
 // Reflète ALLOWED_TRANSITIONS côté API (order-status.ts) — l'API reste la
@@ -31,6 +36,61 @@ export function hasOrderActions(status: string): boolean {
   );
 }
 
+// Bouton « a payé » : confirme le paiement en attente de la commande (POST
+// /orders/:id/payments/confirm) depuis la liste, sans avoir l'id du paiement.
+function MarkPaidButton({
+  apiUrl,
+  orderId,
+  onChanged,
+}: {
+  apiUrl: string;
+  orderId: string;
+  onChanged?: () => void;
+}) {
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/orders/${orderId}/payments/confirm`, {
+        method: "POST",
+        headers: getClientAuthHeaders(),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      setConfirmOpen(false);
+      router.refresh();
+      onChanged?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
+        a payé
+      </Button>
+      {confirmOpen && (
+        <ConfirmModal
+          title="Confirmer le paiement"
+          message="Confirmer que le paiement de cette commande a bien été reçu ?"
+          confirmLabel="Confirmer"
+          loading={saving}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </>
+  );
+}
+
 export function OrderActions({
   orderId,
   status,
@@ -50,6 +110,9 @@ export function OrderActions({
 
   return (
     <div className="flex items-center justify-center gap-2">
+      {status === "PENDING_PAYMENT" && (
+        <MarkPaidButton apiUrl={apiUrl} orderId={orderId} onChanged={onChanged} />
+      )}
       {next && (
         <StatusActionButton
           apiUrl={apiUrl}

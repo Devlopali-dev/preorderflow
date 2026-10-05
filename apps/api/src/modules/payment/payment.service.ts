@@ -108,6 +108,24 @@ export class PaymentService {
   }
 
   /**
+   * Confirme le paiement en attente d'une commande (raccourci admin depuis la
+   * liste des commandes, sans avoir l'id du paiement sous la main). Retrouve le
+   * paiement en attente/autorisé de la commande et réutilise la confirmation
+   * classique (garde « payable » incluse). Ne fait rien s'il n'y a pas de
+   * paiement à confirmer.
+   */
+  async confirmForOrder(orderId: string) {
+    const payment = await prisma.payment.findFirst({
+      where: { orderId, status: { in: ["PENDING", "AUTHORIZED"] } },
+      orderBy: { createdAt: "asc" },
+    });
+    if (!payment) {
+      return null;
+    }
+    return this.confirm(payment.id);
+  }
+
+  /**
    * Confirmation par un provider externe (webhook Stripe) : identifie le
    * paiement par la référence stockée à la création (id de session Stripe),
    * jamais par un id de commande fourni par la requête entrante.

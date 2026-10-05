@@ -55,4 +55,15 @@ export class OrderController {
   createPayment(@Param("id") id: string, @Body() dto: CreatePaymentDto) {
     return this.paymentService.createForOrder(id, dto);
   }
+
+  @Post(":id/payments/confirm")
+  async confirmOrderPayment(@Param("id") id: string, @CurrentAdminId() adminId: string) {
+    const payment = await this.paymentService.confirmForOrder(id);
+    if (payment) {
+      await this.auditService.log(adminId, "PAYMENT_CONFIRMED", "Payment", payment.id, {
+        orderId: id,
+      });
+    }
+    return payment;
+  }
 }
