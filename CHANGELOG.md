@@ -7,6 +7,20 @@ correctifs.
 
 ## [Non publié]
 
+## [0.24.0] — 2026-10-06
+
+### Modifié
+
+- **Web** : migration vers Next 15 (`next` 15.5) — `params`, `searchParams`, `cookies()` et `headers()` sont
+  désormais asynchrones. Corrige les alertes de sécurité ouvertes sur Next 14.
+
+### Sécurité
+
+- **API** : `multer` 2.0.2 → 2.4.0 (alertes Dependabot).
+- **GitHub** : secret scanning avec push protection, alertes et mises à jour de sécurité Dependabot,
+  analyse CodeQL, signalement privé des vulnérabilités ; `dependabot.yml` (npm, Actions, Docker) et
+  `CODEOWNERS` ; la CI (`build-and-test`) est obligatoire pour pousser sur `main`.
+
 ## [0.23.1] — 2026-10-06
 
 ### Corrigé
