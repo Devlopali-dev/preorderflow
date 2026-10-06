@@ -9,7 +9,7 @@ const SECTIONS = [
   {
     status: "COMMANDES_OUVERTES",
     title: "Commandes ouvertes",
-    hint: "Commandez et payez en ligne.",
+    hint: "Commandez maintenant et payer en ligne ou à la réception.",
   },
   {
     status: "RECENSEMENT",

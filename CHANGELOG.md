@@ -7,6 +7,19 @@ correctifs.
 
 ## [Non publié]
 
+## [0.25.0] — 2026-10-06
+
+### Ajouté
+
+- **Paiement en liquide** : le formulaire de commande d'une campagne et le portail client proposent
+  de payer en ligne (Revolut) ou en liquide à la remise. Le liquide crée un règlement `CASH` en
+  attente (sans lien de paiement), confirmé par l'admin à l'encaissement ; il n'est possible qu'en
+  remise en main propre (validé côté API). Nouvelle route `POST /customer/me/orders/:id/pay-cash`.
+
+### Sécurité
+
+- **Dépendances** : `qs` forcé à `>=6.16.0` (override pnpm).
+
 ## [0.24.0] — 2026-10-06
 
 ### Modifié
