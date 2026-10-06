@@ -4,13 +4,14 @@
 # des versions pnpm différentes calculent des hash de peer-deps différents
 # — les symlinks du host pointent alors vers des chemins absents côté
 # conteneur (MODULE_NOT_FOUND sur les binaires comme `nest`).
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 # OpenSSL : sans lui, Prisma ne détecte pas la version de libssl sur Alpine et charge le moteur
 # `openssl-1.1.x` (absent) au lieu de `openssl-3.0.x` (généré par `prisma generate`, cf. binaryTargets du
 # schéma, arm64 et x86_64) : « Unable to require(``) » / « Error loading shared library » à la première
 # requête base. Avec openssl, la détection est automatique et vaut pour toute architecture.
 RUN apk add --no-cache openssl
-RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
+# Corepack n'est plus embarqué dans les images node récentes (>= 25) : on épingle pnpm via npm.
+RUN npm install -g pnpm@11.3.0
 # pnpm sans TTY (build Docker) refuse de toucher à node_modules sans
 # confirmation explicite — CI=true la saute, comme en CI GitHub Actions.
 ENV CI=true
