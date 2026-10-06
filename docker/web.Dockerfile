@@ -3,7 +3,8 @@
 # la raison (target `dev` + bind mount des node_modules du host). CI=true
 # saute la confirmation pnpm sur node_modules, absente sans TTY en build Docker.
 FROM node:26-alpine AS base
-RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
+# Corepack n'est plus embarqué dans les images node récentes (>= 25) : on épingle pnpm via npm.
+RUN npm install -g pnpm@11.3.0
 ENV CI=true
 # pnpm 11 revérifie les dépendances avant chaque `pnpm run` : le build copie TOUT le workspace (`COPY . .`) alors
 # que l'étape `deps` n'a installé que les paquets de cette image, donc pnpm relançait une installation complète

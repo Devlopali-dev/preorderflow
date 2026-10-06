@@ -10,7 +10,8 @@ FROM node:26-alpine AS base
 # schéma, arm64 et x86_64) : « Unable to require(``) » / « Error loading shared library » à la première
 # requête base. Avec openssl, la détection est automatique et vaut pour toute architecture.
 RUN apk add --no-cache openssl
-RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
+# Corepack n'est plus embarqué dans les images node récentes (>= 25) : on épingle pnpm via npm.
+RUN npm install -g pnpm@11.3.0
 # pnpm sans TTY (build Docker) refuse de toucher à node_modules sans
 # confirmation explicite — CI=true la saute, comme en CI GitHub Actions.
 ENV CI=true
