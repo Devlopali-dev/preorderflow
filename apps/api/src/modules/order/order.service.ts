@@ -16,6 +16,7 @@ import {
 } from "./shipping-fee";
 import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
+import { loadOrderItemsHtml } from "../notification/email-layout";
 import { NotificationService } from "../notification/notification.service";
 import { SettingsService } from "../settings/settings.service";
 
@@ -176,6 +177,7 @@ export class OrderService {
       firstName: dto.customerFirstName,
       orderNumber: order.number,
       total: order.total.toFixed(2),
+      items: await loadOrderItemsHtml(order.id),
     });
     await this.notificationService.notifyAdmin(
       "Nouvelle commande",
@@ -225,6 +227,7 @@ export class OrderService {
       await this.notificationService.sendEmail(order.customer.email, "ORDER_READY", {
         firstName: order.customer.firstName,
         orderNumber: order.number,
+        items: await loadOrderItemsHtml(order.id),
       });
     }
 

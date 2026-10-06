@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { renderOrderItemsTable } from "./email-layout";
 import { DEFAULT_TEMPLATES, substitute } from "./notification-templates";
 
 // renderTemplate() lit désormais une éventuelle surcharge en base (DB) —
@@ -16,6 +17,40 @@ describe("substitute", () => {
 
   it("remplace plusieurs occurrences du même placeholder", () => {
     expect(substitute("{{x}} et {{x}}", { x: "A" })).toBe("A et A");
+  });
+
+  it("échappe le HTML des valeurs, sauf le placeholder items", () => {
+    const payload = { firstName: "<b>Al</b>", items: "<table></table>" };
+    expect(substitute("{{firstName}} {{items}}", payload)).toBe(
+      "&lt;b&gt;Al&lt;/b&gt; <table></table>",
+    );
+    expect(substitute("{{firstName}}", payload, { escape: false })).toBe("<b>Al</b>");
+  });
+});
+
+describe("renderOrderItemsTable", () => {
+  const dec = (n: string) => ({ toString: () => n });
+  const order = {
+    currency: "EUR",
+    subtotal: dec("12.00"),
+    shippingAmount: dec("0.00"),
+    total: dec("12.00"),
+    items: [
+      {
+        quantity: 2,
+        unitPrice: dec("6.00"),
+        total: dec("12.00"),
+        variant: { product: { name: "Stylo" }, color: { name: "Rouge <3" } },
+      },
+    ],
+  };
+
+  it("liste produit, couleur échappée, quantité et totaux", () => {
+    const html = renderOrderItemsTable(order);
+    expect(html).toContain("Stylo — Rouge &lt;3");
+    expect(html).toContain("6,00 €");
+    expect(html).toContain("12,00 €");
+    expect(html).toContain("Offerte");
   });
 });
 

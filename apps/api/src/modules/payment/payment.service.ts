@@ -11,6 +11,7 @@ import { buildRevolutPaymentLink } from "./revolut-link";
 import { assertOrderAcceptsPayment, OrderNotPayableError } from "./payment-rules";
 import { getStripeClient, isStripeConfigured } from "./stripe-client";
 import { OrderService } from "../order/order.service";
+import { loadOrderItemsHtml } from "../notification/email-layout";
 import { NotificationService } from "../notification/notification.service";
 
 @Injectable()
@@ -164,6 +165,7 @@ export class PaymentService {
       firstName: customer.firstName,
       orderNumber: order.number,
       amount: updatedPayment.amount.toFixed(2),
+      items: await loadOrderItemsHtml(order.id),
     });
     await this.notificationService.notifyAdmin(
       "Paiement reçu",

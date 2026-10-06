@@ -4,6 +4,7 @@ import { CreateShipmentDto } from "./dto/create-shipment.dto";
 import { assertValidShipmentTransition, InvalidShipmentTransitionError } from "./shipment-status";
 import { OrderService } from "../order/order.service";
 import { CARRIER_LABELS } from "../order/shipping-tariffs";
+import { loadOrderItemsHtml } from "../notification/email-layout";
 import { NotificationService } from "../notification/notification.service";
 
 // Statuts d'expédition qui font avancer le fulfillment de la commande.
@@ -99,16 +100,19 @@ export class ShipmentService {
     if (orderStatus) {
       const order = await this.orderService.updateStatus(shipment.orderId, orderStatus);
       const customer = await prisma.customer.findUniqueOrThrow({ where: { id: order.customerId } });
+      const items = await loadOrderItemsHtml(order.id);
       if (orderStatus === "SHIPPED") {
         await this.notificationService.sendEmail(customer.email, "ORDER_SHIPPED", {
           firstName: customer.firstName,
           orderNumber: order.number,
           trackingUrl: shipment.trackingUrl ?? undefined,
+          items,
         });
       } else {
         await this.notificationService.sendEmail(customer.email, "ORDER_DELIVERED", {
           firstName: customer.firstName,
           orderNumber: order.number,
+          items,
         });
       }
     }

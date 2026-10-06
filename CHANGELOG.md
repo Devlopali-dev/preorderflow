@@ -7,6 +7,27 @@ correctifs.
 
 ## [Non publié]
 
+## [0.23.0] — 2026-10-06
+
+### Ajouté
+
+- **Emails** : le récapitulatif des produits commandés (produit, couleur, quantité, prix, livraison,
+  total) figure dans les emails de commande, de paiement, de préparation, d'expédition et de
+  livraison, via le placeholder `{{items}}` (éditable dans les templates).
+- **Emails** : nouvel habillage (en-tête au nom de la boutique, carte centrée, pied de page), appliqué
+  aussi aux templates personnalisés.
+
+### Corrigé
+
+- **Emails** : les valeurs insérées dans les templates (prénom, URL…) sont désormais échappées en
+  HTML.
+
+### Modifié
+
+- **Commandes (admin)** : la modale « Nouvelle commande » liste tous les produits disponibles, avec
+  ajout et quantité par ligne (plusieurs produits par commande).
+- **Formulaire public** : mode de remise « en main propre » par défaut.
+
 ## [0.22.0] — 2026-10-05
 
 ### Ajouté

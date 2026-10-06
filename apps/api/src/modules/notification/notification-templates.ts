@@ -1,4 +1,5 @@
 import { prisma } from "@preorderflow/database";
+import { escapeHtml, wrapEmail } from "./email-layout";
 
 export interface RenderedEmail {
   subject: string;
@@ -23,11 +24,12 @@ export type TemplatePayloads = {
     quantity: number;
     details?: string;
   };
-  ORDER_CREATED: { firstName: string; orderNumber: string; total: string };
-  PAYMENT_RECEIVED: { firstName: string; orderNumber: string; amount: string };
-  ORDER_READY: { firstName: string; orderNumber: string };
-  ORDER_SHIPPED: { firstName: string; orderNumber: string; trackingUrl?: string };
-  ORDER_DELIVERED: { firstName: string; orderNumber: string };
+  // `items` = tableau HTML des produits commandés (cf. email-layout.ts), injecté tel quel.
+  ORDER_CREATED: { firstName: string; orderNumber: string; total: string; items?: string };
+  PAYMENT_RECEIVED: { firstName: string; orderNumber: string; amount: string; items?: string };
+  ORDER_READY: { firstName: string; orderNumber: string; items?: string };
+  ORDER_SHIPPED: { firstName: string; orderNumber: string; trackingUrl?: string; items?: string };
+  ORDER_DELIVERED: { firstName: string; orderNumber: string; items?: string };
   CUSTOMER_MAGIC_LINK: { firstName: string; magicLinkUrl: string; expiresInMinutes: number };
 };
 
@@ -48,23 +50,23 @@ export const DEFAULT_TEMPLATES: Record<keyof TemplatePayloads, RenderedEmail> = 
   },
   ORDER_CREATED: {
     subject: "Commande {{orderNumber}} confirmée",
-    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} d'un montant de {{total}} € a bien été enregistrée.</p>",
+    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} d'un montant de {{total}} € a bien été enregistrée.</p><p><strong>Récapitulatif de votre commande</strong></p>{{items}}",
   },
   PAYMENT_RECEIVED: {
     subject: "Paiement reçu — commande {{orderNumber}}",
-    html: "<p>Bonjour {{firstName}},</p><p>Nous avons bien reçu votre paiement de {{amount}} € pour la commande {{orderNumber}}.</p>",
+    html: "<p>Bonjour {{firstName}},</p><p>Nous avons bien reçu votre paiement de {{amount}} € pour la commande {{orderNumber}}.</p>{{items}}",
   },
   ORDER_READY: {
     subject: "Commande {{orderNumber}} prête",
-    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} est prête à être expédiée.</p>",
+    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} est prête à être expédiée.</p>{{items}}",
   },
   ORDER_SHIPPED: {
     subject: "Commande {{orderNumber}} expédiée",
-    html: '<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} a été expédiée. Suivi : <a href="{{trackingUrl}}">{{trackingUrl}}</a></p>',
+    html: '<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} a été expédiée. Suivi : <a href="{{trackingUrl}}">{{trackingUrl}}</a></p>{{items}}',
   },
   ORDER_DELIVERED: {
     subject: "Commande {{orderNumber}} livrée",
-    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} a été livrée. Merci pour votre confiance !</p>",
+    html: "<p>Bonjour {{firstName}},</p><p>Votre commande {{orderNumber}} a été livrée. Merci pour votre confiance !</p>{{items}}",
   },
   CUSTOMER_MAGIC_LINK: {
     subject: "Votre lien de connexion PreOrderFlow",
@@ -72,10 +74,19 @@ export const DEFAULT_TEMPLATES: Record<keyof TemplatePayloads, RenderedEmail> = 
   },
 };
 
-export function substitute(text: string, payload: Record<string, unknown>): string {
+// Placeholders dont la valeur est déjà du HTML maîtrisé par l'API ; tous les autres
+// (prénom, URL…) sont échappés pour ne pas injecter de balises dans le mail.
+const RAW_HTML_KEYS = new Set(["items"]);
+
+export function substitute(
+  text: string,
+  payload: Record<string, unknown>,
+  { escape = true }: { escape?: boolean } = {},
+): string {
   return text.replace(/\{\{(\w+)\}\}/g, (match, key) => {
     const value = payload[key];
-    return value === undefined || value === null ? "" : String(value);
+    if (value === undefined || value === null) return "";
+    return escape && !RAW_HTML_KEYS.has(key) ? escapeHtml(String(value)) : String(value);
   });
 }
 
@@ -85,8 +96,10 @@ export async function renderTemplate<T extends keyof TemplatePayloads>(
 ): Promise<RenderedEmail> {
   const override = await prisma.notificationTemplateOverride.findUnique({ where: { template } });
   const source = override ?? DEFAULT_TEMPLATES[template];
+  const settings = await prisma.appSettings.findUnique({ where: { id: "singleton" } });
   return {
-    subject: substitute(source.subject, payload),
-    html: substitute(source.html, payload),
+    // Le sujet est du texte brut : pas d'échappement HTML.
+    subject: substitute(source.subject, payload, { escape: false }),
+    html: wrapEmail(substitute(source.html, payload), settings?.businessName ?? null),
   };
 }
