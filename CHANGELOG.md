@@ -7,6 +7,15 @@ correctifs.
 
 ## [Non publié]
 
+## [0.23.1] — 2026-10-06
+
+### Corrigé
+
+- **Alertes ntfy** : un jeton d'accès ntfy (`tk_…`) est envoyé en `Bearer` au lieu de `Basic` (le
+  serveur répondait 401) ; `user:password` reste en `Basic`.
+- **Alertes ntfy** : les titres accentués (« Paiement reçu ») sont encodés en RFC 2047 pour
+  s'afficher correctement.
+
 ## [0.23.0] — 2026-10-06
 
 ### Ajouté
