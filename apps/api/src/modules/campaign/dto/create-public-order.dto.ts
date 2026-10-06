@@ -93,6 +93,12 @@ export class CreatePublicOrderDto {
   @IsIn(["SHIPPING", "PICKUP"])
   deliveryMethod?: "SHIPPING" | "PICKUP";
 
+  // Le liquide n'est accepté qu'avec une remise en main propre (vérifié par le service).
+  @ApiProperty({ enum: ["ONLINE", "CASH"], required: false, default: "ONLINE" })
+  @IsOptional()
+  @IsIn(["ONLINE", "CASH"])
+  paymentMethod?: "ONLINE" | "CASH";
+
   @ApiProperty({ enum: CARRIER_CODES, required: false })
   @IsOptional()
   @IsIn(CARRIER_CODES)

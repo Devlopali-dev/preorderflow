@@ -44,6 +44,13 @@ export class CampaignOrderService {
     }
 
     const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
+    const paymentMethod = dto.paymentMethod ?? "ONLINE";
+    // Payer en liquide « à la réception » suppose une remise en main propre.
+    if (paymentMethod === "CASH" && deliveryMethod !== "PICKUP") {
+      throw new BadRequestException(
+        "Le paiement en liquide n'est possible qu'en remise en main propre",
+      );
+    }
 
     const order = await this.orderService.create(
       {
@@ -78,13 +85,18 @@ export class CampaignOrderService {
       });
     }
 
-    const payment = await this.paymentService.createForOrder(order.id, { provider: "MANUAL" });
+    // En ligne : règlement manuel avec lien Revolut. En liquide : règlement CASH sans lien,
+    // encaissé et confirmé par l'admin à la remise.
+    const payment = await this.paymentService.createForOrder(order.id, {
+      provider: paymentMethod === "CASH" ? "CASH" : "MANUAL",
+    });
     const metadata = payment.metadata as { paymentLink?: string } | null;
     return {
       orderNumber: order.number,
       total: order.total.toFixed(2),
       currency: order.currency,
-      paymentLink: metadata?.paymentLink ?? null,
+      paymentMethod,
+      paymentLink: paymentMethod === "CASH" ? null : (metadata?.paymentLink ?? null),
     };
   }
 }

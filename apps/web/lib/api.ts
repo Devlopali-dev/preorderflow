@@ -491,6 +491,7 @@ export async function getCustomerOrders(): Promise<CustomerOrderSummary[]> {
 }
 
 export interface CustomerOrderDetail extends CustomerOrderSummary {
+  deliveryMethod: "SHIPPING" | "PICKUP";
   paymentStatus: string;
   fulfillmentStatus: string;
   payments: Array<{

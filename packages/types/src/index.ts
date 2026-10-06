@@ -47,6 +47,11 @@ export const deliveryMethodSchema = z.enum(["SHIPPING", "PICKUP"]);
 
 export type DeliveryMethod = z.infer<typeof deliveryMethodSchema>;
 
+// Règlement : en ligne (lien Revolut) ou en liquide à la remise en main propre.
+export const paymentMethodSchema = z.enum(["ONLINE", "CASH"]);
+
+export type PaymentMethod = z.infer<typeof paymentMethodSchema>;
+
 export const carrierSchema = z.enum([
   "LA_POSTE_SUIVIE",
   "LA_POSTE_VERTE",
@@ -65,6 +70,8 @@ export const createPublicOrderSchema = z
     lastName: z.string().min(1, "Nom requis").max(100),
     phone: z.string().max(30).optional(),
     deliveryMethod: deliveryMethodSchema,
+    // Le liquide n'est possible qu'en remise en main propre (cf. superRefine).
+    paymentMethod: paymentMethodSchema.default("ONLINE"),
     // Transporteur choisi ; l'API refuse celui qui n'est pas autorisé pour la quantité.
     carrier: carrierSchema.optional(),
     // Adresse : obligatoire seulement pour une livraison (cf. superRefine).
@@ -78,6 +85,13 @@ export const createPublicOrderSchema = z
     website: z.string().max(0).optional(),
   })
   .superRefine((value, ctx) => {
+    if (value.paymentMethod === "CASH" && value.deliveryMethod !== "PICKUP") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["paymentMethod"],
+        message: "Le paiement en liquide n'est possible qu'en remise en main propre",
+      });
+    }
     if (value.deliveryMethod !== "SHIPPING") return;
     const required: Array<[keyof typeof value, string]> = [
       ["address1", "Adresse requise"],

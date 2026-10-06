@@ -108,6 +108,30 @@ export class CustomerPortalService {
     return { amount: payment.amount, paymentLink: metadata?.paymentLink ?? null };
   }
 
+  // « Payer en liquide » : règlement CASH en attente, encaissé par l'admin à la remise en main
+  // propre (donc réservé à ce mode de remise). Rejouable : un règlement CASH en attente est réutilisé.
+  async payCash(customerId: string, orderId: string) {
+    const order = await this.getOrder(customerId, orderId);
+    this.assertChoiceOpen(order.status);
+    if (order.deliveryMethod !== "PICKUP") {
+      throw new BadRequestException(
+        "Le paiement en liquide n'est possible qu'en remise en main propre",
+      );
+    }
+
+    const existing = order.payments.find((p) => p.provider === "CASH" && p.status === "PENDING");
+    const payment =
+      existing ?? (await this.paymentService.createForOrder(order.id, { provider: "CASH" }));
+    if (!existing) {
+      await this.notificationService.notifyAdmin(
+        "Paiement en liquide",
+        `${order.number} — ${order.total.toFixed(2)} € — à encaisser à la remise`,
+        ["moneybag"],
+      );
+    }
+    return { amount: payment.amount };
+  }
+
   // « Plus tard » : rien n'est généré, l'admin est prévenu pour envoyer le mail de validation.
   async payLater(customerId: string, orderId: string) {
     const order = await this.getOrder(customerId, orderId);

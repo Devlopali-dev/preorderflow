@@ -89,8 +89,26 @@ describe("CampaignOrderService — commande publique", () => {
       orderNumber: "2026-0042",
       total: "6.00",
       currency: "EUR",
+      paymentMethod: "ONLINE",
       paymentLink: "https://revolut.me/x?currency=EUR&amount=600",
     });
+  });
+
+  it("paiement en liquide : règlement CASH sans lien, en remise en main propre", async () => {
+    const result = await service.create(
+      "c1",
+      dto({ deliveryMethod: "PICKUP", paymentMethod: "CASH", shippingAddress: undefined }),
+    );
+
+    expect(createForOrder).toHaveBeenCalledWith("o1", { provider: "CASH" });
+    expect(result).toMatchObject({ paymentMethod: "CASH", paymentLink: null });
+  });
+
+  it("refuse le liquide quand la commande est livrée", async () => {
+    await expect(
+      service.create("c1", dto({ deliveryMethod: "SHIPPING", paymentMethod: "CASH" })),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("enregistre l'adresse dans le carnet du client, sans toucher à un client qui en a déjà une", async () => {

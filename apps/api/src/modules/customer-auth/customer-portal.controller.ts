@@ -47,6 +47,11 @@ export class CustomerPortalController {
     return this.customerPortalService.payNow(customerId, orderId);
   }
 
+  @Post("orders/:id/pay-cash")
+  payCash(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
+    return this.customerPortalService.payCash(customerId, orderId);
+  }
+
   @Post("orders/:id/pay-later")
   payLater(@CurrentCustomerId() customerId: string, @Param("id") orderId: string) {
     return this.customerPortalService.payLater(customerId, orderId);

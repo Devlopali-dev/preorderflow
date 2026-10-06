@@ -41,6 +41,37 @@ describe("CustomerPortalService — choix du paiement", () => {
     expect(notifyAdmin).toHaveBeenCalledTimes(1);
   });
 
+  it("payer en liquide : crée un règlement CASH en attente et prévient l'admin", async () => {
+    findFirst.mockResolvedValue(order({ deliveryMethod: "PICKUP" }));
+    createForOrder.mockResolvedValue({ amount: "3.00" });
+
+    const result = await service.payCash("c1", "o1");
+
+    expect(createForOrder).toHaveBeenCalledWith("o1", { provider: "CASH" });
+    expect(result).toEqual({ amount: "3.00" });
+    expect(notifyAdmin).toHaveBeenCalledTimes(1);
+  });
+
+  it("payer en liquide est rejouable : un règlement CASH en attente est réutilisé", async () => {
+    findFirst.mockResolvedValue(
+      order({
+        deliveryMethod: "PICKUP",
+        payments: [{ provider: "CASH", status: "PENDING", amount: "3.00" }],
+      }),
+    );
+
+    await service.payCash("c1", "o1");
+
+    expect(createForOrder).not.toHaveBeenCalled();
+    expect(notifyAdmin).not.toHaveBeenCalled();
+  });
+
+  it("payer en liquide : refusé quand la commande est expédiée", async () => {
+    findFirst.mockResolvedValue(order({ deliveryMethod: "SHIPPING" }));
+    await expect(service.payCash("c1", "o1")).rejects.toBeInstanceOf(BadRequestException);
+    expect(createForOrder).not.toHaveBeenCalled();
+  });
+
   it("payer maintenant : renvoie null quand aucun lien n'est configuré", async () => {
     findFirst.mockResolvedValue(order());
     createForOrder.mockResolvedValue({ amount: "3.00", metadata: null });

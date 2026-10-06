@@ -6,38 +6,50 @@ import { Button } from "@preorderflow/ui";
 import { PaymentQrCode } from "@/components/payment-qr-code";
 import { getClientCustomerAuthHeaders } from "@/lib/customer-auth";
 
-type Outcome = { kind: "now"; amount: string; paymentLink: string | null } | { kind: "later" };
+type Outcome =
+  | { kind: "now"; amount: string; paymentLink: string | null }
+  | { kind: "cash"; amount: string }
+  | { kind: "later" };
+
+const PATHS = { now: "pay-now", cash: "pay-cash", later: "pay-later" } as const;
 
 // Commande à régler : le client choisit de payer tout de suite (lien Revolut avec
 // le montant attendu, commande mise en attente de paiement, vérification manuelle
-// ensuite) ou plus tard (un mail de validation lui parviendra).
+// ensuite), de payer en liquide à la remise en main propre, ou plus tard (un mail de
+// validation lui parviendra).
 export function PaymentChoice({
   orderId,
   apiUrl,
   currency,
   pending,
+  canPayCash,
+  cashPending,
 }: {
   orderId: string;
   apiUrl: string;
   currency: string;
   // Règlement manuel déjà généré (retour sur la page) : on réaffiche le lien.
   pending: { amount: string; paymentLink: string | null } | null;
+  // Le liquide n'est possible qu'en remise en main propre.
+  canPayCash: boolean;
+  // Règlement en liquide déjà choisi (retour sur la page).
+  cashPending: boolean;
 }) {
   const router = useRouter();
   const [outcome, setOutcome] = useState<Outcome | null>(
-    pending ? { kind: "now", ...pending } : null,
+    pending ? { kind: "now", ...pending } : cashPending ? { kind: "cash", amount: "" } : null,
   );
-  const [loading, setLoading] = useState<"now" | "later" | null>(null);
+  const [loading, setLoading] = useState<"now" | "cash" | "later" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function choose(choice: "now" | "later") {
+  async function choose(choice: "now" | "cash" | "later") {
     setError(null);
     setLoading(choice);
     try {
-      const res = await fetch(
-        `${apiUrl}/api/v1/customer/me/orders/${orderId}/${choice === "now" ? "pay-now" : "pay-later"}`,
-        { method: "POST", headers: { ...getClientCustomerAuthHeaders() } },
-      );
+      const res = await fetch(`${apiUrl}/api/v1/customer/me/orders/${orderId}/${PATHS[choice]}`, {
+        method: "POST",
+        headers: { ...getClientCustomerAuthHeaders() },
+      });
       if (!res.ok)
         throw new Error(
           (await res.json().catch(() => null))?.message ?? "Une erreur est survenue.",
@@ -46,7 +58,9 @@ export function PaymentChoice({
       setOutcome(
         choice === "now"
           ? { kind: "now", amount: String(body.amount), paymentLink: body.paymentLink }
-          : { kind: "later" },
+          : choice === "cash"
+            ? { kind: "cash", amount: String(body.amount) }
+            : { kind: "later" },
       );
       router.refresh();
     } catch (err) {
@@ -60,6 +74,15 @@ export function PaymentChoice({
     return (
       <p className="text-sm" role="status">
         C'est noté : un e-mail vous parviendra pour valider votre commande.
+      </p>
+    );
+  }
+
+  if (outcome?.kind === "cash") {
+    return (
+      <p className="text-sm" role="status" data-testid="cash-confirmation">
+        C'est noté : vous règlerez{outcome.amount ? ` ${outcome.amount} ${currency}` : ""} en
+        liquide à la remise en main propre.
       </p>
     );
   }
@@ -110,6 +133,16 @@ export function PaymentChoice({
         >
           Oui, payer maintenant
         </Button>
+        {canPayCash && (
+          <Button
+            variant="secondary"
+            loading={loading === "cash"}
+            disabled={loading !== null}
+            onClick={() => choose("cash")}
+          >
+            Payer en liquide à la remise
+          </Button>
+        )}
         <Button
           variant="secondary"
           loading={loading === "later"}

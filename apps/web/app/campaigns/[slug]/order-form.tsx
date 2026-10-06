@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createPublicOrderSchema, type CreatePublicOrderInput } from "@preorderflow/types";
@@ -23,6 +23,7 @@ type Confirmation =
       total: string;
       currency: string;
       paymentLink: string | null;
+      paymentMethod: "ONLINE" | "CASH";
     }
   | { kind: "ignored" };
 
@@ -56,11 +57,12 @@ export function OrderForm({
   const {
     register,
     watch,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CreatePublicOrderInput>({
     resolver: zodResolver(createPublicOrderSchema),
-    defaultValues: { country: "FR", deliveryMethod: "PICKUP" },
+    defaultValues: { country: "FR", deliveryMethod: "PICKUP", paymentMethod: "ONLINE" },
   });
 
   function setQuantity(variantId: string, quantity: number) {
@@ -72,6 +74,11 @@ export function OrderForm({
   const totalQuantity = variants.reduce((sum, variant) => sum + (quantities[variant.id] ?? 0), 0);
   const subtotal = unitPrice === null ? null : (Number(unitPrice) * totalQuantity).toFixed(2);
   const isPickup = watch("deliveryMethod") === "PICKUP";
+  const isCash = isPickup && watch("paymentMethod") === "CASH";
+  // Le liquide n'existe qu'en main propre : on repasse en ligne si la personne se fait livrer.
+  useEffect(() => {
+    if (!isPickup) setValue("paymentMethod", "ONLINE");
+  }, [isPickup, setValue]);
   // Même règle que l'API : le poids de l'envoi (articles + emballage) détermine les transporteurs
   // possibles et leur tarif ; le choix du client retombe sur le premier transporteur disponible
   // s'il ne l'est plus.
@@ -154,7 +161,12 @@ export function OrderForm({
             {confirmation.total} {confirmation.currency}
           </strong>
         </p>
-        {confirmation.paymentLink ? (
+        {confirmation.paymentMethod === "CASH" ? (
+          <p data-testid="cash-confirmation">
+            Vous réglerez <strong>en liquide</strong> à la remise en main propre : rien à payer en
+            ligne.
+          </p>
+        ) : confirmation.paymentLink ? (
           <>
             <a
               href={confirmation.paymentLink}
@@ -171,10 +183,13 @@ export function OrderForm({
             Le lien de paiement n'est pas disponible : un e-mail vous indiquera comment régler.
           </p>
         )}
-        <p className="opacity-70">
-          Indiquez vos <strong>nom et prénom</strong> dans la <strong>remarque</strong> du paiement.
-          Votre commande est en attente de paiement : nous vérifions votre règlement manuellement.
-        </p>
+        {confirmation.paymentMethod !== "CASH" && (
+          <p className="opacity-70">
+            Indiquez vos <strong>nom et prénom</strong> dans la <strong>remarque</strong> du
+            paiement. Votre commande est en attente de paiement : nous vérifions votre règlement
+            manuellement.
+          </p>
+        )}
       </div>
     );
   }
@@ -242,6 +257,25 @@ export function OrderForm({
           Me faire livrer
         </label>
       </fieldset>
+
+      {isPickup && (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">Mode de paiement</legend>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" value="ONLINE" {...register("paymentMethod")} />
+            Payer en ligne (Revolut)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              value="CASH"
+              {...register("paymentMethod")}
+              data-testid="payment-CASH"
+            />
+            Payer en liquide à la remise
+          </label>
+        </fieldset>
+      )}
 
       {!isPickup && shipping !== null && (
         <fieldset className="flex flex-col gap-2">
@@ -311,7 +345,9 @@ export function OrderForm({
       />
 
       <p className="text-xs opacity-70">
-        Ce formulaire passe une vraie commande : vous recevrez ensuite le lien pour la payer.
+        {isCash
+          ? "Ce formulaire passe une vraie commande : vous la réglerez en liquide à la remise."
+          : "Ce formulaire passe une vraie commande : vous recevrez ensuite le lien pour la payer."}
       </p>
 
       {serverError && <p className="text-sm text-red-600">{serverError}</p>}

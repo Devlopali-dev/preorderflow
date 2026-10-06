@@ -23,6 +23,10 @@ export default async function CustomerOrderDetailPage({
     (payment) => payment.provider === "MANUAL" && payment.status === "PENDING",
   );
 
+  const cashPending = order.payments.some(
+    (payment) => payment.provider === "CASH" && payment.status === "PENDING",
+  );
+
   return (
     <>
       <CustomerNav />
@@ -53,6 +57,8 @@ export default async function CustomerOrderDetailPage({
                 orderId={order.id}
                 apiUrl={process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}
                 currency={order.currency}
+                canPayCash={order.deliveryMethod === "PICKUP"}
+                cashPending={cashPending}
                 pending={
                   pendingPayment
                     ? {
