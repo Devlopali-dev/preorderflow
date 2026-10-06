@@ -7,3 +7,5 @@ allowBuilds:
   '@prisma/engines': true
   esbuild: true
   prisma: true
+overrides:
+  qs: ">=6.16.0"
