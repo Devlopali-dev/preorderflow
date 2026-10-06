@@ -4,8 +4,9 @@ import { getCustomer } from "@/lib/api";
 import { GdprActions } from "./gdpr-actions";
 import { orderStatusLabel } from "@/lib/order-status-labels";
 
-export default async function CustomerDetailPage({ params }: { params: { id: string } }) {
-  const customer = await getCustomer(params.id);
+export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const customer = await getCustomer(id);
   if (!customer) {
     notFound();
   }

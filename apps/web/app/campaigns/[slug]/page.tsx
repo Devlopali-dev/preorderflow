@@ -5,8 +5,9 @@ import { OrderForm } from "./order-form";
 import { MediaGallery } from "./media-gallery";
 import { SiteHeader } from "@/components/site-header";
 
-export default async function CampaignPage({ params }: { params: { slug: string } }) {
-  const campaign = await getCampaign(params.slug);
+export default async function CampaignPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const campaign = await getCampaign(slug);
   if (!campaign) {
     notFound();
   }

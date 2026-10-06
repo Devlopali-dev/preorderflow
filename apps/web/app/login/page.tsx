@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { LoginForm } from "./login-form";
 
-export default async function LoginPage({ searchParams }: { searchParams: { expired?: string } }) {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ expired?: string }>;
+}) {
+  const { expired } = await searchParams;
   const apiUrl = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   const res = await fetch(`${apiUrl}/api/v1/auth/setup-status`, { cache: "no-store" });
   const { needsSetup } = await res.json();
@@ -15,7 +20,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { expi
   return (
     <LoginForm
       notice={
-        searchParams.expired
+        expired
           ? "Votre session n'est plus valide (expirée, ou compte supprimé ou désactivé). Reconnectez-vous."
           : undefined
       }

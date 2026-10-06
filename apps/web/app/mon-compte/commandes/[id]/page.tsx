@@ -7,8 +7,13 @@ import { orderPaymentStatusLabel } from "@/lib/payment-labels";
 import { CustomerNav } from "../../customer-nav";
 import { PaymentChoice } from "./payment-choice";
 
-export default async function CustomerOrderDetailPage({ params }: { params: { id: string } }) {
-  const order = await getCustomerOrder(params.id);
+export default async function CustomerOrderDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const order = await getCustomerOrder(id);
   if (!order) {
     notFound();
   }

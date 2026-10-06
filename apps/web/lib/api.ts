@@ -30,23 +30,23 @@ export const API_URL =
 // par /api/auth/login et l'attache en Authorization. Sans token, l'appel
 // échoue en 401 côté API — c'est elle la seule source de vérité sur
 // l'autorisation (CLAUDE.md §26), jamais le frontend.
-function authHeaders(): Record<string, string> {
-  const token = cookies().get(AUTH_COOKIE_NAME)?.value;
-  return { ...visitorHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = (await cookies()).get(AUTH_COOKIE_NAME)?.value;
+  return { ...(await visitorHeaders()), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 // L'API limite le débit par IP : à la place du visiteur, le serveur Next lui transmet son adresse
 // (cf. lib/forwarded-ip.ts), sinon tous les visiteurs partageraient celle du serveur web.
-function visitorHeaders(): Record<string, string> {
-  return forwardedForHeader(headers());
+async function visitorHeaders(): Promise<Record<string, string>> {
+  return forwardedForHeader(await headers());
 }
 
 // Même principe pour l'espace client (Server Components sous /mon-compte),
 // avec le cookie de session client — jamais interchangeable avec le
 // cookie admin (cf. lib/customer-auth.ts).
-function customerAuthHeaders(): Record<string, string> {
-  const token = cookies().get(CUSTOMER_AUTH_COOKIE_NAME)?.value;
-  return { ...visitorHeaders(), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+async function customerAuthHeaders(): Promise<Record<string, string>> {
+  const token = (await cookies()).get(CUSTOMER_AUTH_COOKIE_NAME)?.value;
+  return { ...(await visitorHeaders()), ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 export interface CampaignMedia {
@@ -118,7 +118,7 @@ export interface Campaign {
 export async function getCampaign(slug: string): Promise<Campaign | null> {
   const res = await fetch(`${API_URL}/api/v1/campaigns/${slug}`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   if (res.status === 404) return null;
   assertOk(res);
@@ -128,7 +128,7 @@ export async function getCampaign(slug: string): Promise<Campaign | null> {
 export async function getCampaigns(): Promise<Campaign[]> {
   const res = await fetch(`${API_URL}/api/v1/campaigns`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -150,7 +150,7 @@ export interface DashboardOverview {
 export async function getDashboardOverview(): Promise<DashboardOverview> {
   const res = await fetch(`${API_URL}/api/v1/dashboard`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -171,7 +171,7 @@ export interface OrderSummary {
 export async function getOrders(): Promise<OrderSummary[]> {
   const res = await fetch(`${API_URL}/api/v1/orders`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -188,7 +188,7 @@ export interface CustomerSummary {
 export async function getCustomers(): Promise<CustomerSummary[]> {
   const res = await fetch(`${API_URL}/api/v1/customers`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -217,7 +217,7 @@ export interface CustomerDetail extends CustomerSummary {
 export async function getCustomer(id: string): Promise<CustomerDetail | null> {
   const res = await fetch(`${API_URL}/api/v1/customers/${id}`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   if (res.status === 404) return null;
   assertOk(res);
@@ -237,7 +237,7 @@ export interface AuditLogEntry {
 export async function getAuditLogs(): Promise<AuditLogEntry[]> {
   const res = await fetch(`${API_URL}/api/v1/audit-logs`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -265,7 +265,7 @@ export interface Settings {
 export async function getSettings(): Promise<Settings> {
   const res = await fetch(`${API_URL}/api/v1/settings`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -282,7 +282,7 @@ export interface AdminProfile {
 export async function getAdminProfile(): Promise<AdminProfile> {
   const res = await fetch(`${API_URL}/api/v1/auth/me`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -299,7 +299,7 @@ export interface NotificationTemplateDetail {
 export async function getNotificationTemplates(): Promise<NotificationTemplateDetail[]> {
   const res = await fetch(`${API_URL}/api/v1/settings/templates`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -354,7 +354,7 @@ export interface InventoryRow {
 export async function getInventory(): Promise<InventoryRow[]> {
   const res = await fetch(`${API_URL}/api/v1/inventory`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -379,7 +379,7 @@ export interface Product {
 export async function getProducts(): Promise<Product[]> {
   const res = await fetch(`${API_URL}/api/v1/products`, {
     cache: "no-store",
-    headers: visitorHeaders(),
+    headers: await visitorHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -405,7 +405,7 @@ export interface ProductionBatchSummary {
 export async function getProductionBatches(): Promise<ProductionBatchSummary[]> {
   const res = await fetch(`${API_URL}/api/v1/production/batches`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -422,7 +422,7 @@ export interface ShipmentSummary {
 export async function getShipments(): Promise<ShipmentSummary[]> {
   const res = await fetch(`${API_URL}/api/v1/shipments`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   assertOk(res);
   return res.json();
@@ -431,7 +431,7 @@ export async function getShipments(): Promise<ShipmentSummary[]> {
 export async function getOrder(id: string): Promise<OrderDetail | null> {
   const res = await fetch(`${API_URL}/api/v1/orders/${id}`, {
     cache: "no-store",
-    headers: authHeaders(),
+    headers: await authHeaders(),
   });
   if (res.status === 404) return null;
   assertOk(res);
@@ -460,7 +460,7 @@ export interface CustomerProfile {
 export async function getCustomerProfile(): Promise<CustomerProfile | null> {
   const res = await fetch(`${API_URL}/api/v1/customer/me`, {
     cache: "no-store",
-    headers: customerAuthHeaders(),
+    headers: await customerAuthHeaders(),
   });
   if (res.status === 401) return null;
   assertCustomerOk(res);
@@ -484,7 +484,7 @@ export interface CustomerOrderSummary {
 export async function getCustomerOrders(): Promise<CustomerOrderSummary[]> {
   const res = await fetch(`${API_URL}/api/v1/customer/me/orders`, {
     cache: "no-store",
-    headers: customerAuthHeaders(),
+    headers: await customerAuthHeaders(),
   });
   assertCustomerOk(res);
   return res.json();
@@ -511,7 +511,7 @@ export interface CustomerOrderDetail extends CustomerOrderSummary {
 export async function getCustomerOrder(id: string): Promise<CustomerOrderDetail | null> {
   const res = await fetch(`${API_URL}/api/v1/customer/me/orders/${id}`, {
     cache: "no-store",
-    headers: customerAuthHeaders(),
+    headers: await customerAuthHeaders(),
   });
   if (res.status === 404) return null;
   assertCustomerOk(res);
