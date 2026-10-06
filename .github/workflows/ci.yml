@@ -63,7 +63,7 @@ jobs:
       EMAIL_FROM: "PreOrderFlow <no-reply@example.com>"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Toute la branche pnpm 11.x (pas juste 11.28) exige Node >= 22.13 —
       # confirmé en réel : 11.3.0 échoue exactement pareil sous Node 20
@@ -167,7 +167,7 @@ jobs:
   docker-production:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build and start the production stack
         run: |
