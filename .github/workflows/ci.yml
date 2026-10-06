@@ -70,7 +70,7 @@ jobs:
       # (ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite). Contrainte de l'outil de
       # build en CI, indépendante du runtime : Docker (node:20-alpine) et
       # `engines` du package.json restent sur Node 20 pour l'app elle-même.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.3.0
 
