@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildNtfyUrl, isNtfyConfigured, sendNtfyNotification } from "./ntfy-provider";
+import {
+  buildNtfyUrl,
+  encodeNtfyHeader,
+  isNtfyConfigured,
+  ntfyAuthHeader,
+  sendNtfyNotification,
+} from "./ntfy-provider";
 
 describe("ntfy-provider", () => {
   afterEach(() => {
@@ -72,5 +78,18 @@ describe("ntfy-provider", () => {
         headers: expect.objectContaining({ Authorization: expectedAuth }),
       }),
     );
+  });
+
+  it("envoie un jeton d'accès (tk_…) en Bearer, pas en Basic", () => {
+    expect(ntfyAuthHeader("tk_abc123")).toBe("Bearer tk_abc123");
+    expect(ntfyAuthHeader("jeff:secret")).toMatch(/^Basic /);
+  });
+
+  it("encode un titre accentué en RFC 2047 et laisse l'ASCII intact", () => {
+    expect(encodeNtfyHeader("Nouvelle commande")).toBe("Nouvelle commande");
+    const encoded = encodeNtfyHeader("Paiement reçu");
+    expect(encoded).toMatch(/^=\?UTF-8\?B\?.+\?=$/);
+    const b64 = encoded.slice("=?UTF-8?B?".length, -2);
+    expect(Buffer.from(b64, "base64").toString("utf8")).toBe("Paiement reçu");
   });
 });

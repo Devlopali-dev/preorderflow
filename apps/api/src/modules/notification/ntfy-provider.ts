@@ -14,6 +14,22 @@ export interface NtfyMessage {
   tags?: string[];
 }
 
+// « user:password » → Basic ; jeton d'accès ntfy (« tk_… », sans « : ») → Bearer.
+export function ntfyAuthHeader(auth: string): string {
+  const value = auth.trim();
+  return value.includes(":") ? `Basic ${Buffer.from(value).toString("base64")}` : `Bearer ${value}`;
+}
+
+// Les en-têtes HTTP sont en ASCII : un titre accentué (« Paiement reçu ») ou avec emoji doit
+// partir en RFC 2047, que ntfy décode ; sinon fetch peut rejeter l'en-tête ou ntfy afficher du
+// charabia.
+export function encodeNtfyHeader(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return /^[\x00-\x7f]*$/.test(value)
+    ? value
+    : `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
+}
+
 export function isNtfyConfigured(): boolean {
   return Boolean(process.env.PREORDERFLOW_NTFY_TOPIC);
 }
@@ -36,9 +52,9 @@ export async function sendNtfyNotification({ title, message, tags }: NtfyMessage
   const res = await fetch(buildNtfyUrl(), {
     method: "POST",
     headers: {
-      Title: title,
+      Title: encodeNtfyHeader(title),
       ...(tags && tags.length > 0 ? { Tags: tags.join(",") } : {}),
-      ...(auth ? { Authorization: `Basic ${Buffer.from(auth).toString("base64")}` } : {}),
+      ...(auth ? { Authorization: ntfyAuthHeader(auth) } : {}),
     },
     body: message,
   });
@@ -64,11 +80,9 @@ export async function sendNtfyNotificationWithConfig(
   const res = await fetch(`${base}/${config.topic}`, {
     method: "POST",
     headers: {
-      Title: title,
+      Title: encodeNtfyHeader(title),
       ...(tags && tags.length > 0 ? { Tags: tags.join(",") } : {}),
-      ...(config.auth
-        ? { Authorization: `Basic ${Buffer.from(config.auth).toString("base64")}` }
-        : {}),
+      ...(config.auth ? { Authorization: ntfyAuthHeader(config.auth) } : {}),
     },
     body: message,
   });
