@@ -2,7 +2,7 @@
 # pnpm épinglé sur la version du host (11.3.0) : cf. api.Dockerfile pour
 # la raison (target `dev` + bind mount des node_modules du host). CI=true
 # saute la confirmation pnpm sur node_modules, absente sans TTY en build Docker.
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
 ENV CI=true
 # pnpm 11 revérifie les dépendances avant chaque `pnpm run` : le build copie TOUT le workspace (`COPY . .`) alors
@@ -34,7 +34,7 @@ RUN pnpm --filter web build
 
 # Image de production : la sortie `standalone` de Next.js (serveur minimal + seules les dépendances réellement utilisées,
 # repérées au build), au lieu de tout le workspace. Pas besoin de pnpm ni du code source à l'exécution.
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
 # Écouter sur toutes les interfaces (sinon Next ne répond qu'à localhost dans le conteneur : sondes de santé, proxy).

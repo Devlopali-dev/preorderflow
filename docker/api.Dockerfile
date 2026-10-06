@@ -4,7 +4,7 @@
 # des versions pnpm différentes calculent des hash de peer-deps différents
 # — les symlinks du host pointent alors vers des chemins absents côté
 # conteneur (MODULE_NOT_FOUND sur les binaires comme `nest`).
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 # OpenSSL : sans lui, Prisma ne détecte pas la version de libssl sur Alpine et charge le moteur
 # `openssl-1.1.x` (absent) au lieu de `openssl-3.0.x` (généré par `prisma generate`, cf. binaryTargets du
 # schéma, arm64 et x86_64) : « Unable to require(``) » / « Error loading shared library » à la première
