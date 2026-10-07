@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.27.1] — 2026-10-07
+
+### Corrigé
+
+- **Nouvelle commande (admin)** : pour une campagne qui désactive la livraison, la commande est en
+  remise en main propre, sans frais de port ; la modale masque l'adresse et indique pourquoi. La
+  livraison demandée explicitement est refusée par l'API (400).
+
 ## [0.27.0] — 2026-10-07
 
 ### Ajouté
