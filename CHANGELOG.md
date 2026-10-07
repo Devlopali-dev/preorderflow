@@ -7,6 +7,15 @@ correctifs.
 
 ## [Non publié]
 
+## [0.26.2] — 2026-10-07
+
+### Sécurité
+
+- **Dépendances** : overrides pnpm (`multer`, `js-yaml`, `postcss`, `lodash`, `file-type`,
+  `body-parser`, `glob`, `picomatch`, `ajv`, `tmp`, `webpack`, `source-map-js`,
+  `postcss-selector-parser`). `pnpm audit` passe de 35 à 2 alertes : `braces` (outil de dev, sans
+  version corrigée publiée) et `@nestjs/core` (correctif en 11.x, migration NestJS à planifier).
+
 ## [0.26.1] — 2026-10-07
 
 ### Modifié
