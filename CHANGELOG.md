@@ -7,6 +7,17 @@ correctifs.
 
 ## [Non publié]
 
+## [0.27.0] — 2026-10-07
+
+### Ajouté
+
+- **Remise en main propre** : le bouton passe désormais la commande directement à « Livrée »
+  (l'expédition « Remise en main propre » est créée déjà livrée, sans étape expédiée ; seul l'e-mail
+  « livrée » part). Nouvelle route `POST /shipments/hand-delivery`, refusée si la commande n'est pas
+  payée ou pas en préparation / prête à expédier.
+- Le tableau des commandes propose l'action « Remise en main propre » (avec confirmation) dans les
+  groupes « En préparation » et « Prête à expédier ».
+
 ## [0.26.3] — 2026-10-07
 
 ### Corrigé
