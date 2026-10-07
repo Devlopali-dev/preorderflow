@@ -49,6 +49,9 @@ export function OrderCreateModal({
   // Campagne d'origine, facultative : son lien de paiement servira au règlement.
   const [campaignId, setCampaignId] = useState("");
   const openCampaigns = campaigns.filter((campaign) => !isArchivedCampaign(campaign.status));
+  // Campagne sans livraison : remise en main propre, ni adresse ni frais de port.
+  const shippingDisabled =
+    campaigns.find((campaign) => campaign.id === campaignId)?.shippingEnabled === false;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,14 +108,18 @@ export function OrderCreateModal({
           customerLastName,
           campaignId: campaignId || undefined,
           items: selectedItems,
-          shippingAddress: {
-            firstName: customerFirstName,
-            lastName: customerLastName,
-            address1,
-            postalCode,
-            city,
-            country,
-          },
+          ...(shippingDisabled
+            ? { deliveryMethod: "PICKUP" }
+            : {
+                shippingAddress: {
+                  firstName: customerFirstName,
+                  lastName: customerLastName,
+                  address1,
+                  postalCode,
+                  city,
+                  country,
+                },
+              }),
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
@@ -245,7 +252,13 @@ export function OrderCreateModal({
             ))}
           </ul>
         </fieldset>
-        <label className="flex flex-col gap-1 text-sm">
+        {shippingDisabled && (
+          <p className="text-sm opacity-70" data-testid="shipping-disabled-note">
+            La livraison n'est pas proposée pour cette campagne : remise en main propre, sans frais
+            de port.
+          </p>
+        )}
+        <label className="flex flex-col gap-1 text-sm" hidden={shippingDisabled}>
           Adresse
           <Input
             placeholder="Adresse"
@@ -253,7 +266,7 @@ export function OrderCreateModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress1(e.target.value)}
           />
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2" hidden={shippingDisabled}>
           <label className="flex flex-1 flex-col gap-1 text-sm">
             Code postal
             <Input

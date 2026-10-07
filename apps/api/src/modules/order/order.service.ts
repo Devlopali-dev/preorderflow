@@ -88,16 +88,23 @@ export class OrderService {
       };
     });
 
+    let shippingEnabled = true;
     if (dto.campaignId) {
       const campaign = await prisma.campaign.findUnique({ where: { id: dto.campaignId } });
       if (!campaign) {
         throw new BadRequestException("Campagne introuvable");
       }
+      shippingEnabled = campaign.shippingEnabled;
+    }
+
+    // Livraison désactivée sur la campagne : remise en main propre, donc aucun frais de port.
+    const deliveryMethod = dto.deliveryMethod ?? (shippingEnabled ? "SHIPPING" : "PICKUP");
+    if (deliveryMethod === "SHIPPING" && !shippingEnabled) {
+      throw new BadRequestException("La livraison n'est pas proposée pour cette campagne");
     }
 
     // Montant explicite (saisie admin) prioritaire ; sinon frais paramétrés dans /settings.
     const itemsSubtotal = computeOrderTotals(lines).subtotal;
-    const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
     const shippingConfig = await this.settingsService.getShippingConfig();
     const weightGrams = parcelWeightGrams(
       lines.reduce((sum, line) => sum + line.quantity * line.weightGrams, 0),
