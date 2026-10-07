@@ -281,7 +281,7 @@ export function OrderForm({
               {...register("paymentMethod")}
               data-testid="payment-CASH"
             />
-            Payer en liquide à la remise
+            Payer à la remise
           </label>
         </fieldset>
       )}

@@ -15,7 +15,7 @@ const PATHS = { now: "pay-now", cash: "pay-cash", later: "pay-later" } as const;
 
 // Commande à régler : le client choisit de payer tout de suite (lien Revolut avec
 // le montant attendu, commande mise en attente de paiement, vérification manuelle
-// ensuite), de payer en liquide à la remise en main propre, ou plus tard (un mail de
+// ensuite), de payer à la remise en main propre, ou plus tard (un mail de
 // validation lui parviendra).
 export function PaymentChoice({
   orderId,
@@ -140,7 +140,7 @@ export function PaymentChoice({
             disabled={loading !== null}
             onClick={() => choose("cash")}
           >
-            Payer en liquide à la remise
+            Payer à la remise
           </Button>
         )}
         <Button

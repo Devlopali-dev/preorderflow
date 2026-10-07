@@ -7,6 +7,13 @@ correctifs.
 
 ## [Non publié]
 
+## [0.26.1] — 2026-10-07
+
+### Modifié
+
+- **Libellé paiement** : « Payer en liquide à la remise » devient « Payer à la remise » (formulaire de
+  commande et portail client).
+
 ## [0.26.0] — 2026-10-07
 
 ### Ajouté
