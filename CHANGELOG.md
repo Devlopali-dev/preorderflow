@@ -7,6 +7,16 @@ correctifs.
 
 ## [Non publié]
 
+## [0.26.3] — 2026-10-07
+
+### Corrigé
+
+- **CI** : l'override global `ajv >=8.18.0` de la 0.26.2 cassait ESLint (ajv 6 requis). Les overrides
+  qui franchissaient une version majeure (`ajv`, `glob`, `picomatch`, `file-type`, `tmp`,
+  `body-parser`) sont désormais ciblés sur le chemin vulnérable (`parent>paquet`) ;
+  `postcss-selector-parser` n'est plus forcé (outil de dev). `pnpm audit` : 3 alertes restantes
+  (`@nestjs/core`, `braces`, `postcss-selector-parser`).
+
 ## [0.26.2] — 2026-10-07
 
 ### Sécurité
