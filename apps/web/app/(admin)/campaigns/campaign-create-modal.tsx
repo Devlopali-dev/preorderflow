@@ -6,6 +6,7 @@ import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Product } from "@/lib/api";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { CampaignPaymentLinkField } from "@/components/campaign-payment-link-field";
+import { CampaignShippingField } from "@/components/campaign-shipping-field";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { slugify } from "@/lib/slugify";
 
@@ -46,6 +47,7 @@ export function CampaignCreateModal({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentLink, setPaymentLink] = useState("");
+  const [shippingEnabled, setShippingEnabled] = useState(true);
   const [images, setImages] = useState<File[]>([]);
   const [pdf, setPdf] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -162,6 +164,7 @@ export function CampaignCreateModal({
             slug,
             productId,
             paymentLink: paymentLink.trim() || undefined,
+            shippingEnabled,
             startDate: startDate ? new Date(startDate).toISOString() : undefined,
             endDate: endDate ? new Date(endDate).toISOString() : undefined,
           }),
@@ -286,6 +289,11 @@ export function CampaignCreateModal({
         <CampaignPaymentLinkField
           value={paymentLink}
           onChange={setPaymentLink}
+          disabled={created}
+        />
+        <CampaignShippingField
+          checked={shippingEnabled}
+          onChange={setShippingEnabled}
           disabled={created}
         />
         <div className="flex flex-col gap-2 text-sm">

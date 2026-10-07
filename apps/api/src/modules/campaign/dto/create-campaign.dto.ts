@@ -42,6 +42,15 @@ export class CreateCampaignDto {
   @IsUrl({ protocols: ["http", "https"], require_protocol: true })
   paymentLink?: string | null;
 
+  @ApiProperty({
+    required: false,
+    default: true,
+    description: "Livraison proposée ; sinon remise en main propre uniquement",
+  })
+  @IsOptional()
+  @IsBoolean()
+  shippingEnabled?: boolean;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @IsISO8601()
@@ -105,6 +114,15 @@ export class UpdateCampaignDto {
   @IsOptional()
   @IsUrl({ protocols: ["http", "https"], require_protocol: true })
   paymentLink?: string | null;
+
+  @ApiProperty({
+    required: false,
+    default: true,
+    description: "Livraison proposée ; sinon remise en main propre uniquement",
+  })
+  @IsOptional()
+  @IsBoolean()
+  shippingEnabled?: boolean;
 }
 
 export class UpdateCampaignStatusDto {

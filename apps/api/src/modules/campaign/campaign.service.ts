@@ -106,6 +106,7 @@ export class CampaignService {
         description: dto.description,
         productId: dto.productId,
         paymentLink: dto.paymentLink ?? undefined,
+        shippingEnabled: dto.shippingEnabled,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,
@@ -137,6 +138,7 @@ export class CampaignService {
         description: dto.description,
         // null efface le lien, undefined ne le touche pas.
         paymentLink: dto.paymentLink,
+        shippingEnabled: dto.shippingEnabled,
         startDate: dto.startDate ? new Date(dto.startDate) : undefined,
         endDate: dto.endDate ? new Date(dto.endDate) : undefined,
         imageUrl: dto.imageUrl,

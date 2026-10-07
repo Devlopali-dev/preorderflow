@@ -68,6 +68,8 @@ model Campaign {
   documentUrl       String?
   // Lien de paiement propre à la campagne (ex : revolut.me/…) ; à défaut, celui du .env.
   paymentLink       String?
+  // Mode livraison : désactivé, seule la remise en main propre est proposée.
+  shippingEnabled   Boolean        @default(true)
   // Rempli quand le mail « les commandes sont ouvertes » a été envoyé aux personnes intéressées :
   // empêche tout doublon si la campagne repasse par cet état.
   ordersOpenedMailedAt DateTime?

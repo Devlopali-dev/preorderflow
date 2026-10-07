@@ -99,6 +99,7 @@ export interface Campaign {
   imageUrl: string | null;
   documentUrl: string | null;
   paymentLink?: string | null;
+  shippingEnabled?: boolean;
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];

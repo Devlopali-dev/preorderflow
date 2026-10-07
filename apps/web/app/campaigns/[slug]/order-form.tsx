@@ -38,6 +38,7 @@ export function OrderForm({
   unitWeightKg,
   currency,
   shipping,
+  shippingEnabled,
 }: {
   campaignId: string;
   apiUrl: string;
@@ -46,6 +47,8 @@ export function OrderForm({
   unitWeightKg: string | null;
   currency: string | null;
   shipping: ShippingConfig | null;
+  // Réglage de la campagne : faux = remise en main propre uniquement.
+  shippingEnabled: boolean;
 }) {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -73,7 +76,7 @@ export function OrderForm({
 
   const totalQuantity = variants.reduce((sum, variant) => sum + (quantities[variant.id] ?? 0), 0);
   const subtotal = unitPrice === null ? null : (Number(unitPrice) * totalQuantity).toFixed(2);
-  const isPickup = watch("deliveryMethod") === "PICKUP";
+  const isPickup = !shippingEnabled || watch("deliveryMethod") === "PICKUP";
   const isCash = isPickup && watch("paymentMethod") === "CASH";
   // Le liquide n'existe qu'en main propre : on repasse en ligne si la personne se fait livrer.
   useEffect(() => {
@@ -114,17 +117,17 @@ export function OrderForm({
       return;
     }
     const { address1, address2, postalCode, city, country, ...rest } = values;
-    const shippingAddress =
-      values.deliveryMethod === "PICKUP"
-        ? undefined
-        : { address1, address2: address2 || undefined, postalCode, city, country };
+    const shippingAddress = isPickup
+      ? undefined
+      : { address1, address2: address2 || undefined, postalCode, city, country };
     try {
       const res = await fetch(`${apiUrl}/api/v1/campaigns/${campaignId}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...rest,
-          carrier: values.deliveryMethod === "PICKUP" ? undefined : (carrier ?? undefined),
+          deliveryMethod: isPickup ? "PICKUP" : "SHIPPING",
+          carrier: isPickup ? undefined : (carrier ?? undefined),
           items,
           shippingAddress,
         }),
@@ -246,17 +249,23 @@ export function OrderForm({
         <Input id="phone" {...register("phone")} />
       </FormGroup>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-medium">Mode de remise</legend>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="radio" value="PICKUP" {...register("deliveryMethod")} />
-          Remise en main propre
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="radio" value="SHIPPING" {...register("deliveryMethod")} />
-          Me faire livrer
-        </label>
-      </fieldset>
+      {shippingEnabled ? (
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium">Mode de remise</legend>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" value="PICKUP" {...register("deliveryMethod")} />
+            Remise en main propre
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="radio" value="SHIPPING" {...register("deliveryMethod")} />
+            Me faire livrer
+          </label>
+        </fieldset>
+      ) : (
+        <p className="text-sm">
+          Mode de remise : <strong>remise en main propre</strong>
+        </p>
+      )}
 
       {isPickup && (
         <fieldset className="flex flex-col gap-2">

@@ -43,7 +43,14 @@ export class CampaignOrderService {
       throw new BadRequestException("Couleur inconnue pour cette campagne");
     }
 
-    const deliveryMethod = dto.deliveryMethod ?? "SHIPPING";
+    // Livraison désactivée sur la campagne : remise en main propre uniquement.
+    const shippingEnabled = campaign.shippingEnabled;
+    const deliveryMethod = dto.deliveryMethod ?? (shippingEnabled ? "SHIPPING" : "PICKUP");
+    if (deliveryMethod === "SHIPPING" && !shippingEnabled) {
+      throw new BadRequestException(
+        "La livraison n'est pas proposée : remise en main propre uniquement",
+      );
+    }
     const paymentMethod = dto.paymentMethod ?? "ONLINE";
     // Payer en liquide « à la réception » suppose une remise en main propre.
     if (paymentMethod === "CASH" && deliveryMethod !== "PICKUP") {

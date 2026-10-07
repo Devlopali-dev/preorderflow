@@ -57,6 +57,7 @@ describe("CampaignOrderService — commande publique", () => {
       id: "c1",
       productId: "p1",
       status: "COMMANDES_OUVERTES",
+      shippingEnabled: true,
     });
     findMany.mockResolvedValue([{ id: VARIANT_A }]);
     create.mockResolvedValue({
@@ -102,6 +103,24 @@ describe("CampaignOrderService — commande publique", () => {
 
     expect(createForOrder).toHaveBeenCalledWith("o1", { provider: "CASH" });
     expect(result).toMatchObject({ paymentMethod: "CASH", paymentLink: null });
+  });
+
+  it("livraison désactivée : refuse une commande livrée, accepte la main propre", async () => {
+    getVisibleBySlugOrId.mockResolvedValue({
+      id: "c1",
+      productId: "p1",
+      status: "COMMANDES_OUVERTES",
+      shippingEnabled: false,
+    });
+
+    await expect(service.create("c1", dto({ deliveryMethod: "SHIPPING" }))).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(create).not.toHaveBeenCalled();
+
+    // Sans mode de remise explicite, retombe sur la main propre au lieu de la livraison.
+    await service.create("c1", dto({ shippingAddress: undefined }));
+    expect(create.mock.calls[0]![0]).toMatchObject({ deliveryMethod: "PICKUP" });
   });
 
   it("refuse le liquide quand la commande est livrée", async () => {

@@ -6,6 +6,7 @@ import { Button, Input, Modal } from "@preorderflow/ui";
 import type { Campaign } from "@/lib/api";
 import { ConfirmModal } from "@/components/confirm-modal";
 import { CampaignPaymentLinkField } from "@/components/campaign-payment-link-field";
+import { CampaignShippingField } from "@/components/campaign-shipping-field";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { isArchivedCampaign } from "@/lib/campaign-status";
 
@@ -37,6 +38,7 @@ export function CampaignEditModal({
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
   const [paymentLink, setPaymentLink] = useState(campaign.paymentLink ?? "");
+  const [shippingEnabled, setShippingEnabled] = useState(campaign.shippingEnabled ?? true);
   const [media, setMedia] = useState(campaign.media ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export function CampaignEditModal({
           name,
           // Vide : null efface le lien.
           paymentLink: paymentLink.trim() || null,
+          shippingEnabled,
           startDate: startDate ? new Date(startDate).toISOString() : undefined,
           endDate: endDate ? new Date(endDate).toISOString() : undefined,
         }),
@@ -243,6 +246,11 @@ export function CampaignEditModal({
         <CampaignPaymentLinkField
           value={paymentLink}
           onChange={setPaymentLink}
+          disabled={readOnly}
+        />
+        <CampaignShippingField
+          checked={shippingEnabled}
+          onChange={setShippingEnabled}
           disabled={readOnly}
         />
         <div className="flex flex-col gap-2 text-sm">

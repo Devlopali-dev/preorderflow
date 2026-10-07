@@ -51,6 +51,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
                 unitWeightKg={campaign.product?.weight ?? null}
                 currency={campaign.product?.currency ?? null}
                 shipping={shipping}
+                shippingEnabled={campaign.shippingEnabled !== false}
               />
             ) : isClosed ? (
               <div className="card p-4 text-sm" role="status">
