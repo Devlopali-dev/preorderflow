@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
+import {
+  assertOrderHandDeliverable,
+  assertOrderPaidForDelivery,
+  OrderNotHandDeliverableError,
+  OrderNotPaidError,
+} from "./order-rules";
+
+describe("assertOrderHandDeliverable", () => {
+  it.each(["PROCESSING", "READY_TO_SHIP"])("accepte une commande %s", (status) => {
+    expect(() => assertOrderHandDeliverable(status)).not.toThrow();
+  });
+
+  it.each(["DRAFT", "PENDING_PAYMENT", "PAID", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"])(
+    "refuse une commande %s",
+    (status) => {
+      expect(() => assertOrderHandDeliverable(status)).toThrow(OrderNotHandDeliverableError);
+    },
+  );
+});
 
 describe("assertOrderPaidForDelivery", () => {
   it("accepte une commande payée", () => {

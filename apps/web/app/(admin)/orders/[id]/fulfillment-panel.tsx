@@ -50,10 +50,21 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
     }
   }
 
-  // Pas de transporteur ni de suivi pour une remise en main propre — juste
-  // le libellé, qui sert de trace (§16, "livraison manuelle" en phase 7).
-  function handleHandDelivery() {
-    createShipment({ carrier: "Remise en main propre", trackingNumber: "", trackingUrl: "" });
+  // Remise en main propre : pas de transporteur ni de suivi, la commande passe directement
+  // à « livrée » (l'API crée l'expédition déjà livrée, dont le libellé sert de trace).
+  async function handleHandDelivery() {
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/shipments/hand-delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify({ orderId: order.id }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      startTransition(() => router.refresh());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    }
   }
 
   async function advanceShipment(status: string) {
@@ -135,7 +146,16 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
             </div>
           </div>
         )
-      ) : order.status === "PAID" || order.status === "PROCESSING" ? (
+      ) : order.status === "PROCESSING" ? (
+        <div className="flex flex-col gap-2 text-sm">
+          <p className="opacity-60">La préparation avance avec le bouton de statut en bas.</p>
+          <div>
+            <Button variant="secondary" loading={isPending} onClick={handleHandDelivery}>
+              Remise en main propre
+            </Button>
+          </div>
+        </div>
+      ) : order.status === "PAID" ? (
         <p className="text-sm opacity-60">La préparation avance avec le bouton de statut en bas.</p>
       ) : (
         <p className="text-sm opacity-60">Pas d'action de préparation disponible pour ce statut.</p>

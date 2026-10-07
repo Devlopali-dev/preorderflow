@@ -13,6 +13,8 @@ const ORDER_STATUS_BY_SHIPMENT_STATUS: Partial<Record<ShipmentStatus, "SHIPPED" 
   DELIVERED: "DELIVERED",
 };
 
+export const HAND_DELIVERY_CARRIER = "Remise en main propre";
+
 @Injectable()
 export class ShipmentService {
   constructor(
@@ -62,6 +64,48 @@ export class ShipmentService {
       },
       include: { events: true },
     });
+  }
+
+  // Remise en main propre : l'expédition est créée déjà livrée et la commande passe directement
+  // à « livrée » (en préparation ou prête à expédier), dans une seule transaction. Seul l'e-mail
+  // « livrée » part : la commande n'a jamais été expédiée.
+  async handDelivery(orderId: string) {
+    const order = await this.orderService.getById(orderId);
+    this.orderService.assertCanHandDeliver(order);
+
+    if (await prisma.shipment.findUnique({ where: { orderId: order.id } })) {
+      throw new BadRequestException("Cette commande a déjà une expédition");
+    }
+
+    const now = new Date();
+    const shipment = await prisma.$transaction(async (tx) => {
+      const created = await tx.shipment.create({
+        data: {
+          orderId: order.id,
+          carrier: HAND_DELIVERY_CARRIER,
+          status: "DELIVERED",
+          shippedAt: now,
+          deliveredAt: now,
+          events: {
+            create: [
+              { status: "PENDING", message: "Expédition créée", occurredAt: now },
+              { status: "DELIVERED", message: HAND_DELIVERY_CARRIER, occurredAt: now },
+            ],
+          },
+        },
+        include: { events: true },
+      });
+      await this.orderService.markHandDelivered(tx, order.id);
+      return created;
+    });
+
+    await this.notificationService.sendEmail(order.customer.email, "ORDER_DELIVERED", {
+      firstName: order.customer.firstName,
+      orderNumber: order.number,
+      items: await loadOrderItemsHtml(order.id),
+    });
+
+    return shipment;
   }
 
   async updateStatus(id: string, status: ShipmentStatus, message?: string) {

@@ -23,6 +23,8 @@ const NEXT_STATUS: Record<string, string | undefined> = {
 };
 
 const CANCELLABLE_FROM = ["DRAFT", "PENDING_PAYMENT"];
+// Remise en main propre : la commande passe directement à « livrée ».
+const HAND_DELIVERABLE_FROM = ["PROCESSING", "READY_TO_SHIP"];
 // Une commande livrée est en lecture seule : plus de remboursement.
 const REFUNDABLE_FROM = ["PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED"];
 
@@ -31,6 +33,7 @@ const REFUNDABLE_FROM = ["PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED"];
 export function hasOrderActions(status: string): boolean {
   return (
     NEXT_STATUS[status] !== undefined ||
+    HAND_DELIVERABLE_FROM.includes(status) ||
     CANCELLABLE_FROM.includes(status) ||
     REFUNDABLE_FROM.includes(status)
   );
@@ -91,6 +94,62 @@ function MarkPaidButton({
   );
 }
 
+// Bouton « Remise en main propre » : crée l'expédition livrée et passe la commande à « livrée »
+// (POST /shipments/hand-delivery), depuis la liste.
+function HandDeliveryButton({
+  apiUrl,
+  orderId,
+  onChanged,
+}: {
+  apiUrl: string;
+  orderId: string;
+  onChanged?: () => void;
+}) {
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/shipments/hand-delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+        body: JSON.stringify({ orderId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      setConfirmOpen(false);
+      router.refresh();
+      onChanged?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
+        Remise en main propre
+      </Button>
+      {confirmOpen && (
+        <ConfirmModal
+          title="Remise en main propre"
+          message="Confirmer que la commande a été remise en main propre ? Elle passera à « Livrée »."
+          confirmLabel="Confirmer"
+          loading={saving}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </>
+  );
+}
+
 export function OrderActions({
   orderId,
   status,
@@ -122,6 +181,9 @@ export function OrderActions({
           targetLabel={orderStatusLabel(next)}
           onChanged={onChanged}
         />
+      )}
+      {HAND_DELIVERABLE_FROM.includes(status) && (
+        <HandDeliveryButton apiUrl={apiUrl} orderId={orderId} onChanged={onChanged} />
       )}
       {cancellable && (
         <StatusActionButton

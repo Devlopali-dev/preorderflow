@@ -1,7 +1,11 @@
 import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ShipmentService } from "./shipment.service";
-import { CreateShipmentDto, UpdateShipmentStatusDto } from "./dto/create-shipment.dto";
+import {
+  CreateShipmentDto,
+  HandDeliveryDto,
+  UpdateShipmentStatusDto,
+} from "./dto/create-shipment.dto";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 
@@ -23,6 +27,16 @@ export class ShipmentController {
     const shipment = await this.shipmentService.create(dto);
     await this.auditService.log(adminId, "SHIPMENT_CREATED", "Shipment", shipment.id, {
       orderId: dto.orderId,
+    });
+    return shipment;
+  }
+
+  @Post("hand-delivery")
+  async handDelivery(@Body() dto: HandDeliveryDto, @CurrentAdminId() adminId: string) {
+    const shipment = await this.shipmentService.handDelivery(dto.orderId);
+    await this.auditService.log(adminId, "SHIPMENT_CREATED", "Shipment", shipment.id, {
+      orderId: dto.orderId,
+      handDelivery: true,
     });
     return shipment;
   }

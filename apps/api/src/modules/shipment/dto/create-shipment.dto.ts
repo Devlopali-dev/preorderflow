@@ -1,6 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsIn, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
 
+export class HandDeliveryDto {
+  @ApiProperty()
+  @IsUUID()
+  orderId!: string;
+}
+
 export class CreateShipmentDto {
   @ApiProperty()
   @IsUUID()

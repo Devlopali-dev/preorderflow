@@ -14,7 +14,12 @@ import {
   resolveCarrier,
   resolveShippingAmount,
 } from "./shipping-fee";
-import { assertOrderPaidForDelivery, OrderNotPaidError } from "./order-rules";
+import {
+  assertOrderHandDeliverable,
+  assertOrderPaidForDelivery,
+  OrderNotHandDeliverableError,
+  OrderNotPaidError,
+} from "./order-rules";
 import { assertValidOrderTransition, InvalidOrderTransitionError } from "./order-status";
 import { loadOrderItemsHtml } from "../notification/email-layout";
 import { NotificationService } from "../notification/notification.service";
@@ -199,6 +204,28 @@ export class OrderService {
       }
       throw error;
     }
+  }
+
+  // Refus métier (400) d'une remise en main propre : statut incompatible ou commande non payée.
+  assertCanHandDeliver(order: { status: string; paymentStatus: string }) {
+    try {
+      assertOrderHandDeliverable(order.status);
+    } catch (error) {
+      if (error instanceof OrderNotHandDeliverableError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+    this.assertPaidForDelivery(order.paymentStatus);
+  }
+
+  // Passe la commande à « livrée » dans la transaction de l'appelant (remise en main propre :
+  // pas d'étape expédiée, donc pas de transition par `updateStatus`).
+  markHandDelivered(tx: Prisma.TransactionClient, id: string) {
+    return tx.order.update({
+      where: { id },
+      data: { status: "DELIVERED", fulfillmentStatus: "DELIVERED" },
+    });
   }
 
   async updateStatus(id: string, status: OrderStatus) {
