@@ -7,6 +7,15 @@ correctifs.
 
 ## [Non publié]
 
+## [0.26.0] — 2026-10-07
+
+### Ajouté
+
+- **Mode livraison par campagne** : la case « Proposer la livraison » (création et modification
+  d'une campagne) active ou désactive la livraison. Désactivée, le formulaire de commande ne propose
+  que la remise en main propre et l'API refuse les commandes publiques en livraison. Migration
+  `campaigns.shippingEnabled` (activé par défaut).
+
 ## [0.25.0] — 2026-10-06
 
 ### Ajouté
