@@ -2,6 +2,8 @@ const path = require("node:path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Version affichée dans l'en-tête admin, lue depuis package.json au build.
+  env: { NEXT_PUBLIC_APP_VERSION: require("./package.json").version },
   transpilePackages: ["@preorderflow/ui", "@preorderflow/types"],
   reactStrictMode: true,
   // Sortie autonome pour l'image Docker de production : un serveur minimal avec seulement les fichiers utilisés.

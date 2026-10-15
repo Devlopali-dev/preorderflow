@@ -16,6 +16,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ))}
         </div>
         <div className="flex items-center gap-4">
+          <span
+            className="text-xs"
+            style={{ color: "var(--color-text-muted)" }}
+            title="Version de l'application"
+          >
+            v{process.env.NEXT_PUBLIC_APP_VERSION}
+          </span>
           <Link href="/settings">Paramètres</Link>
           <LogoutButton />
         </div>

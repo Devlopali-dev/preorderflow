@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.29.0] — 2026-10-15
+
+### Ajouté
+
+- **En-tête admin** : la version de l'application s'affiche à gauche de « Paramètres ».
+
 ## [0.28.0] — 2026-10-15
 
 ### Modifié
