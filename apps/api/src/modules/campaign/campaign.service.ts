@@ -9,6 +9,7 @@ import {
 import { campaignPublicUrl, groupInterestsByEmail } from "./campaign-opening";
 import { automaticTargetStatus, SCHEDULED_STATUSES } from "./campaign-schedule";
 import { computeCampaignStatistics } from "./campaign-statistics";
+import { SOLD_ORDER_STATUSES, sumSalesByCampaign } from "./campaign-sales";
 import { NotificationService } from "../notification/notification.service";
 
 const SCHEDULE_FIELDS = {
@@ -53,6 +54,16 @@ export class CampaignService {
       orderBy: { createdAt: "desc" },
       include: { media: { orderBy: { position: "asc" } } },
     });
+  }
+
+  // Ventes = quantités des commandes payées (hors brouillon, en attente de paiement, annulées
+  // ou remboursées), calculées à la demande depuis les lignes de commande.
+  async salesByCampaign(): Promise<Record<string, number>> {
+    const orders = await prisma.order.findMany({
+      where: { campaignId: { not: null }, status: { in: SOLD_ORDER_STATUSES } },
+      select: { campaignId: true, items: { select: { quantity: true } } },
+    });
+    return sumSalesByCampaign(orders);
   }
 
   // Lecture publique : un brouillon est introuvable (404, jamais « interdit ») pour un visiteur.

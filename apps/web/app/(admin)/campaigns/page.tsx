@@ -1,4 +1,4 @@
-import { getAdminProfile, getCampaigns, getProducts } from "@/lib/api";
+import { getAdminProfile, getCampaignSales, getCampaigns, getProducts } from "@/lib/api";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { ARCHIVED_CAMPAIGN_STATUSES, isArchivedCampaign } from "@/lib/campaign-status";
 import { CampaignNameButton } from "./campaign-name-button";
@@ -18,6 +18,11 @@ const STATUS_ORDER = [
   "EXPEDITION",
 ];
 
+// Largeurs fixes (tableLayout: fixed) : un tableau par statut + les archives, la colonne « Ventes »
+// doit tomber au même endroit dans tous.
+const NAME_COLUMN_WIDTH = "50%";
+const SALES_COLUMN_WIDTH = "6rem";
+
 const STATUS_BADGE: Record<string, string> = {
   DRAFT: "badge-default",
   RECENSEMENT: "badge-primary",
@@ -30,10 +35,11 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default async function AdminCampaignsPage() {
-  const [campaignsRaw, products, profile] = await Promise.all([
+  const [campaignsRaw, products, profile, sales] = await Promise.all([
     getCampaigns(),
     getProducts(),
     getAdminProfile(),
+    getCampaignSales(),
   ]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   const isAdmin = profile.role === "ADMIN";
@@ -79,10 +85,11 @@ export default async function AdminCampaignsPage() {
             }
           >
             <div className="table-wrapper">
-              <table className="table">
+              <table className="table" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr>
-                    <th>Nom</th>
+                    <th style={{ width: NAME_COLUMN_WIDTH }}>Nom</th>
+                    <th style={{ width: SALES_COLUMN_WIDTH, textAlign: "center" }}>Ventes</th>
                     <th style={{ textAlign: "center" }}>Action</th>
                   </tr>
                 </thead>
@@ -92,8 +99,9 @@ export default async function AdminCampaignsPage() {
                       <td>
                         <CampaignNameButton campaign={campaign} apiUrl={apiUrl} isAdmin={isAdmin} />
                       </td>
-                      <td className="text-center">
-                        <div className="table-cell-actions justify-center">
+                      <td className="text-center">{sales[campaign.id] ?? 0}</td>
+                      <td className="text-right">
+                        <div className="table-cell-actions justify-end">
                           <CampaignNextStatusButton
                             campaignId={campaign.id}
                             currentStatus={campaign.status}
@@ -120,10 +128,11 @@ export default async function AdminCampaignsPage() {
             }
           >
             <div className="table-wrapper">
-              <table className="table">
+              <table className="table" style={{ tableLayout: "fixed" }}>
                 <thead>
                   <tr>
-                    <th>Nom</th>
+                    <th style={{ width: NAME_COLUMN_WIDTH }}>Nom</th>
+                    <th style={{ width: SALES_COLUMN_WIDTH, textAlign: "center" }}>Ventes</th>
                     <th style={{ textAlign: "center" }}>Statut</th>
                     <th style={{ textAlign: "center" }}>Actions</th>
                   </tr>
@@ -134,6 +143,7 @@ export default async function AdminCampaignsPage() {
                       <td>
                         <CampaignNameButton campaign={campaign} apiUrl={apiUrl} isAdmin={isAdmin} />
                       </td>
+                      <td className="text-center">{sales[campaign.id] ?? 0}</td>
                       <td className="text-center">
                         <span
                           className={`badge ${STATUS_BADGE[campaign.status] ?? "badge-default"}`}
@@ -141,8 +151,8 @@ export default async function AdminCampaignsPage() {
                           {campaign.status}
                         </span>
                       </td>
-                      <td className="text-center">
-                        <div className="table-cell-actions justify-center">
+                      <td className="text-right">
+                        <div className="table-cell-actions justify-end">
                           {isArchivedCampaign(campaign.status) && (
                             <CampaignArchiveActions
                               campaignId={campaign.id}

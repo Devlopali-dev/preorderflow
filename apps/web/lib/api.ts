@@ -114,6 +114,16 @@ export interface Campaign {
   };
 }
 
+// Quantité vendue (commandes payées) par identifiant de campagne ; absent = aucune vente.
+export async function getCampaignSales(): Promise<Record<string, number>> {
+  const res = await fetch(`${API_URL}/api/v1/campaigns/sales`, {
+    cache: "no-store",
+    headers: await authHeaders(),
+  });
+  assertOk(res);
+  return res.json();
+}
+
 // Lecture publique, mais le jeton admin (cookie) est transmis s'il existe : un administrateur voit
 // aussi les campagnes en brouillon, introuvables (404) pour un visiteur.
 export async function getCampaign(slug: string): Promise<Campaign | null> {

@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.0] — 2026-10-15
+
+### Ajouté
+
+- **Page campagnes** : colonne « Ventes » (quantité vendue = commandes payées, hors annulées et remboursées) via `GET /campaigns/sales`, réservé aux utilisateurs connectés ; colonne Action alignée à droite (en-tête centré) ; largeurs de colonnes fixes pour aligner « Ventes » d'un tableau à l'autre.
+
 ## [0.29.0] — 2026-10-15
 
 ### Ajouté

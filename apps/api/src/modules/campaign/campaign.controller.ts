@@ -70,6 +70,13 @@ export class CampaignController {
     return this.campaignService.applySchedule();
   }
 
+  // Quantité vendue par campagne (administration, jamais publique) : déclarée avant ":id" pour
+  // ne pas être capturée par lui.
+  @Get("sales")
+  sales() {
+    return this.campaignService.salesByCampaign();
+  }
+
   @Public()
   @Get(":id")
   getOne(@Param("id") id: string, @Req() req: Request) {
