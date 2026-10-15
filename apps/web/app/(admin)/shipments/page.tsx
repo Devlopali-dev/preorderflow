@@ -27,6 +27,12 @@ const STATUS_BADGE: Record<string, string> = {
   RETURNED: "badge-danger",
 };
 
+// Largeurs fixes (tableLayout: fixed) : un tableau par statut, « Suivi » doit tomber au même endroit
+// dans tous, sauf dans les statuts terminaux (sans colonne Actions) où elle prend la place restante.
+const ORDER_COLUMN_WIDTH = "15%";
+const CARRIER_COLUMN_WIDTH = "20%";
+const TRACKING_COLUMN_WIDTH = "30%";
+
 // Statuts terminaux : plus d'action possible, la colonne Actions disparaît.
 const FINAL_STATUSES = ["DELIVERED", "RETURNED"];
 
@@ -68,12 +74,19 @@ export default async function ShipmentsPage() {
               }
             >
               <div className="table-wrapper">
-                <table className="table">
+                <table className="table" style={{ tableLayout: "fixed", overflowWrap: "anywhere" }}>
                   <thead>
                     <tr>
-                      <th>Commande</th>
-                      <th>Transporteur</th>
-                      <th style={{ textAlign: "center" }}>Suivi</th>
+                      <th style={{ width: ORDER_COLUMN_WIDTH }}>Commande</th>
+                      <th style={{ width: CARRIER_COLUMN_WIDTH }}>Transporteur</th>
+                      <th
+                        style={{
+                          width: showActions ? TRACKING_COLUMN_WIDTH : undefined,
+                          textAlign: "center",
+                        }}
+                      >
+                        Suivi
+                      </th>
                       {showActions && <th style={{ textAlign: "center" }}>Actions</th>}
                     </tr>
                   </thead>
@@ -84,8 +97,8 @@ export default async function ShipmentsPage() {
                         <td>{shipment.carrier ?? "—"}</td>
                         <td className="text-center">{shipment.trackingNumber ?? "—"}</td>
                         {showActions && (
-                          <td className="text-center">
-                            <div className="table-cell-actions justify-center">
+                          <td className="text-right">
+                            <div className="table-cell-actions justify-end">
                               <ShipmentActions
                                 shipmentId={shipment.id}
                                 currentStatus={shipment.status}

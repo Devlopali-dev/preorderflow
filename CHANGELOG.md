@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.2] — 2026-10-15
+
+### Modifié
+
+- **Page expéditions** : colonne Actions alignée à droite (en-tête centré) ; largeurs fixes pour aligner « Suivi » d'un tableau à l'autre (sauf Livrée et Retournée, sans colonne Actions) ; un numéro de suivi long ne déborde plus sur Actions.
+
 ## [0.30.1] — 2026-10-15
 
 ### Modifié
