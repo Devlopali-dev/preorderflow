@@ -11,6 +11,7 @@ import { CurrentAdminId } from "../auth/current-admin.decorator";
 @Controller("orders")
 export class OrderController {
   constructor(
+    @Inject(forwardRef(() => OrderService))
     private readonly orderService: OrderService,
     @Inject(forwardRef(() => PaymentService))
     private readonly paymentService: PaymentService,

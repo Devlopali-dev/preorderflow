@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.27.1",
+  "version": "0.28.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p ${WEB_PORT:-3000}",
@@ -15,7 +15,7 @@
     "@hookform/resolvers": "^3.9.0",
     "@preorderflow/types": "workspace:*",
     "@preorderflow/ui": "workspace:*",
-    "next": "^15.5.24",
+    "next": "^16.4.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

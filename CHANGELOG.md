@@ -7,6 +7,20 @@ correctifs.
 
 ## [Non publié]
 
+## [0.28.0] — 2026-10-15
+
+### Modifié
+
+- **NestJS 12** (common, core, platform-express, swagger, config, jwt, terminus, cli, testing) :
+  indicateur de santé Prisma migré vers `HealthIndicatorService`, typage de `expiresIn` (JWT),
+  injection explicite `forwardRef` d'`OrderService` (dépendance circulaire Order ↔ Payment).
+- **Next.js 16** : `@import` CSS placés avant les directives `@tailwind` (exigé par Turbopack).
+- Dépendances : `@types/node` 26, mises à jour mineures/patch (nodemailer, pdfjs-dist, etc.).
+
+### Corrigé
+
+- `@nestjs/testing` désaligné de NestJS faisait échouer 2 suites de tests.
+
 ## [0.27.1] — 2026-10-07
 
 ### Corrigé

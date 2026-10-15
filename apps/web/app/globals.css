@@ -1,9 +1,9 @@
+@import "@preorderflow/ui/src/tokens.css";
+@import "@preorderflow/ui/src/components.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import "@preorderflow/ui/src/tokens.css";
-@import "@preorderflow/ui/src/components.css";
 
 /* Titres en bleu (--color-primary-text) plutôt qu'en noir (--color-text
    hérité du body) — s'adapte automatiquement au dark mode comme le reste

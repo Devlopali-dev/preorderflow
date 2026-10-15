@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
+import { JwtService, JwtSignOptions } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { prisma } from "@preorderflow/database";
 import { NotificationService } from "../notification/notification.service";
@@ -28,7 +28,10 @@ export class CustomerAuthService {
     const magicLinkSecret = this.configService.get<string>("MAGIC_LINK_SECRET");
 
     const payload: MagicLinkPayload = { sub: customer.id, type: "magic-link" };
-    const token = this.jwtService.sign(payload, { secret: magicLinkSecret, expiresIn });
+    const token = this.jwtService.sign(payload, {
+      secret: magicLinkSecret,
+      expiresIn: expiresIn as JwtSignOptions["expiresIn"],
+    });
 
     const webUrl = this.configService.get<string>("WEB_URL") ?? "http://localhost:3000";
     const magicLinkUrl = `${webUrl}/mon-compte/verifier?token=${token}`;
