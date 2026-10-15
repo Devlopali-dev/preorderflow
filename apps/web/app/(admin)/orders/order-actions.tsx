@@ -155,11 +155,13 @@ export function OrderActions({
   status,
   apiUrl,
   onChanged,
+  align = "center",
 }: {
   orderId: string;
   status: string;
   apiUrl: string;
   onChanged?: () => void;
+  align?: "center" | "end";
 }) {
   const next = NEXT_STATUS[status];
   const cancellable = CANCELLABLE_FROM.includes(status);
@@ -168,7 +170,9 @@ export function OrderActions({
   if (!hasOrderActions(status)) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div
+      className={`flex items-center gap-2 ${align === "end" ? "justify-end" : "justify-center"}`}
+    >
       {status === "PENDING_PAYMENT" && (
         <MarkPaidButton apiUrl={apiUrl} orderId={orderId} onChanged={onChanged} />
       )}

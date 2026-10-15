@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.1] — 2026-10-15
+
+### Modifié
+
+- **Page commandes** : colonne Action alignée à droite (en-tête centré) ; la modale de détail garde ses boutons centrés.
+
 ## [0.30.0] — 2026-10-15
 
 ### Ajouté

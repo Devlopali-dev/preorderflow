@@ -113,8 +113,13 @@ export default async function OrdersPage() {
                           {orderPaymentStatusLabel(order.paymentStatus)}
                         </span>
                       </td>
-                      <td className="text-center">
-                        <OrderActions orderId={order.id} status={order.status} apiUrl={apiUrl} />
+                      <td className="text-right">
+                        <OrderActions
+                          orderId={order.id}
+                          status={order.status}
+                          apiUrl={apiUrl}
+                          align="end"
+                        />
                       </td>
                     </tr>
                   ))}
