@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.30.3",
+  "version": "0.30.4",
   "private": true,
   "scripts": {
     "dev": "next dev -p ${WEB_PORT:-3000}",
@@ -33,6 +33,6 @@
     "tailwindcss": "^3.4.13",
     "typescript": "^6.0.3",
     "vite": "^8.3.4",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.4] — 2026-10-26
+
+### Sécurité
+
+- **Dependabot** : `hono` forcé à `>=4.13.11` (override, dépendance transitive du SDK MCP) ; `vitest` / `@vitest/mocker` passés en 4.1.12. Les alertes `vite` 7.x sont déjà résolues par vite 8.3.4 sur `dev`.
+
 ## [0.30.3] — 2026-10-26
 
 ### Modifié
