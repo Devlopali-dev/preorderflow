@@ -169,7 +169,7 @@ export class PaymentService {
     });
     await this.notificationService.notifyAdmin(
       "Paiement reçu",
-      `${order.number} — ${updatedPayment.amount.toFixed(2)} €`,
+      `${order.number} — ${customer.firstName} ${customer.lastName} — ${updatedPayment.amount.toFixed(2)} €`,
       ["moneybag"],
     );
 

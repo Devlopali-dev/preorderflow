@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.3] — 2026-10-26
+
+### Modifié
+
+- **Notification ntfy « Paiement reçu »** : affiche désormais le nom du client (comme « Nouvelle commande »).
+
 ## [0.30.2] — 2026-10-15
 
 ### Modifié
