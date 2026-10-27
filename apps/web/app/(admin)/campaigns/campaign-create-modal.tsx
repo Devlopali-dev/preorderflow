@@ -316,7 +316,7 @@ export function CampaignCreateModal({
               {images.map((file, index) => (
                 <li key={`${file.name}-${index}`} className="flex flex-col items-center gap-1">
                   <img
-                    src={previewUrls[index]}
+                    src={previewUrls[index]?.startsWith("blob:") ? previewUrls[index] : undefined}
                     alt={`Aperçu ${file.name}`}
                     className="h-20 w-20 rounded object-cover"
                   />

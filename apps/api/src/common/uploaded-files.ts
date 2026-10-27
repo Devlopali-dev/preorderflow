@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -6,6 +7,19 @@ import { join, resolve } from "node:path";
 // d'`apps/api`. Avec `process.cwd()`, l'API lancée depuis la racine du dépôt (CI, déploiement)
 // cherchait les fichiers au mauvais endroit et ne les supprimait jamais.
 export const UPLOADS_ROOT = resolve(__dirname, "..", "..", "uploads");
+
+// Extension déduite du type MIME (déjà filtré par le fileFilter) et non du nom fourni par le
+// client : le nom de fichier écrit sur disque ne contient ainsi jamais d'entrée utilisateur.
+const UPLOAD_EXTENSIONS: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "application/pdf": ".pdf",
+};
+
+export function uploadFilename(mimetype: string): string {
+  return `${randomUUID()}${UPLOAD_EXTENSIONS[mimetype] ?? ""}`;
+}
 
 export function uploadedFilePath(url: string): string {
   return join(UPLOADS_ROOT, url.replace(/^\/uploads\//, ""));

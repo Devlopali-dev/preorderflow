@@ -13,11 +13,10 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { diskStorage } from "multer";
-import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { join } from "node:path";
 import { ProductService } from "./product.service";
-import { deleteUploadedFiles } from "../../common/uploaded-files";
+import { deleteUploadedFiles, uploadFilename } from "../../common/uploaded-files";
 import { CreateProductDto, UpdateProductDto } from "./dto/create-product.dto";
 import { CreateVariantDto, UpdateVariantDto } from "./dto/variant.dto";
 import { Public } from "../auth/public.decorator";
@@ -81,7 +80,7 @@ export class ProductController {
       storage: diskStorage({
         destination: join(__dirname, "..", "..", "..", "uploads", "products"),
         filename: (_req, file, callback) => {
-          callback(null, `${randomUUID()}${extname(file.originalname)}`);
+          callback(null, uploadFilename(file.mimetype));
         },
       }),
       limits: { fileSize: 5 * 1024 * 1024 },

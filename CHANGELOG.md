@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.8] — 2026-10-27
+
+### Sécurité
+
+- **Code scanning (CodeQL)** : nom des fichiers uploadés (photos, PDF, vignettes) dérivé du type MIME et non du nom fourni par le client ; URL ntfy validée (`http(s)` uniquement, topic encodé, regex remplacée par une boucle) ; aperçus d'upload limités aux URL `blob:` ; workflow CI en `permissions: contents: read`.
+
 ## [0.30.7] — 2026-10-27
 
 ### Corrigé

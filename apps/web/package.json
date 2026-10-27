@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.30.7",
+  "version": "0.30.8",
   "private": true,
   "scripts": {
     "dev": "next dev -p ${WEB_PORT:-3000}",

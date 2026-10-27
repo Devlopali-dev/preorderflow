@@ -30,17 +30,32 @@ export function encodeNtfyHeader(value: string): string {
     : `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
 }
 
+// Construit l'URL d'envoi : le serveur ntfy est une cible configurée par un administrateur (souvent
+// une instance interne), donc on n'interdit pas les adresses privées, mais on exige http(s) et on
+// encode le topic pour qu'il ne puisse pas modifier le chemin ni l'hôte.
+export function ntfyTopicUrl(baseUrl: string, topic: string): string {
+  const url = new URL(baseUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("L'URL ntfy doit commencer par http:// ou https://");
+  }
+  let path = url.pathname;
+  while (path.endsWith("/")) {
+    path = path.slice(0, -1);
+  }
+  return `${url.origin}${path}/${encodeURIComponent(topic)}`;
+}
+
 export function isNtfyConfigured(): boolean {
   return Boolean(process.env.PREORDERFLOW_NTFY_TOPIC);
 }
 
 export function buildNtfyUrl(): string {
-  const base = (process.env.PREORDERFLOW_NTFY_URL ?? "https://ntfy.sh").replace(/\/+$/, "");
+  const base = process.env.PREORDERFLOW_NTFY_URL ?? "https://ntfy.sh";
   const topic = process.env.PREORDERFLOW_NTFY_TOPIC;
   if (!topic) {
     throw new Error("PREORDERFLOW_NTFY_TOPIC non configuré");
   }
-  return `${base}/${topic}`;
+  return ntfyTopicUrl(base, topic);
 }
 
 export async function sendNtfyNotification({ title, message, tags }: NtfyMessage): Promise<void> {
@@ -76,8 +91,7 @@ export async function sendNtfyNotificationWithConfig(
     return;
   }
 
-  const base = config.url.replace(/\/+$/, "");
-  const res = await fetch(`${base}/${config.topic}`, {
+  const res = await fetch(ntfyTopicUrl(config.url, config.topic), {
     method: "POST",
     headers: {
       Title: encodeNtfyHeader(title),

@@ -15,10 +15,9 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { diskStorage } from "multer";
-import { randomUUID } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import type { Request } from "express";
-import { extname, join } from "node:path";
+import { join, parse } from "node:path";
 import { CampaignOrderService } from "./campaign-order.service";
 import { CampaignService } from "./campaign.service";
 import { CreatePublicOrderDto } from "./dto/create-public-order.dto";
@@ -30,7 +29,7 @@ import {
   UpdateCampaignStatusDto,
 } from "./dto/create-campaign.dto";
 import { isArchivedStatus } from "./campaign-status";
-import { deleteUploadedFiles } from "../../common/uploaded-files";
+import { deleteUploadedFiles, uploadFilename } from "../../common/uploaded-files";
 import { AuditService } from "../audit/audit.service";
 import { CurrentAdminId } from "../auth/current-admin.decorator";
 import { Public } from "../auth/public.decorator";
@@ -111,7 +110,7 @@ export class CampaignController {
       storage: diskStorage({
         destination: join(__dirname, "..", "..", "..", "uploads", "campaigns"),
         filename: (_req, file, callback) => {
-          callback(null, `${randomUUID()}${extname(file.originalname)}`);
+          callback(null, uploadFilename(file.mimetype));
         },
       }),
       limits: { fileSize: 5 * 1024 * 1024 },
@@ -150,7 +149,7 @@ export class CampaignController {
       storage: diskStorage({
         destination: join(__dirname, "..", "..", "..", "uploads", "campaigns"),
         filename: (_req, file, callback) => {
-          callback(null, `${randomUUID()}${extname(file.originalname)}`);
+          callback(null, uploadFilename(file.mimetype));
         },
       }),
       limits: { fileSize: 10 * 1024 * 1024 },
@@ -172,7 +171,7 @@ export class CampaignController {
     // galerie publique. En cas d'échec (conversion ou limite atteinte), on
     // supprime les fichiers écrits sur disque : ne jamais laisser d'orphelins.
     const pdfUrl = `/uploads/campaigns/${file.filename}`;
-    const thumbnailFilename = `${file.filename.slice(0, -extname(file.filename).length)}.jpg`;
+    const thumbnailFilename = `${parse(file.filename).name}.jpg`;
     const thumbnailPath = join(file.destination, thumbnailFilename);
 
     let thumbnailUrl: string | null = null;

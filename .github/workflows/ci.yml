@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, dev]
 
+# Jeton en lecture seule : aucun job n'écrit sur le dépôt.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

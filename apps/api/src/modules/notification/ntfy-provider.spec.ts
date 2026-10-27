@@ -4,6 +4,7 @@ import {
   encodeNtfyHeader,
   isNtfyConfigured,
   ntfyAuthHeader,
+  ntfyTopicUrl,
   sendNtfyNotification,
 } from "./ntfy-provider";
 
@@ -33,6 +34,20 @@ describe("ntfy-provider", () => {
     process.env.PREORDERFLOW_NTFY_TOPIC = "admin";
     process.env.PREORDERFLOW_NTFY_URL = "https://ntfy.mondomaine.fr/";
     expect(buildNtfyUrl()).toBe("https://ntfy.mondomaine.fr/admin");
+  });
+
+  it("ntfyTopicUrl : conserve un sous-chemin, retire les slashs finaux et encode le topic", () => {
+    expect(ntfyTopicUrl("https://exemple.fr/ntfy///", "mon topic")).toBe(
+      "https://exemple.fr/ntfy/mon%20topic",
+    );
+    expect(ntfyTopicUrl("http://ntfy.interne:8080", "../admin")).toBe(
+      "http://ntfy.interne:8080/..%2Fadmin",
+    );
+  });
+
+  it("ntfyTopicUrl : refuse un schéma autre que http(s) ou une URL invalide", () => {
+    expect(() => ntfyTopicUrl("file:///etc/passwd", "x")).toThrow();
+    expect(() => ntfyTopicUrl("pas une url", "x")).toThrow();
   });
 
   it("ne fait aucun appel réseau si non configuré", async () => {
