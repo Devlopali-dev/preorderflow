@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.6] — 2026-10-27
+
+### Corrigé
+
+- **Formulaire de commande public** : `@hookform/resolvers` 3 → 5, requis par zod 4 (la validation levait un `ZodError` non géré depuis 0.30.5, ce qui cassait l'E2E « commandes ouvertes »).
+
 ## [0.30.5] — 2026-10-27
 
 ### Sécurité
