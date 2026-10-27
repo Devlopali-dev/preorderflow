@@ -111,3 +111,5 @@ export const createPublicOrderSchema = z
   });
 
 export type CreatePublicOrderInput = z.infer<typeof createPublicOrderSchema>;
+// Valeurs saisies dans le formulaire (avant les défauts de zod, ex. paymentMethod).
+export type CreatePublicOrderFormValues = z.input<typeof createPublicOrderSchema>;

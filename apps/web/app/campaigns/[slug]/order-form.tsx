@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createPublicOrderSchema, type CreatePublicOrderInput } from "@preorderflow/types";
+import {
+  createPublicOrderSchema,
+  type CreatePublicOrderFormValues,
+  type CreatePublicOrderInput,
+} from "@preorderflow/types";
 import { Button, FormGroup, Input, Textarea } from "@preorderflow/ui";
 import { PaymentQrCode } from "@/components/payment-qr-code";
 import type { CampaignVariantOption, ShippingConfig } from "@/lib/api";
@@ -63,7 +67,7 @@ export function OrderForm({
     setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<CreatePublicOrderInput>({
+  } = useForm<CreatePublicOrderFormValues, unknown, CreatePublicOrderInput>({
     resolver: zodResolver(createPublicOrderSchema),
     defaultValues: { country: "FR", deliveryMethod: "PICKUP", paymentMethod: "ONLINE" },
   });

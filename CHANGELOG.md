@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.7] — 2026-10-27
+
+### Corrigé
+
+- **Typecheck web** : le formulaire de commande distingue les valeurs saisies (`z.input`) des valeurs validées (`z.infer`), requis par zod 4 + resolvers 5 (défaut `paymentMethod`). Corrige la CI rouge de 0.30.6.
+
 ## [0.30.6] — 2026-10-27
 
 ### Corrigé
