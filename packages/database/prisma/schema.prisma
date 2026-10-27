@@ -1,17 +1,14 @@
 // PreOrderFlow — Prisma schema (Phase 1)
 // PostgreSQL, UUID, UTC. Aucun champ de stock stocké : le stock est dérivé de InventoryMovement.
 
+// Prisma 7 : plus de moteur Rust (donc plus de binaryTargets) ; la connexion passe par l'adaptateur
+// `@prisma/adapter-pg` (cf. src/index.ts) et l'URL du CLI est dans prisma.config.ts.
 generator client {
-  provider      = "prisma-client-js"
-  // "native" pour le dev hors Docker (macOS) ; le binaire musl explicite
-  // pour les conteneurs Docker (Alpine récent = OpenSSL 3, pas 1.1 — sans
-  // ce target Prisma se trompe de moteur et le conteneur crash au démarrage).
-  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------------------------------

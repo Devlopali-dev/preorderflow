@@ -7,6 +7,18 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.0] — 2026-10-27
+
+### Modifié
+
+- **Prisma 5 → 7** (remplace les PR Dependabot #33 et #34). Plus de moteur Rust : le client se connecte via `@prisma/adapter-pg` (`createAdapter` dans `packages/database/src/index.ts`, qui gère aussi le paramètre `?schema=`). L'URL du CLI passe dans `packages/database/prisma.config.ts` (qui charge le `.env` racine) ; `binaryTargets` et `url` sont retirés du schéma. Le seed et `clean:e2e` utilisent le même adaptateur. Aucune migration de base : les 25 migrations existantes s'appliquent telles quelles, y compris sur une base déjà migrée en Prisma 5.
+- **Tests API** : `DATABASE_URL` de repli dans `vitest.config.ts` (Prisma 7 crée l'adaptateur dès l'import du paquet `database`).
+- **Dockerfile API** : commentaire OpenSSL mis à jour (il ne sert plus qu'au moteur de migration).
+
+### À savoir
+
+- Prisma 7 ne lit plus `.env` seul : le CLI le charge via `prisma.config.ts`, les scripts de seed via `src/load-env.ts`. En conteneur, les variables viennent de l'environnement.
+
 ## [0.30.9] — 2026-10-27
 
 ### Corrigé

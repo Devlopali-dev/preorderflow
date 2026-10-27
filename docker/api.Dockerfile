@@ -5,10 +5,10 @@
 # — les symlinks du host pointent alors vers des chemins absents côté
 # conteneur (MODULE_NOT_FOUND sur les binaires comme `nest`).
 FROM node:26-alpine AS base
-# OpenSSL : sans lui, Prisma ne détecte pas la version de libssl sur Alpine et charge le moteur
-# `openssl-1.1.x` (absent) au lieu de `openssl-3.0.x` (généré par `prisma generate`, cf. binaryTargets du
-# schéma, arm64 et x86_64) : « Unable to require(``) » / « Error loading shared library » à la première
-# requête base. Avec openssl, la détection est automatique et vaut pour toute architecture.
+# OpenSSL : le client Prisma 7 n'a plus de moteur de requêtes Rust (connexion via l'adaptateur `pg`), mais
+# le moteur de MIGRATION (`prisma migrate deploy`, lancé au démarrage) en a encore un : sans openssl, Prisma ne
+# détecte pas la version de libssl sur Alpine et charge un binaire `openssl-1.1.x` absent. Avec openssl, la
+# détection est automatique et vaut pour toute architecture (arm64 comme x86_64).
 RUN apk add --no-cache openssl
 # Corepack n'est plus embarqué dans les images node récentes (>= 25) : on épingle pnpm via npm.
 RUN npm install -g pnpm@11.3.0

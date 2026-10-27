@@ -8,8 +8,10 @@ import {
   type ShipmentStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import "../src/load-env";
+import { createAdapter } from "../src/index";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: createAdapter() });
 
 // Jeu de démonstration (cahier des charges §30), rejouable : chaque bloc ne crée
 // que ce qui manque. Il couvre aussi chaque écran de l'application : archives de

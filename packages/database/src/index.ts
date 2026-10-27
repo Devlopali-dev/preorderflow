@@ -1,4 +1,19 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+
+// Prisma 7 se connecte via un adaptateur de pilote (plus de moteur Rust embarqué). Le paramètre
+// `?schema=` de l'URL Prisma n'est pas compris par `pg` : on le retire de l'URL et on le passe à
+// l'adaptateur. Défini ici et non dans un fichier voisin : l'API charge ce module en TypeScript
+// natif (ESM), où un import relatif sans extension ne se résout pas.
+export function createAdapter(connectionString: string | undefined = process.env.DATABASE_URL) {
+  if (!connectionString) {
+    throw new Error("DATABASE_URL n'est pas défini");
+  }
+  const url = new URL(connectionString);
+  const schema = url.searchParams.get("schema") ?? undefined;
+  url.searchParams.delete("schema");
+  return new PrismaPg({ connectionString: url.toString() }, schema ? { schema } : undefined);
+}
 
 declare global {
   var __prisma: PrismaClient | undefined;
@@ -7,6 +22,7 @@ declare global {
 export const prisma =
   globalThis.__prisma ??
   new PrismaClient({
+    adapter: createAdapter(),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 

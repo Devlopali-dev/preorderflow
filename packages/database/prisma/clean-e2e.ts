@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
+import { createAdapter } from "../src/index";
 
 // Nettoyage des données laissées par la suite E2E (apps/web/e2e) dans la base de dev.
 //
@@ -67,7 +68,7 @@ export interface CleanReport {
 }
 
 export async function cleanE2eData({ dryRun = false } = {}): Promise<CleanReport> {
-  const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl() } } });
+  const prisma = new PrismaClient({ adapter: createAdapter(databaseUrl()) });
   try {
     const ids = async (query: Promise<Array<{ id: string }>>) => (await query).map((row) => row.id);
 
