@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.5] — 2026-10-27
+
+### Sécurité
+
+- **Dependabot** (15 alertes) : `zod` 3 → 4.6 (types, web, mcp-server) ; `multer` 2.5, `nodemailer` 10.2 ; overrides `body-parser >=2.4`, `fast-uri >=3.1.9 <4`, `ip-address >=10.7.4`, `postcss-selector-parser >=6.1.5` (l'ancien override `body-parser <2` de platform-express est retiré).
+
 ## [0.30.4] — 2026-10-26
 
 ### Sécurité

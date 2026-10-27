@@ -1,6 +1,6 @@
 {
   "name": "@preorderflow/config",
-  "version": "0.30.4",
+  "version": "0.30.5",
   "private": true,
   "main": "index.js",
   "files": [

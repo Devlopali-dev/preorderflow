@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.30.4",
+  "version": "0.30.5",
   "private": true,
   "scripts": {
     "dev": "next dev -p ${WEB_PORT:-3000}",
@@ -20,7 +20,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.90.0",
-    "zod": "^3.23.8"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
