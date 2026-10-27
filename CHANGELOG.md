@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.30.9] — 2026-10-27
+
+### Corrigé
+
+- **Tests** : `uploaded-files.spec.ts` retrouve ses deux tests d'origine (écrasés par erreur en 0.30.8) ; le test de `uploadFilename` y est ajouté.
+
 ## [0.30.8] — 2026-10-27
 
 ### Sécurité
