@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.1] — 2026-10-28
+
+### Modifié
+
+- **Dépendances** (PR Dependabot #44, 13 mises à jour mineures/correctives) : NestJS 12.2, Next 16.4.3, react-hook-form 7.91, vite 8.3.5, SDK MCP 1.32.2, typescript-eslint 8.72, `@napi-rs/canvas` 1.0.13, postcss 8.5.31.
+
 ## [0.31.0] — 2026-10-27
 
 ### Modifié
