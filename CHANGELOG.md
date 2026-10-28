@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.5] — 2026-10-28
+
+### Modifié
+
+- **Dépendances** (PR Dependabot #48) : vitest 4.1.12 → 5.0.5 (api, mcp-server, web). Typecheck propre, 235 tests API et 6 tests MCP verts.
+
 ## [0.31.4] — 2026-10-28
 
 ### Modifié
