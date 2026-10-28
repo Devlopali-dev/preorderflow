@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.6] — 2026-10-28
+
+### Sécurité
+
+- **qs 6.16.0 → 6.17.0** (alerte Dependabot #124, moyenne : `qs.stringify` avec `arrayFormat: 'comma'` lève une `TypeError` non rattrapée, déni de service). Dépendance transitive d'express 5 via body-parser, corrigée par l'override `qs` dans `pnpm-workspace.yaml` (remplace la PR #49, qui visait `main`). Typecheck propre, 235 tests API et 6 tests MCP verts.
+
 ## [0.31.5] — 2026-10-28
 
 ### Modifié
