@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.2] — 2026-10-28
+
+### Modifié
+
+- **Dépendances** (PR Dependabot #45) : `@hookform/resolvers` 5.9.2 → 6.0.0. Le seul changement cassant concerne le resolver effect-ts, non utilisé ici (zod). Formulaire de commande vérifié : typecheck, lint, build et E2E ciblés (formulaire public, choix de paiement, variantes, scénario 2).
+
 ## [0.31.1] — 2026-10-28
 
 ### Modifié
