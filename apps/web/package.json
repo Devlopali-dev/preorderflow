@@ -12,7 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^6.0.0",
     "@preorderflow/types": "workspace:*",
     "@preorderflow/ui": "workspace:*",
     "next": "^16.4.3",
