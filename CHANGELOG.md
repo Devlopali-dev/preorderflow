@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.4] — 2026-10-28
+
+### Modifié
+
+- **Dépendances** (PR Dependabot #47) : lint-staged 15.5.2 → 17.6.0. Configuration inchangée ; hook pre-commit vérifié (eslint --fix et prettier appliqués sur un fichier TypeScript mal formaté). Lockfile régénéré, la branche Dependabot étant antérieure à eslint 10.
+
 ## [0.31.3] — 2026-10-28
 
 ### Modifié

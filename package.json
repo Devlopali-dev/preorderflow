@@ -1,7 +1,7 @@
 {
   "name": "preorderflow",
   "private": true,
-  "version": "0.31.3",
+  "version": "0.31.4",
   "license": "AGPL-3.0",
   "engines": {
     "node": ">=20"
@@ -26,7 +26,7 @@
     "@eslint/js": "^9.11.1",
     "eslint": "^10.13.0",
     "husky": "^9.1.6",
-    "lint-staged": "^15.2.10",
+    "lint-staged": "^17.6.0",
     "prettier": "^3.9.10",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0"
