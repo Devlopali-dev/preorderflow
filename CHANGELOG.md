@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.3] — 2026-10-28
+
+### Modifié
+
+- **Dépendances** (PR Dependabot #46) : eslint 9.39.5 → 10.13.0. Une seule version installée, aucun avertissement de peer, lint propre sur les 7 projets du workspace et typecheck sans erreur.
+
 ## [0.31.2] — 2026-10-28
 
 ### Modifié
