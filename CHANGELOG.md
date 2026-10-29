@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.32.3] — 2026-10-29
+
+### Corrigé
+
+- **Commandes** : une commande « En préparation » n'affiche plus deux fois le bouton « Remise en main propre » dans sa fiche ; seul celui du pied de modale est conservé.
+
 ## [0.32.2] — 2026-10-29
 
 ### Modifié

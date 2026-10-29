@@ -147,14 +147,9 @@ export function FulfillmentPanel({ order, apiUrl }: { order: OrderDetail; apiUrl
           </div>
         )
       ) : order.status === "PROCESSING" ? (
-        <div className="flex flex-col gap-2 text-sm">
-          <p className="opacity-60">La préparation avance avec le bouton de statut en bas.</p>
-          <div>
-            <Button variant="secondary" loading={isPending} onClick={handleHandDelivery}>
-              Remise en main propre
-            </Button>
-          </div>
-        </div>
+        <p className="text-sm opacity-60">
+          La préparation avance avec les boutons en bas (statut, remise en main propre).
+        </p>
       ) : order.status === "PAID" ? (
         <p className="text-sm opacity-60">La préparation avance avec le bouton de statut en bas.</p>
       ) : (
