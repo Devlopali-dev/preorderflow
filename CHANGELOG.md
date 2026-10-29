@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.9] — 2026-10-29
+
+### Modifié
+
+- **Docker** (`docker-compose.prod.yml`) : réseau privé `orderflow-db-admin` partagé par `postgres` seul, avec l'alias `orderflow-db` (l'alias quitte le réseau `default`, où il ne servait à rien). Un outil d'administration de base (CloudBeaver) le déclare `external` sous ce nom et joint la base par `orderflow-db:5432`, sans passer par le réseau partagé `coolify` ni par un rattachement manuel qui sautait à chaque déploiement.
+
 ## [0.31.8] — 2026-10-29
 
 ### Modifié

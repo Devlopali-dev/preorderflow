@@ -19,8 +19,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER requis}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB requis}
+    # `default` : le réseau de la stack (api). `db-admin` : réseau privé partagé avec un outil d'administration
+    # de base (CloudBeaver), qui joint la base par `orderflow-db`. Rien d'autre n'y est rattaché.
     networks:
-      default:
+      default: {}
+      db-admin:
         aliases:
           - orderflow-db
     volumes:
@@ -128,3 +131,8 @@ volumes:
   postgres_data:
   redis_data:
   api_uploads:
+
+# Nom fixe (sans le préfixe du projet) pour que l'outil d'administration le déclare `external` sous ce nom.
+networks:
+  db-admin:
+    name: orderflow-db-admin
