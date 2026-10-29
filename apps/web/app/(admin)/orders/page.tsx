@@ -22,6 +22,9 @@ const ORDER_STATUSES = [
 // Déroulé nominal d'une commande (les deux derniers statuts, annulée et remboursée, en sortent).
 const FLOW_LENGTH = 7;
 
+// Commandes terminées : aucune action possible, la colonne serait vide.
+const NO_ACTION_STATUSES = ["DELIVERED", "CANCELLED"];
+
 const ORDER_STATUS_BADGE: Record<string, string> = {
   DRAFT: "badge-default",
   PENDING_PAYMENT: "badge-warning",
@@ -95,7 +98,9 @@ export default async function OrdersPage() {
                     <th>Client</th>
                     <th>Total</th>
                     <th style={{ textAlign: "center" }}>Paiement</th>
-                    <th style={{ textAlign: "center" }}>Action</th>
+                    {!NO_ACTION_STATUSES.includes(group.status) && (
+                      <th style={{ textAlign: "center" }}>Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -117,14 +122,16 @@ export default async function OrdersPage() {
                           {orderPaymentStatusLabel(order.paymentStatus)}
                         </span>
                       </td>
-                      <td className="text-right">
-                        <OrderActions
-                          orderId={order.id}
-                          status={order.status}
-                          apiUrl={apiUrl}
-                          align="end"
-                        />
-                      </td>
+                      {!NO_ACTION_STATUSES.includes(group.status) && (
+                        <td className="text-right">
+                          <OrderActions
+                            orderId={order.id}
+                            status={order.status}
+                            apiUrl={apiUrl}
+                            align="end"
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

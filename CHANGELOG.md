@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.32.1] — 2026-10-29
+
+### Modifié
+
+- **Commandes** (`/orders`) : la colonne « Action » n'est plus affichée pour les commandes livrées et annulées, qui n'ont aucune action possible.
+
 ## [0.32.0] — 2026-10-29
 
 ### Ajouté
