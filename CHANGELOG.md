@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.7] — 2026-10-29
+
+### Sécurité
+
+- **@hono/node-server 2.1.1 → 2.1.5** (alerte Dependabot #125, moyenne : `serveStatic` décode deux fois le chemin de la requête, contournement de middleware sur les chemins statiques). Dépendance transitive du SDK MCP (`mcp-server`, non déployé en production), corrigée par un override dans `pnpm-workspace.yaml` (remplace la PR #50, qui visait `main`). Typecheck propre, 235 tests API et 6 tests MCP verts.
+
 ## [0.31.6] — 2026-10-28
 
 ### Sécurité
