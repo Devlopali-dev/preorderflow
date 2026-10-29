@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.32.2] — 2026-10-29
+
+### Modifié
+
+- **Commandes** (`/orders`) : la colonne « Action » est aussi masquée pour les commandes remboursées.
+
 ## [0.32.1] — 2026-10-29
 
 ### Modifié

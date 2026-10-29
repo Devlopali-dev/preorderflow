@@ -23,7 +23,7 @@ const ORDER_STATUSES = [
 const FLOW_LENGTH = 7;
 
 // Commandes terminées : aucune action possible, la colonne serait vide.
-const NO_ACTION_STATUSES = ["DELIVERED", "CANCELLED"];
+const NO_ACTION_STATUSES = ["DELIVERED", "CANCELLED", "REFUNDED"];
 
 const ORDER_STATUS_BADGE: Record<string, string> = {
   DRAFT: "badge-default",
