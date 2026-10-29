@@ -19,6 +19,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER requis}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD requis}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB requis}
+    networks:
+      default:
+        aliases:
+          - orderflow-db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.31.8] — 2026-10-29
+
+### Modifié
+
+- **Docker** (`docker-compose.prod.yml`) : alias réseau `orderflow-db` sur le service `postgres`, sur le réseau `default` de la stack. Il ne rend la base joignable que depuis les conteneurs de la stack `order-flow` : pour y connecter CloudBeaver (autre service Coolify), il faudra aussi rattacher `postgres` à un réseau partagé.
+
 ## [0.31.7] — 2026-10-29
 
 ### Sécurité
