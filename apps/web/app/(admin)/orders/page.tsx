@@ -2,6 +2,7 @@ import { getCampaigns, getCustomers, getOrders, getProducts } from "@/lib/api";
 import { ORDER_PAYMENT_STATUS_BADGE, orderPaymentStatusLabel } from "@/lib/payment-labels";
 import { orderStatusLabel } from "@/lib/order-status-labels";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { BulkMessageButton } from "./bulk-message-button";
 import { CreateOrderButton } from "./create-order-button";
 import { OrderActions } from "./order-actions";
 import { OrderRowButton } from "./order-row-button";
@@ -57,12 +58,15 @@ export default async function OrdersPage() {
             <em>{ORDER_STATUSES.slice(0, FLOW_LENGTH).map(orderStatusLabel).join(" → ")}</em>
           </p>
         </div>
-        <CreateOrderButton
-          apiUrl={apiUrl}
-          products={products}
-          customers={customers}
-          campaigns={campaigns}
-        />
+        <div className="flex items-start gap-2">
+          <BulkMessageButton apiUrl={apiUrl} orders={orders} />
+          <CreateOrderButton
+            apiUrl={apiUrl}
+            products={products}
+            customers={customers}
+            campaigns={campaigns}
+          />
+        </div>
       </div>
 
       {groups.length === 0 && (

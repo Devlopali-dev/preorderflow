@@ -57,6 +57,17 @@ export async function loadOrderItemsHtml(orderId: string): Promise<string> {
   return order ? renderOrderItemsTable(order) : "";
 }
 
+// Texte libre saisi par l'admin → paragraphes HTML (échappé : jamais de HTML brut).
+export function renderPlainTextAsHtml(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p style="margin:0 0 16px;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
 // Habillage commun de tous les emails : en-tête au nom de la boutique, carte
 // centrée, pied discret. Appliqué aussi aux templates personnalisés.
 export function wrapEmail(bodyHtml: string, businessName: string | null): string {

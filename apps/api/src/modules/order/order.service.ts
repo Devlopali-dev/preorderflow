@@ -47,6 +47,34 @@ export class OrderService {
     });
   }
 
+  /**
+   * Message groupé aux clients des commandes données. Un client ayant
+   * plusieurs commandes sélectionnées ne reçoit qu'un seul mail (dédup par
+   * email), avec l'adresse de contact admin en copie carbone.
+   */
+  async sendBulkMessage(orderIds: string[], subject: string, message: string) {
+    const orders = await prisma.order.findMany({
+      where: { id: { in: orderIds } },
+      select: { customer: { select: { email: true } } },
+    });
+    if (orders.length === 0) {
+      throw new BadRequestException("Aucune commande trouvée pour cet envoi");
+    }
+
+    const recipients = [...new Set(orders.map((o) => o.customer.email.trim().toLowerCase()))];
+    const { contactEmail } = await this.settingsService.getBusinessProfile();
+    const cc = contactEmail?.trim() || undefined;
+
+    let sent = 0;
+    let failed = 0;
+    for (const email of recipients) {
+      const ok = await this.notificationService.sendBulkMessage(email, subject, message, cc);
+      if (ok) sent++;
+      else failed++;
+    }
+    return { recipients: recipients.length, sent, failed, ccApplied: Boolean(cc) };
+  }
+
   async getById(id: string) {
     const order = await prisma.order.findUnique({
       where: { id },

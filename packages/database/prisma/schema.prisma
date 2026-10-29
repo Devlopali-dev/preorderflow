@@ -558,6 +558,7 @@ enum NotificationTemplate {
   ORDER_DELIVERED
   ADMIN_ALERT
   CUSTOMER_MAGIC_LINK
+  BULK_MESSAGE
 }
 
 enum NotificationStatus {
@@ -599,6 +600,7 @@ enum AuditAction {
   SETTINGS_UPDATED
   CAMPAIGN_DELETED
   CAMPAIGN_REACTIVATED
+  ORDERS_BULK_MESSAGE_SENT
 }
 
 // Config email/ntfy éditable depuis /settings — une seule ligne (id fixe),

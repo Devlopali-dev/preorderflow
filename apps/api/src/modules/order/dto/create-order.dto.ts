@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsEmail,
@@ -9,6 +10,8 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
+  MinLength,
   Min,
   ValidateIf,
   ValidateNested,
@@ -165,4 +168,25 @@ export class UpdateOrderStatusDto {
     "REFUNDED",
   ])
   status!: string;
+}
+
+export class BulkMessageDto {
+  @ApiProperty({ type: [String], description: "Commandes dont les clients reçoivent le message" })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @IsUUID("4", { each: true })
+  orderIds!: string[];
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  subject!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(10000)
+  message!: string;
 }

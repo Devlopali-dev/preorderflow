@@ -1,7 +1,8 @@
 import { Body, Controller, forwardRef, Get, Inject, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { OrderService } from "./order.service";
-import { CreateOrderDto, UpdateOrderStatusDto } from "./dto/create-order.dto";
+import { BulkMessageDto, CreateOrderDto, UpdateOrderStatusDto } from "./dto/create-order.dto";
 import { PaymentService } from "../payment/payment.service";
 import { CreatePaymentDto } from "../payment/dto/create-payment.dto";
 import { AuditService } from "../audit/audit.service";
@@ -30,6 +31,21 @@ export class OrderController {
       number: order.number,
     });
     return order;
+  }
+
+  // Déclaré avant ":id" pour ne pas être capté comme un identifiant.
+  // Envoie de vrais emails : throttle dédié, comme les routes /settings.
+  @Post("bulk-message")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async sendBulkMessage(@Body() dto: BulkMessageDto, @CurrentAdminId() adminId: string) {
+    const result = await this.orderService.sendBulkMessage(dto.orderIds, dto.subject, dto.message);
+    // Jamais le corps du message dans l'audit : objet + volumétrie seulement.
+    await this.auditService.log(adminId, "ORDERS_BULK_MESSAGE_SENT", "Order", "bulk", {
+      subject: dto.subject,
+      orderIds: dto.orderIds,
+      ...result,
+    });
+    return result;
   }
 
   @Get(":id")

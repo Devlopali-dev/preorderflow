@@ -107,6 +107,17 @@ export class SettingsService {
     return this.getShippingConfig();
   }
 
+  async getBusinessProfile(): Promise<{
+    businessName: string | null;
+    contactEmail: string | null;
+  }> {
+    const row = await this.getRow();
+    return {
+      businessName: row?.businessName ?? null,
+      contactEmail: row?.contactEmail ?? null,
+    };
+  }
+
   async getEmailConfig(): Promise<EffectiveEmailConfig> {
     const row = await this.getRow();
     return {

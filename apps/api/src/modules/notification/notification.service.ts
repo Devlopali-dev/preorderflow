@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { prisma } from "@preorderflow/database";
 import { createEmailProviderFromConfig } from "./email-provider";
+import { renderPlainTextAsHtml, wrapEmail } from "./email-layout";
 import { renderTemplate, TemplatePayloads } from "./notification-templates";
 import { sendNtfyNotificationWithConfig } from "./ntfy-provider";
 import { SettingsService } from "../settings/settings.service";
@@ -50,6 +51,50 @@ export class NotificationService {
         where: { id: notification.id },
         data: { status: "FAILED", error: (error as Error).message },
       });
+    }
+  }
+
+  /**
+   * Message libre (objet + texte saisis par l'admin) habillé du même layout
+   * que les emails automatiques. `cc` : copie carbone (adresse admin).
+   * Retourne false en cas d'échec — ne throw jamais, pour que l'envoi
+   * groupé continue sur les destinataires suivants.
+   */
+  async sendBulkMessage(to: string, subject: string, message: string, cc?: string) {
+    const notification = await prisma.notification.create({
+      data: {
+        channel: "EMAIL",
+        template: "BULK_MESSAGE",
+        recipient: to,
+        payload: { subject, ...(cc ? { cc } : {}) } as object,
+        status: "PENDING",
+      },
+    });
+
+    try {
+      const [config, profile] = await Promise.all([
+        this.settingsService.getEmailConfig(),
+        this.settingsService.getBusinessProfile(),
+      ]);
+      const html = wrapEmail(renderPlainTextAsHtml(message), profile.businessName);
+      const provider = createEmailProviderFromConfig(config);
+      const { providerReference } = await provider.send(to, subject, html, { cc });
+      await prisma.notification.update({
+        where: { id: notification.id },
+        data: {
+          status: "SENT",
+          sentAt: new Date(),
+          payload: { subject, ...(cc ? { cc } : {}), providerReference } as object,
+        },
+      });
+      return true;
+    } catch (error) {
+      this.logger.warn(`Échec d'envoi message groupé à ${to}: ${(error as Error).message}`);
+      await prisma.notification.update({
+        where: { id: notification.id },
+        data: { status: "FAILED", error: (error as Error).message },
+      });
+      return false;
     }
   }
 

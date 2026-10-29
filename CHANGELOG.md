@@ -7,6 +7,14 @@ correctifs.
 
 ## [Non publié]
 
+## [0.32.0] — 2026-10-29
+
+### Ajouté
+
+- **Message groupé** (`/orders`) : bouton « Envoyer un message groupé » ouvrant une modale (objet + message). Destinataires choisis par statut de commande (case de catégorie) ou commande par commande ; les clients en double sont fusionnés. Même habillage que les mails automatiques, adresse de contact des paramètres en copie carbone, confirmation avant envoi.
+- **API** : `POST /api/v1/orders/bulk-message` (limité à 5 requêtes/minute, tracé dans l'audit sans le corps du message) ; support de la copie carbone (`cc`) dans les providers email (Resend, SMTP, console).
+- **Migration** : valeurs `BULK_MESSAGE` (`NotificationTemplate`) et `ORDERS_BULK_MESSAGE_SENT` (`AuditAction`).
+
 ## [0.31.9] — 2026-10-29
 
 ### Modifié

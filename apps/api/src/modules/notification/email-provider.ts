@@ -1,15 +1,25 @@
 import { createTransport } from "nodemailer";
 
+export interface EmailSendOptions {
+  cc?: string;
+}
+
 export interface EmailProvider {
-  send(to: string, subject: string, html: string): Promise<{ providerReference?: string }>;
+  send(
+    to: string,
+    subject: string,
+    html: string,
+    options?: EmailSendOptions,
+  ): Promise<{ providerReference?: string }>;
 }
 
 // Fallback sans dépendance obligatoire (§32) : si aucune clé API n'est
 // configurée, on journalise au lieu d'échouer — utile en dev/démo et pour
 // tourner le cœur de l'application sans compte Resend.
 export class ConsoleEmailProvider implements EmailProvider {
-  async send(to: string, subject: string, html: string) {
-    console.log(`[email:console] to=${to} subject="${subject}"\n${html}`);
+  async send(to: string, subject: string, html: string, options?: EmailSendOptions) {
+    const cc = options?.cc ? ` cc=${options.cc}` : "";
+    console.log(`[email:console] to=${to}${cc} subject="${subject}"\n${html}`);
     return {};
   }
 }
@@ -20,14 +30,20 @@ export class ResendEmailProvider implements EmailProvider {
     private readonly from: string,
   ) {}
 
-  async send(to: string, subject: string, html: string) {
+  async send(to: string, subject: string, html: string, options?: EmailSendOptions) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from: this.from, to, subject, html }),
+      body: JSON.stringify({
+        from: this.from,
+        to,
+        subject,
+        html,
+        ...(options?.cc ? { cc: options.cc } : {}),
+      }),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
@@ -57,8 +73,14 @@ export class SmtpEmailProvider implements EmailProvider {
     });
   }
 
-  async send(to: string, subject: string, html: string) {
-    const info = await this.transport.sendMail({ from: this.from, to, subject, html });
+  async send(to: string, subject: string, html: string, options?: EmailSendOptions) {
+    const info = await this.transport.sendMail({
+      from: this.from,
+      to,
+      subject,
+      html,
+      ...(options?.cc ? { cc: options.cc } : {}),
+    });
     return { providerReference: info.messageId };
   }
 }
