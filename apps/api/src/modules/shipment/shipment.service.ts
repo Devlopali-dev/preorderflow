@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { prisma, ShipmentStatus } from "@preorderflow/database";
+import { prisma, Prisma, ShipmentStatus } from "@preorderflow/database";
 import { CreateShipmentDto } from "./dto/create-shipment.dto";
 import { assertValidShipmentTransition, InvalidShipmentTransitionError } from "./shipment-status";
 import { OrderService } from "../order/order.service";
@@ -79,6 +79,10 @@ export class ShipmentService {
 
     const now = new Date();
     const shipment = await prisma.$transaction(async (tx) => {
+      const items = await tx.orderItem.findMany({
+        where: { orderId: order.id },
+        select: { variantId: true, quantity: true },
+      });
       const created = await tx.shipment.create({
         data: {
           orderId: order.id,
@@ -96,6 +100,9 @@ export class ShipmentService {
         include: { events: true },
       });
       await this.orderService.markHandDelivered(tx, order.id);
+      // Remise en main propre : le colis n'est jamais « expédié », mais le stock
+      // physique est consommé au moment de la remise.
+      await this.createSaleMovements(tx, order.id, items);
       return created;
     });
 
@@ -125,6 +132,17 @@ export class ShipmentService {
       this.orderService.assertPaidForDelivery(shipment.order.paymentStatus);
     }
 
+    // À l'expédition, on décrémente le stock physique : un mouvement SALE par
+    // variante (référence ORDER). La réservation est libérée automatiquement
+    // (la commande sort des statuts réservants dès qu'elle passe SHIPPED).
+    const items =
+      status === "SHIPPED"
+        ? await prisma.orderItem.findMany({
+            where: { orderId: shipment.orderId },
+            select: { variantId: true, quantity: true },
+          })
+        : [];
+
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.shipment.update({
         where: { id: shipment.id },
@@ -137,6 +155,7 @@ export class ShipmentService {
       await tx.shipmentEvent.create({
         data: { shipmentId: shipment.id, status, message },
       });
+      await this.createSaleMovements(tx, shipment.orderId, items);
       return result;
     });
 
@@ -162,5 +181,33 @@ export class ShipmentService {
     }
 
     return updated;
+  }
+
+  /**
+   * Crée un mouvement de stock SALE (négatif) par variante au moment où le
+   * colis quitte le stock. `items` est le groupement variantId → quantité,
+   * agrégé avant d'entrer dans la transaction.
+   */
+  private async createSaleMovements(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    items: { variantId: string; quantity: number }[],
+  ) {
+    const byVariant = new Map<string, number>();
+    for (const item of items) {
+      byVariant.set(item.variantId, (byVariant.get(item.variantId) ?? 0) + item.quantity);
+    }
+    for (const [variantId, quantity] of byVariant) {
+      await tx.inventoryMovement.create({
+        data: {
+          variantId,
+          quantity: -quantity,
+          type: "SALE",
+          referenceType: "ORDER",
+          referenceId: orderId,
+          reason: "Expédition",
+        },
+      });
+    }
   }
 }
