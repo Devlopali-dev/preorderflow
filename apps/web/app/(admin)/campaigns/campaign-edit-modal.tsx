@@ -10,6 +10,17 @@ import { CampaignShippingField } from "@/components/campaign-shipping-field";
 import { getClientAuthHeaders } from "@/lib/auth";
 import { isArchivedCampaign } from "@/lib/campaign-status";
 
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "DRAFT", label: "Brouillon" },
+  { value: "RECENSEMENT", label: "Recensement" },
+  { value: "COMMANDES_OUVERTES", label: "Commandes ouvertes" },
+  { value: "COMMANDES_FERMEES", label: "Commandes fermées" },
+  { value: "PRODUCTION", label: "Production" },
+  { value: "EXPEDITION", label: "Expédition" },
+  { value: "TERMINEE", label: "Terminée" },
+  { value: "ANNULEE", label: "Annulée" },
+];
+
 function toDateInputValue(iso: string | null): string {
   if (!iso) return "";
   return iso.slice(0, 10);
@@ -37,6 +48,8 @@ export function CampaignEditModal({
   const [name, setName] = useState(campaign.name);
   const [startDate, setStartDate] = useState(toDateInputValue(campaign.startDate));
   const [endDate, setEndDate] = useState(toDateInputValue(campaign.endDate));
+  const [status, setStatus] = useState(campaign.status);
+  const [backToAuto, setBackToAuto] = useState(false);
   const [paymentLink, setPaymentLink] = useState(campaign.paymentLink ?? "");
   const [shippingEnabled, setShippingEnabled] = useState(campaign.shippingEnabled ?? true);
   const [media, setMedia] = useState(campaign.media ?? []);
@@ -66,6 +79,19 @@ export function CampaignEditModal({
         }),
       });
       if (!res.ok) throw new Error((await res.json()).message ?? `Erreur (${res.status})`);
+      // Statut en dernier : il prime sur les dates, et une campagne archivée n'est plus modifiable.
+      if (status !== campaign.status || (backToAuto && campaign.scheduleOverridden)) {
+        const statusRes = await fetch(`${apiUrl}/api/v1/campaigns/${campaign.id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...getClientAuthHeaders() },
+          body: JSON.stringify(
+            backToAuto ? { status, manual: false, auto: true } : { status, manual: true },
+          ),
+        });
+        if (!statusRes.ok) {
+          throw new Error((await statusRes.json()).message ?? `Erreur (${statusRes.status})`);
+        }
+      }
       onClose();
       router.refresh();
     } catch (err) {
@@ -214,27 +240,57 @@ export function CampaignEditModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
           />
         </label>
-        <label className="text-sm">
-          Début
-          <Input
-            type="date"
-            value={startDate}
+        <label className="flex flex-col gap-1 text-sm">
+          Statut
+          <select
+            className="input"
+            value={status}
             disabled={readOnly}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
-          />
+            onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+              setStatus(e.target.value);
+              setBackToAuto(false);
+            }}
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
-        <label className="text-sm">
-          Fin (deadline)
-          <Input
-            type="date"
-            value={endDate}
-            disabled={readOnly}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
-          />
-        </label>
+        {campaign.scheduleOverridden && !readOnly && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={backToAuto}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setBackToAuto(e.target.checked)}
+            />
+            Statut forcé à la main : repasser en automatique (selon les dates)
+          </label>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-sm">
+            Début
+            <Input
+              type="date"
+              value={startDate}
+              disabled={readOnly}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setStartDate(e.target.value)}
+            />
+          </label>
+          <label className="text-sm">
+            Fin (deadline)
+            <Input
+              type="date"
+              value={endDate}
+              disabled={readOnly}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEndDate(e.target.value)}
+            />
+          </label>
+        </div>
         <p className="form-hint">
-          Le statut passe automatiquement à « commandes ouvertes » à la date de début, et à «
-          commandes fermées » après la date de fin (incluse).
+          Par défaut, le statut passe à « commandes ouvertes » à la date de début et à « commandes
+          fermées » après la date de fin (incluse). Un statut choisi ici prime sur les dates.
         </p>
         {campaign.status === "COMMANDES_FERMEES" &&
           endDate &&

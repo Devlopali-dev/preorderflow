@@ -210,12 +210,22 @@ export class CampaignController {
     @CurrentAdminId() adminId: string,
   ) {
     const before = await this.campaignService.getBySlugOrId(id);
-    const updated = await this.campaignService.updateStatus(id, dto.status as never);
+    const updated = await this.campaignService.updateStatus(id, dto.status as never, {
+      manual: dto.manual,
+      auto: dto.auto,
+    });
     // Réactiver une campagne archivée (retour en brouillon) est tracé.
     if (isArchivedStatus(before.status) && updated.status === "DRAFT") {
       await this.auditService.log(adminId, "CAMPAIGN_REACTIVATED", "Campaign", updated.id, {
         name: updated.name,
         from: before.status,
+      });
+    }
+    if (dto.manual && before.status !== updated.status) {
+      await this.auditService.log(adminId, "CAMPAIGN_STATUS_CHANGED", "Campaign", updated.id, {
+        name: updated.name,
+        from: before.status,
+        to: updated.status,
       });
     }
     return updated;

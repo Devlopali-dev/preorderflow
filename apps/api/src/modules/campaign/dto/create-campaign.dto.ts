@@ -148,6 +148,22 @@ export class UpdateCampaignStatusDto {
     | "EXPEDITION"
     | "TERMINEE"
     | "ANNULEE";
+
+  @ApiProperty({
+    required: false,
+    description: "Changement manuel : transition libre, le statut prime sur les dates",
+  })
+  @IsOptional()
+  @IsBoolean()
+  manual?: boolean;
+
+  @ApiProperty({
+    required: false,
+    description: "Repasse en mode automatique : le statut suit à nouveau les dates",
+  })
+  @IsOptional()
+  @IsBoolean()
+  auto?: boolean;
 }
 
 // Une ligne par couleur demandée : « 2 rouges + 1 bleu » = 2 items.

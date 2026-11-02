@@ -19,6 +19,7 @@ const SCHEDULE_FIELDS = {
   status: true,
   startDate: true,
   endDate: true,
+  scheduleOverridden: true,
 } as const;
 
 interface ScheduleCandidate {
@@ -28,6 +29,7 @@ interface ScheduleCandidate {
   status: CampaignStatus;
   startDate: Date | null;
   endDate: Date | null;
+  scheduleOverridden: boolean;
 }
 
 interface ScheduleChange {
@@ -204,6 +206,7 @@ export class CampaignService {
     const candidates = await prisma.campaign.findMany({
       where: {
         status: { in: SCHEDULED_STATUSES },
+        scheduleOverridden: false,
         OR: [{ startDate: { not: null } }, { endDate: { not: null } }],
       },
       select: SCHEDULE_FIELDS,
@@ -228,10 +231,11 @@ export class CampaignService {
     campaign: ScheduleCandidate,
     now: Date,
   ): Promise<ScheduleChange | null> {
+    if (campaign.scheduleOverridden) return null;
     const target = automaticTargetStatus(campaign, now);
     if (!target) return null;
     const result = await prisma.campaign.updateMany({
-      where: { id: campaign.id, status: campaign.status },
+      where: { id: campaign.id, status: campaign.status, scheduleOverridden: false },
       data: { status: target },
     });
     if (result.count !== 1) return null;
@@ -307,18 +311,37 @@ export class CampaignService {
     );
   }
 
-  async updateStatus(id: string, status: CampaignStatus) {
+  // `manual` : l'admin choisit librement le statut (retour arrière et saut permis) et ce choix prime
+  // sur les dates. `auto` : on rend la main aux dates. Sans option : machine à états stricte.
+  async updateStatus(
+    id: string,
+    status: CampaignStatus,
+    options: { manual?: boolean; auto?: boolean } = {},
+  ) {
     const campaign = await this.getBySlugOrId(id);
-    try {
-      assertValidCampaignTransition(campaign.status, status);
-    } catch (error) {
-      if (error instanceof InvalidCampaignTransitionError) {
-        throw new BadRequestException(error.message);
+    if (!options.manual) {
+      try {
+        assertValidCampaignTransition(campaign.status, status);
+      } catch (error) {
+        if (error instanceof InvalidCampaignTransitionError) {
+          throw new BadRequestException(error.message);
+        }
+        throw error;
       }
-      throw error;
     }
-    const updated = await prisma.campaign.update({ where: { id: campaign.id }, data: { status } });
-    this.afterStatusChange(updated, status);
+    const updated = await prisma.campaign.update({
+      where: { id: campaign.id },
+      data: {
+        status,
+        ...(options.manual ? { scheduleOverridden: true } : {}),
+        ...(options.auto ? { scheduleOverridden: false } : {}),
+      },
+    });
+    if (campaign.status !== status) this.afterStatusChange(updated, status);
+    if (options.auto && !options.manual) {
+      await this.applyScheduleFor(updated.id);
+      return prisma.campaign.findUniqueOrThrow({ where: { id: updated.id } });
+    }
     return updated;
   }
 

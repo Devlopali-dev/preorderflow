@@ -100,6 +100,8 @@ export interface Campaign {
   documentUrl: string | null;
   paymentLink?: string | null;
   shippingEnabled?: boolean;
+  // Statut forcé à la main : les dates ne le modifient plus.
+  scheduleOverridden?: boolean;
   startDate: string | null;
   endDate: string | null;
   media: CampaignMedia[];

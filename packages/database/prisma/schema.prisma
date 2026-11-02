@@ -70,6 +70,8 @@ model Campaign {
   // Rempli quand le mail « les commandes sont ouvertes » a été envoyé aux personnes intéressées :
   // empêche tout doublon si la campagne repasse par cet état.
   ordersOpenedMailedAt DateTime?
+  // Statut fixé à la main par un admin : le passage automatique selon les dates l'ignore.
+  scheduleOverridden Boolean        @default(false)
   interestSettings  Json?          // ex: quantités max, message légal, seuils d'affichage
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -600,6 +602,7 @@ enum AuditAction {
   SETTINGS_UPDATED
   CAMPAIGN_DELETED
   CAMPAIGN_REACTIVATED
+  CAMPAIGN_STATUS_CHANGED
   ORDERS_BULK_MESSAGE_SENT
 }
 

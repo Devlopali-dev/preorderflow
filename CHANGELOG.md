@@ -7,6 +7,16 @@ correctifs.
 
 ## [Non publié]
 
+## [0.33.0] — 2026-11-02
+
+### Ajouté
+
+- **Campagnes** : statut modifiable librement depuis la modale de paramétrage (retour arrière et saut permis). Ce choix manuel prime sur le passage automatique selon les dates (`scheduleOverridden`, migration `20261102100000_campaign_manual_status`), avec une case pour repasser en automatique. Changement tracé (`CAMPAIGN_STATUS_CHANGED`).
+
+### Modifié
+
+- **Campagnes** : les dates Début et Fin sont sur une même ligne dans la modale.
+
 ## [0.32.3] — 2026-10-29
 
 ### Corrigé
