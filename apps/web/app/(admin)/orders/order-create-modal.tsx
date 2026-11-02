@@ -28,14 +28,28 @@ export function OrderCreateModal({
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerFirstName, setCustomerFirstName] = useState("");
   const [customerLastName, setCustomerLastName] = useState("");
+  // Campagne d'origine, facultative : son lien de paiement servira au règlement.
+  const [campaignId, setCampaignId] = useState("");
+  const openCampaigns = campaigns.filter((campaign) => !isArchivedCampaign(campaign.status));
+  // Campagne sans livraison : remise en main propre, ni adresse ni frais de port.
+  const shippingDisabled =
+    campaigns.find((campaign) => campaign.id === campaignId)?.shippingEnabled === false;
   // Une ligne de commande vise une variante (couleur) : « Stylo — Rouge ».
-  const allOptions = products.flatMap((product) =>
-    product.variants.map((variant) => ({
-      id: variant.id,
-      label: variantLabel(product.name, variant.color),
-      archived: !product.active || !variant.active,
-    })),
-  );
+  // Une campagne sélectionnée restreint la liste au produit qui lui est
+  // associé ; « Aucune » laisse apparaître tous les produits.
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === campaignId);
+  const visibleProductIds = selectedCampaign
+    ? new Set([selectedCampaign.productId])
+    : new Set(products.map((product) => product.id));
+  const allOptions = products
+    .filter((product) => visibleProductIds.has(product.id))
+    .flatMap((product) =>
+      product.variants.map((variant) => ({
+        id: variant.id,
+        label: variantLabel(product.name, variant.color),
+        archived: !product.active || !variant.active,
+      })),
+    );
   // Les produits archivés restent visibles pour mémoire, en fin de liste, mais
   // ne se commandent plus.
   const variantOptions = allOptions.filter((option) => !option.archived);
@@ -46,12 +60,6 @@ export function OrderCreateModal({
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("FR");
-  // Campagne d'origine, facultative : son lien de paiement servira au règlement.
-  const [campaignId, setCampaignId] = useState("");
-  const openCampaigns = campaigns.filter((campaign) => !isArchivedCampaign(campaign.status));
-  // Campagne sans livraison : remise en main propre, ni adresse ni frais de port.
-  const shippingDisabled =
-    campaigns.find((campaign) => campaign.id === campaignId)?.shippingEnabled === false;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -177,7 +185,7 @@ export function OrderCreateModal({
             </select>
           </label>
         )}
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm" hidden={isExistingCustomer}>
           Email du client
           <Input
             placeholder="Email du client"
@@ -187,7 +195,7 @@ export function OrderCreateModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerEmail(e.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm" hidden={isExistingCustomer}>
           Prénom
           <Input
             placeholder="Prénom"
@@ -196,7 +204,7 @@ export function OrderCreateModal({
             onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerFirstName(e.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1 text-sm" hidden={isExistingCustomer}>
           Nom
           <Input
             placeholder="Nom"

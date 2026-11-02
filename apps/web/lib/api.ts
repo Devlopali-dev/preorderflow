@@ -96,6 +96,9 @@ export interface Campaign {
   slug: string;
   description: string | null;
   status: string;
+  // Produit associé (source unique du prix). Présent côté admin ; absent des
+  // réponses publiques qui n'exposent que `product` (données d'affichage).
+  productId?: string;
   imageUrl: string | null;
   documentUrl: string | null;
   paymentLink?: string | null;

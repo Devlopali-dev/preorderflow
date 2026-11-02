@@ -7,6 +7,16 @@ correctifs.
 
 ## [Non publié]
 
+## [0.34.0] — 2026-11-02
+
+### Ajouté
+
+- **Commandes** (`/orders`) : dans la modale de nouvelle commande manuelle, sélectionner une campagne restreint la liste des produits au produit associé à cette campagne ; « Aucune » affiche tous les produits.
+
+### Modifié
+
+- **Commandes** (`/orders`) : quand un client existant est sélectionné dans la modale, les champs Email, Prénom et Nom sont masqués (préremplis depuis la fiche client).
+
 ## [0.33.0] — 2026-11-02
 
 ### Ajouté
