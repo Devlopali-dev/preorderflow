@@ -185,34 +185,75 @@ export function OrderCreateModal({
             </select>
           </label>
         )}
-        <label className="flex flex-col gap-1 text-sm" hidden={isExistingCustomer}>
-          Email du client
+        {!isExistingCustomer && (
+          <>
+            <label className="flex flex-col gap-1 text-sm">
+              Email du client
+              <Input
+                placeholder="Email du client"
+                type="email"
+                value={customerEmail}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerEmail(e.target.value)}
+              />
+            </label>
+            <div className="flex gap-2">
+              <label className="flex flex-1 flex-col gap-1 text-sm">
+                Prénom
+                <Input
+                  placeholder="Prénom"
+                  value={customerFirstName}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setCustomerFirstName(e.target.value)
+                  }
+                />
+              </label>
+              <label className="flex flex-1 flex-col gap-1 text-sm">
+                Nom
+                <Input
+                  placeholder="Nom"
+                  value={customerLastName}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setCustomerLastName(e.target.value)
+                  }
+                />
+              </label>
+            </div>
+          </>
+        )}
+        <label className="flex flex-col gap-1 text-sm" hidden={shippingDisabled}>
+          Adresse
           <Input
-            placeholder="Email du client"
-            type="email"
-            value={customerEmail}
-            disabled={isExistingCustomer}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerEmail(e.target.value)}
+            placeholder="Adresse"
+            value={address1}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress1(e.target.value)}
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm" hidden={isExistingCustomer}>
-          Prénom
-          <Input
-            placeholder="Prénom"
-            value={customerFirstName}
-            disabled={isExistingCustomer}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerFirstName(e.target.value)}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm" hidden={isExistingCustomer}>
-          Nom
-          <Input
-            placeholder="Nom"
-            value={customerLastName}
-            disabled={isExistingCustomer}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCustomerLastName(e.target.value)}
-          />
-        </label>
+        <div className="flex gap-2" hidden={shippingDisabled}>
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Code postal
+            <Input
+              placeholder="Code postal"
+              value={postalCode}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPostalCode(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Ville
+            <Input
+              placeholder="Ville"
+              value={city}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1 text-sm">
+            Pays
+            <Input
+              placeholder="Pays"
+              value={country}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)}
+            />
+          </label>
+        </div>
         <fieldset className="flex flex-col gap-1 text-sm">
           <legend className="mb-1">Produits</legend>
           <ul className="flex max-h-56 flex-col divide-y overflow-y-auto rounded border">
@@ -266,40 +307,6 @@ export function OrderCreateModal({
             de port.
           </p>
         )}
-        <label className="flex flex-col gap-1 text-sm" hidden={shippingDisabled}>
-          Adresse
-          <Input
-            placeholder="Adresse"
-            value={address1}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress1(e.target.value)}
-          />
-        </label>
-        <div className="flex gap-2" hidden={shippingDisabled}>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Code postal
-            <Input
-              placeholder="Code postal"
-              value={postalCode}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setPostalCode(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Ville
-            <Input
-              placeholder="Ville"
-              value={city}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setCity(e.target.value)}
-            />
-          </label>
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            Pays
-            <Input
-              placeholder="Pays"
-              value={country}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)}
-            />
-          </label>
-        </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </Modal>
