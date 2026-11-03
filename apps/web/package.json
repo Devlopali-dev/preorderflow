@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.34.2",
+  "version": "0.34.3",
   "private": true,
   "scripts": {
     "dev": "next dev -p ${WEB_PORT:-3000}",
@@ -12,7 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@hookform/resolvers": "^6.0.0",
+    "@hookform/resolvers": "^7.0.1",
     "@preorderflow/types": "workspace:*",
     "@preorderflow/ui": "workspace:*",
     "next": "^16.4.3",

@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.34.3] — 2026-11-03
+
+### Modifié
+
+- Montées majeures (PR Dependabot #53, #54, #55) : `@hookform/resolvers` 7, `stripe` 23, `@eslint/js` 10. Lint, build, 251 tests API et builds Docker OK.
+
 ## [0.34.2] — 2026-11-03
 
 ### Modifié
