@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.34.1] — 2026-11-03
+
+### Sécurité
+
+- Override `minimatch >=11.0.1` (alerte Dependabot #126, DoS par amplification globparts, dépendance transitive de dev).
+
 ## [0.34.0] — 2026-11-02
 
 ### Ajouté
