@@ -1,6 +1,6 @@
 {
   "name": "api",
-  "version": "0.34.0",
+  "version": "0.34.3",
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
@@ -12,13 +12,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@napi-rs/canvas": "^1.0.13",
-    "@nestjs/common": "^12.2.0",
+    "@napi-rs/canvas": "^1.1.0",
+    "@nestjs/common": "^12.3.2",
     "@nestjs/config": "^12.0.1",
-    "@nestjs/core": "^12.2.0",
+    "@nestjs/core": "^12.3.2",
     "@nestjs/jwt": "^12.0.3",
-    "@nestjs/platform-express": "^12.2.0",
-    "@nestjs/swagger": "^12.0.4",
+    "@nestjs/platform-express": "^12.3.2",
+    "@nestjs/swagger": "^12.1.0",
     "@nestjs/terminus": "^12.1.0",
     "@nestjs/throttler": "^6.2.1",
     "@preorderflow/database": "workspace:*",
@@ -28,19 +28,19 @@
     "class-validator": "^0.15.1",
     "helmet": "^7.1.0",
     "multer": "^2.5.0",
-    "nodemailer": "^10.1.4",
+    "nodemailer": "^10.3.1",
     "pdfjs-dist": "^6.4.299",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "stripe": "^17.4.0"
+    "stripe": "^23.1.0"
   },
   "devDependencies": {
-    "@nestjs/cli": "^12.0.10",
-    "@nestjs/testing": "^12.2.0",
+    "@nestjs/cli": "^12.0.11",
+    "@nestjs/testing": "^12.3.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.3.0",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/nodemailer": "^8.0.2",
     "typescript": "^6.0.3",
     "vite": "^8.3.5",
