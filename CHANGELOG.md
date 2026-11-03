@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.34.2] — 2026-11-03
+
+### Modifié
+
+- Mises à jour minor/patch (PR Dependabot #51) : eslint, typescript-eslint, @nestjs/* 12.3, @napi-rs/canvas, nodemailer. Lockfile régénéré à la main : celui de Dependabot cassait le build Docker (`ajv/dist/compile/codegen`).
+
 ## [0.34.1] — 2026-11-03
 
 ### Sécurité
