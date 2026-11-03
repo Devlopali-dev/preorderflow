@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.35.0] — 2026-11-03
+
+### Modifié
+
+- Migration Tailwind CSS 3 → 4 (PR Dependabot #52) : plugin `@tailwindcss/postcss`, `@import "tailwindcss"` + `@config` pour conserver `tailwind.config.js` du design system, `autoprefixer` retiré.
+
 ## [0.34.3] — 2026-11-03
 
 ### Modifié
