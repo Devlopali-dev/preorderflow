@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { nextAvailableSlug, slugifyName } from "./slug";
 
 describe("slugifyName", () => {
+  it("slugifyName reste linéaire sur une longue suite de tirets", () => {
+    const start = Date.now();
+    expect(slugifyName("a" + "-".repeat(100_000) + "!")).toBe("a");
+    expect(slugifyName("---Stylo à bille---")).toBe("stylo-a-bille");
+    expect(Date.now() - start).toBeLessThan(500);
+  });
+
   it("met en minuscules, retire les accents et remplace les séparateurs par des tirets", () => {
     expect(slugifyName("Stylo à bille")).toBe("stylo-a-bille");
     expect(slugifyName("  Gourde inox 500ml !  ")).toBe("gourde-inox-500ml");

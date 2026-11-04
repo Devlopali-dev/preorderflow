@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.35.1] — 2026-11-04
+
+### Sécurité
+
+- `slugifyName` : trim des tirets sans regex `-+$` (alerte CodeQL #18 `js/polynomial-redos`), test de non-régression.
+
 ## [0.35.0] — 2026-11-03
 
 ### Modifié
