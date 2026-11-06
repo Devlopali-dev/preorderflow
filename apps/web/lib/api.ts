@@ -181,7 +181,7 @@ export interface OrderSummary {
   total: string;
   currency: string;
   createdAt: string;
-  customer: { firstName: string; lastName: string; email: string };
+  customer: { id: string; firstName: string; lastName: string; email: string };
 }
 
 export async function getOrders(): Promise<OrderSummary[]> {
