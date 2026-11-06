@@ -32,10 +32,12 @@ export function CustomerDetailModal({
   customerId,
   apiUrl,
   onClose,
+  readOnly = false,
 }: {
   customerId: string;
   apiUrl: string;
   onClose: () => void;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
@@ -110,7 +112,7 @@ export function CustomerDetailModal({
             <Button variant="secondary" onClick={onClose}>
               Fermer
             </Button>
-            {!isAnonymized(customer) && (
+            {!readOnly && !isAnonymized(customer) && (
               <Button variant="primary" onClick={startEditing}>
                 Modifier
               </Button>
@@ -165,10 +167,12 @@ export function CustomerDetailModal({
             </ul>
           </div>
 
-          <div>
-            <h3 className="mb-1 font-medium">RGPD</h3>
-            <GdprActions customerId={customer.id} apiUrl={apiUrl} />
-          </div>
+          {!readOnly && (
+            <div>
+              <h3 className="mb-1 font-medium">RGPD</h3>
+              <GdprActions customerId={customer.id} apiUrl={apiUrl} />
+            </div>
+          )}
         </div>
       )}
     </Modal>

@@ -6,6 +6,7 @@ import { BulkMessageButton } from "./bulk-message-button";
 import { CreateOrderButton } from "./create-order-button";
 import { OrderActions } from "./order-actions";
 import { OrderRowButton } from "./order-row-button";
+import { CustomerRowButton } from "./customer-row-button";
 
 const ORDER_STATUSES = [
   "DRAFT",
@@ -110,7 +111,11 @@ export default async function OrdersPage() {
                         <OrderRowButton orderId={order.id} label={order.number} apiUrl={apiUrl} />
                       </td>
                       <td>
-                        {order.customer.firstName} {order.customer.lastName}
+                        <CustomerRowButton
+                          customerId={order.customer.id}
+                          label={`${order.customer.firstName} ${order.customer.lastName}`}
+                          apiUrl={apiUrl}
+                        />
                       </td>
                       <td>
                         {order.total} {order.currency}
