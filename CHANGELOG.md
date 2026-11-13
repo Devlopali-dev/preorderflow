@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.35.2] — 2026-11-13
+
+### Sécurité
+
+- `@hono/node-server` monté en `>=2.1.6` (overrides pnpm) : corrige `ECONNRESET` pendant un upgrade WebSocket (GHSA-qv5m-9pm6-hqp3) et le contournement du contrôle d'accès par `\` dans le chemin (GHSA-jpvv-r467-5p4w), alerts Dependabot #127 et #128.
+
 ## [0.35.1] — 2026-11-04
 
 ### Sécurité
