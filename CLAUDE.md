@@ -1302,3 +1302,23 @@ Lorsque la phase 1 est terminée, présente-moi :
 - les éventuels points à valider ;
 
 puis attends mes instructions avant de commencer la phase 2.
+
+---
+
+# 39. Workflow Git
+
+Avant de pousser (`push`) la branche `dev` sur le dépôt distant, il faut **toujours** :
+
+1. mettre à jour la branche `main` (tirer les derniers changements distants) ;
+2. merger `main` dans `dev` afin d'intégrer les éventuels changements distants ;
+3. tirer (`pull`) la dernière version de `dev`.
+
+Règle à appliquer systématiquement avant chaque push :
+
+```bash
+git pull origin main
+git checkout dev
+git merge main
+git pull origin dev
+git push origin dev
+```
