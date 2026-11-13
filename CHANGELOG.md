@@ -7,6 +7,12 @@ correctifs.
 
 ## [Non publié]
 
+## [0.35.3] — 2026-11-13
+
+### Sécurité
+
+- `hono` monté en `>=4.13.16` (overrides pnpm, résolu en 4.13.18) : corrige 5 vulnérabilités — `csrf()` ne vérifie pas le hyperlink auditing (GHSA-46wx-v44x-9hh2), `validator('form')` skippe la validation multipart (GHSA-4h7h-rv7c-7m2v), `mount()` bypass de middleware par chemin (GHSA-4m76-xfj5-7975), RegExpRouter saute des middlewares wildcard (GHSA-h7mg-cq63-vhpq), helper `css` n'échappe pas la fermeture de tag (GHSA-3gg2-335m-rxc6), alerts Dependabot #129 à #133.
+
 ## [0.35.2] — 2026-11-13
 
 ### Sécurité
