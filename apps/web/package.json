@@ -12,7 +12,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@hookform/resolvers": "^7.0.5",
+    "@hookform/resolvers": "^7.0.8",
     "@preorderflow/types": "workspace:*",
     "@preorderflow/ui": "workspace:*",
     "next": "^16.4.6",
@@ -33,6 +33,6 @@
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
     "vite": "^8.3.7",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
